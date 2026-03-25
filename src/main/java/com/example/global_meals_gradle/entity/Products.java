@@ -26,7 +26,7 @@ public class Products {
     @Lob
     @Basic(fetch = FetchType.LAZY) // 只有在呼叫 getfoodImg() 時才去抓資料庫
     @Column(name = "food_img", columnDefinition = "MEDIUMBLOB")
-	private byte[] foofImg;
+	private byte[] foodImg;
     
     @Column(name = "region_country")
     private String regionCountry;
@@ -39,6 +39,7 @@ public class Products {
     @Column(name = "stock_quantity", columnDefinition = "INT UNSIGNED")
     private int stockQuantity;
     
+    @Min(value = 1, message = ValidationMsg.MAX_ORDER_QUANTITY) // 單次最大購買量至少為１
     @Column(name = "max_order_quantity", columnDefinition = "INT UNSIGNED")
     private int maxOrderQuantity;
     
@@ -78,12 +79,12 @@ public class Products {
 		this.category = category;
 	}
 
-	public byte[] getFoofImg() {
-		return foofImg;
+	public byte[] getFoodImg() {
+		return foodImg;
 	}
 
-	public void setFoofImg(byte[] foofImg) {
-		this.foofImg = foofImg;
+	public void setFoodImg(byte[] foodImg) {
+		this.foodImg = foodImg;
 	}
 
 	public String getRegionCountry() {
@@ -149,5 +150,7 @@ public class Products {
 	public void setDeletedAt(LocalDateTime deletedAt) {
 		this.deletedAt = deletedAt;
 	}
+
+	
 	
 }

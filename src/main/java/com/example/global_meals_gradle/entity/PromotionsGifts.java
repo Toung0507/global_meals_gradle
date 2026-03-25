@@ -22,7 +22,7 @@ public class PromotionsGifts {
 	private int giftProductId;
 	
 	@Column(name = "is_active")
-	private boolean active;
+	private boolean active = true;
 
 	public int getId() {
 		return id;

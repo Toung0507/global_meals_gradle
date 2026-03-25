@@ -17,7 +17,6 @@ public class AiGenerated {
 	
 	// 使用 @Lob 處理長文字
     @Lob
-    @Basic(fetch = FetchType.LAZY)
     @Column(name = "generated_description", columnDefinition = "TEXT")
 	private String generatedDescription;
     

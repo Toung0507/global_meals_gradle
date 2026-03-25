@@ -22,7 +22,7 @@ public class Promotions {
 	private LocalDate endTime;
 	
 	@Column(name = "max_exchange")
-	private int maxExchange;
+	private int maxExchange = -1;
 	
 	@Column(name = "exchange_count")
 	private int exchangeCount;

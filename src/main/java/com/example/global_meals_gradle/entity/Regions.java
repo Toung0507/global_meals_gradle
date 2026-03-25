@@ -18,8 +18,8 @@ public class Regions {
 	@Column(name = "country")
 	private String country;
 	
-	@Column(name = "countrt_code")
-	private String countrtCode;
+	@Column(name = "currency_code")
+	private String currencyCode;
 	
 	@Column(name = "tax_rate", precision = 5, scale = 4) // DECIMAL(5,4)
 	private BigDecimal taxRate;
@@ -50,12 +50,12 @@ public class Regions {
 		this.country = country;
 	}
 
-	public String getCountrtCode() {
-		return countrtCode;
+	public String getCurrencyCode() {
+		return currencyCode;
 	}
 
-	public void setCountrtCode(String countrtCode) {
-		this.countrtCode = countrtCode;
+	public void setCurrencyCode(String currencyCode) {
+		this.currencyCode = currencyCode;
 	}
 
 	public BigDecimal getTaxRate() {
@@ -89,9 +89,7 @@ public class Regions {
 	public void setUpdatedAt(LocalDate updatedAt) {
 		this.updatedAt = updatedAt;
 	}
-	
-	
-	
+
 	
 
 }
