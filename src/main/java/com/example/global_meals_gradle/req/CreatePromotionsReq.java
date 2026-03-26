@@ -14,7 +14,7 @@ public class CreatePromotionsReq {
 	
 	private LocalDate endTime;
 	
-	private int maxExchange;
+	private int maxExchange = -1;
 	
 	private List<PromotionsGifts> promotionsGiftsList;
 
