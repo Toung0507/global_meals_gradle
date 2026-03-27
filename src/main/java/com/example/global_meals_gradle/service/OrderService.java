@@ -10,7 +10,6 @@ import com.example.global_meals_gradle.dao.OrderCartDetailsDao;
 import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.entity.OrderCartDetails;
-import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
 import com.example.global_meals_gradle.res.GetOrdersDetailVo;
