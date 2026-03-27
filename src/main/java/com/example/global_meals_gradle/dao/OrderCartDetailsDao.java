@@ -16,8 +16,8 @@ public interface OrderCartDetailsDao extends JpaRepository<OrderCartDetails, Int
 	/* 新增購物車裡的商品細項 */
 	@Modifying
 	@Transactional
-	@Query(value = "insert into order_cart_details (id, order_cart_id, product_id, quantity, price, is_gift, discount_note) values (?1, ?2, ?3, ?4, ?5, ?6, ?7)", nativeQuery = true)
-	public void insert(int id, int orderCartId, int productId, int quantity,// 
+	@Query(value = "insert into order_cart_details (order_cart_id, product_id, quantity, price, is_gift, discount_note) values (?1, ?2, ?3, ?4, ?5, ?6)", nativeQuery = true)
+	public void insert(int orderCartId, int productId, int quantity,// 
 			BigDecimal price, boolean gift, String discountNote);
 	
 	/* 刪除購物車 id=? 的所有商品(之後在新增新的商品細項) */

@@ -19,13 +19,5 @@ public interface OrderCartDao extends JpaRepository<OrderCart, Integer> {
 			+ "values (?1, ?2, ?3)", nativeQuery = true)
 	public void insert(int globalAreaId, int operation, OperationType operationType);
 	
-	/* 更新購物車 */
-	@Modifying
-	@Transactional
-	@Query(value = "update order_cart set global_area_id = ?2, operation = ?3, operation_type = ?4", nativeQuery = true)
-	public void update(int id, int globalAreaId, int operation, OperationType operationType);
 	
-	/* 取得該會員或是員工最新的購物車id(依據 operation)*/
-	@Query(value = "select max(id) from order_cart where operation = ?1", nativeQuery = true)
-	public int getMaxId(int operation);
 }
