@@ -24,5 +24,5 @@ public interface OrderCartDetailsDao extends JpaRepository<OrderCartDetails, Int
 	@Modifying
 	@Transactional
 	@Query(value = "delete from order_cart_details where id = ?1", nativeQuery = true)
-	public void delete(int quizId);
+	public void delete(int id);
 }

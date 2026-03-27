@@ -1,18 +1,14 @@
-package com.example.global_meals_gradle.res;
+package com.example.global_meals_gradle.constants;
 
-public class BasicRes {
+public enum ReplyMessage {
 
+	SUCCESS(200, "Success!!");
+	
 	private int code;
 
 	private String message;
 
-	public BasicRes() {
-		super();
-		// TODO Auto-generated constructor stub
-	}
-
-	public BasicRes(int code, String message) {
-		super();
+	private ReplyMessage(int code, String message) {
 		this.code = code;
 		this.message = message;
 	}
@@ -32,5 +28,4 @@ public class BasicRes {
 	public void setMessage(String message) {
 		this.message = message;
 	}
-	
 }

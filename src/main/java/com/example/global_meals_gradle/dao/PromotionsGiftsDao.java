@@ -24,4 +24,8 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 	@Transactional
 	@Query(value = "update promotions_gifts set is_active = NOT is_active where id = ?1 ", nativeQuery = true)
 	public void update(int id);
+	
+	/* 取的所有贈品 */
+	@Query(value = "select * from promotions_gifts", nativeQuery = true)
+	public int getAll();
 }
