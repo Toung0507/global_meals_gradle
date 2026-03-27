@@ -1,6 +1,7 @@
 package com.example.global_meals_gradle.dao;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -25,4 +26,8 @@ public interface OrderCartDetailsDao extends JpaRepository<OrderCartDetails, Int
 	@Transactional
 	@Query(value = "delete from order_cart_details where id = ?1", nativeQuery = true)
 	public void delete(int id);
+	
+	/* 根據購物車id，尋找該購物車的產品明細 */
+	@Query(value = "select * from order_cart_details where order_cart_id = ?1", nativeQuery = true)
+	public List<OrderCartDetails> getProductByOrderCartId(int orderCartId);
 }
