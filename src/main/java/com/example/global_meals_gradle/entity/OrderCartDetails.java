@@ -12,11 +12,8 @@ public class OrderCartDetails {
 	@Column(name = "id")
 	private int id;
 	
-	@Column(name = "order_cart_date_id")
-	private String orderCartDateId;
-	
 	@Column(name = "order_cart_id")
-	private String orderCartId;
+	private int orderCartId;
 	
 	@Column(name = "product_id")
 	private int productId;
@@ -41,19 +38,11 @@ public class OrderCartDetails {
 		this.id = id;
 	}
 
-	public String getOrderCartDateId() {
-		return orderCartDateId;
-	}
-
-	public void setOrderCartDateId(String orderCartDateId) {
-		this.orderCartDateId = orderCartDateId;
-	}
-
-	public String getOrderCartId() {
+	public int getOrderCartId() {
 		return orderCartId;
 	}
 
-	public void setOrderCartId(String orderCartId) {
+	public void setOrderCartId(int orderCartId) {
 		this.orderCartId = orderCartId;
 	}
 
@@ -96,6 +85,4 @@ public class OrderCartDetails {
 	public void setDiscountNote(String discountNote) {
 		this.discountNote = discountNote;
 	}
-	
-
 }

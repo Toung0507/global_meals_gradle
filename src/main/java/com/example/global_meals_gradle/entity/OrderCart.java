@@ -8,16 +8,11 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "order_cart")
-@IdClass(value = OrderCartId.class)
 public class OrderCart {
 	
 	@Id
-	@Column(name = "date_id")
-	private String dateId;
-	
-	@Id
 	@Column(name = "id")
-	private String id;
+	private int id;
 	
 	@Column(name = "global_area_id")
 	private int globalAreaId;
@@ -32,19 +27,11 @@ public class OrderCart {
 	@Column(name = "order_time")
 	private LocalDateTime orderTime;
 
-	public String getDateId() {
-		return dateId;
-	}
-
-	public void setDateId(String dateId) {
-		this.dateId = dateId;
-	}
-
-	public String getId() {
+	public int getId() {
 		return id;
 	}
 
-	public void setId(String id) {
+	public void setId(int id) {
 		this.id = id;
 	}
 
@@ -79,6 +66,5 @@ public class OrderCart {
 	public void setOrderTime(LocalDateTime orderTime) {
 		this.orderTime = orderTime;
 	}
-	
 
 }

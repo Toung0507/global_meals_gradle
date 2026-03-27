@@ -9,17 +9,18 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "orders")
+@IdClass(value = OrdersId.class)
 public class Orders {
 	
 	@Id
 	@Column(name = "id")
-	private int id;
+	private String id;
 	
-	@Column(name = "order_cart_date_id")
-	private String orderCartDateId;
+	@Column(name = "order_date_id")
+	private String orderDateId;
 	
 	@Column(name = "order_cart_id")
-	private String orderCartId;
+	private int orderCartId;
 	
 	@Column(name = "global_area_id")
 	private int globalAreaId;
@@ -49,27 +50,27 @@ public class Orders {
 	@Column(name = "completed_at")
 	private LocalDateTime completedAt;
 
-	public int getId() {
+	public String getId() {
 		return id;
 	}
 
-	public void setId(int id) {
+	public void setId(String id) {
 		this.id = id;
 	}
 
-	public String getOrderCartDateId() {
-		return orderCartDateId;
+	public String getOrderDateId() {
+		return orderDateId;
 	}
 
-	public void setOrderCartDateId(String orderCartDateId) {
-		this.orderCartDateId = orderCartDateId;
+	public void setOrderDateId(String orderDateId) {
+		this.orderDateId = orderDateId;
 	}
 
-	public String getOrderCartId() {
+	public int getOrderCartId() {
 		return orderCartId;
 	}
 
-	public void setOrderCartId(String orderCartId) {
+	public void setOrderCartId(int orderCartId) {
 		this.orderCartId = orderCartId;
 	}
 
@@ -144,7 +145,5 @@ public class Orders {
 	public void setCompletedAt(LocalDateTime completedAt) {
 		this.completedAt = completedAt;
 	}
-	
-	
 
 }
