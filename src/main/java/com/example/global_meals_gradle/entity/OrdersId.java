@@ -3,18 +3,18 @@ package com.example.global_meals_gradle.entity;
 import java.io.Serializable;
 
 @SuppressWarnings("serial")
-public class OrderCartId implements Serializable {
+public class OrdersId implements Serializable {
 	
-	private String dateId;
+	private String orderDateId;
 	
 	private String id;
 
-	public String getDateId() {
-		return dateId;
+	public String getOrderDateId() {
+		return orderDateId;
 	}
 
-	public void setDateId(String dateId) {
-		this.dateId = dateId;
+	public void setOrderDateId(String orderDateId) {
+		this.orderDateId = orderDateId;
 	}
 
 	public String getId() {
@@ -24,6 +24,5 @@ public class OrderCartId implements Serializable {
 	public void setId(String id) {
 		this.id = id;
 	}
-	
 
 }
