@@ -2,17 +2,20 @@ package com.example.global_meals_gradle.dao;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.entity.OrdersId;
 import com.example.global_meals_gradle.res.GetOrdersVo;
 
+@Repository
 public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 
 	/* 新增訂單 */
@@ -22,13 +25,26 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	public void insert(String id, String orderDateId, String orderCartId, int globalAreaId, int memberId, BigDecimal subtotalBeforeTax,// 
 			BigDecimal taxAmount, BigDecimal totalAmount);
 	
+	/* 根據 orderDateId 查詢特定訂單 */
+	// ORDER BY id (排序)(字串排序需長度樣(補零))  DESC (倒序)  LIMIT 1 (限制筆數)
+	// Optional: 如果當天還沒有人下單（第一筆），它會回傳 Optional.empty()，你的 Service 就可以判斷 isPresent() 來給出第一個號碼 0001。
+	@Query(value = "select * from orders where order_date_id = ?1 order by id desc limit 1", nativeQuery = true)
+	public Optional<Orders> getOrderByOrderDateId(String orderDateId);
+	
+	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
+	@Modifying
+	@Transactional
+	@Query(value = "update orders set payment_method = ?3, transaction_id = ?4, status = ?5 where id = ?1 and order_date_id = ?2", nativeQuery = true)
+	public void updatePay(String id, String orderDateId, String paymentMethod, String transactionId, String status);
+	
 	/* 查詢該會員的訂單紀錄 */
 	@Query(value = "select * from orders where member_id = ?1", nativeQuery = true)
 	public List<GetOrdersVo> getOrderByMemberId(int memberId);
 	
+	/* 訂單狀態更新 */
 	@Modifying
     @Transactional
-    @Query(value = "update orders SET status = :status WHERE id = :id AND date_id = :orderDateId", nativeQuery = true)
+    @Query(value = "update orders SET status = :status where id = :id and date_id = :orderDateId", nativeQuery = true)
 	public int updateOrderStatus(
         @Param("status") String status, // AI 是說要字串型態，我有說資料庫是設ENUM
         @Param("id") String id, 

@@ -5,11 +5,12 @@ import java.time.LocalDate;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.entity.Promotions;
 
-
+@Repository
 public interface PromotionsDao extends JpaRepository<Promotions, Integer> {
 
 	/* 新增活動方案 */

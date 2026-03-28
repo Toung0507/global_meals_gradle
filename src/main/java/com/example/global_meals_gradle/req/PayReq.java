@@ -3,7 +3,7 @@ package com.example.global_meals_gradle.req;
 import com.example.global_meals_gradle.constants.OrdersStatus;
 
 /* 付款完成: 會傳付款方法、序號、狀態 */
-public class payReq {
+public class PayReq {
 
 	private String id;
 	

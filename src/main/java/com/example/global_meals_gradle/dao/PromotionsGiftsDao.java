@@ -5,11 +5,12 @@ import java.math.BigDecimal;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.entity.PromotionsGifts;
 
-
+@Repository
 public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integer> {
 
 	/* 新增贈品細項 */

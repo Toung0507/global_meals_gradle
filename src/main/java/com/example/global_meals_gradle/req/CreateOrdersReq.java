@@ -6,7 +6,7 @@ import java.util.List;
 import com.example.global_meals_gradle.entity.OrderCartDetails;
 
 /* 成立訂單(還沒付款) */
-public class CreateOrderReq {
+public class CreateOrdersReq {
 	
 	private String orderCartId;
 	
