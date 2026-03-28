@@ -5,8 +5,8 @@ import java.util.List;
 
 import com.example.global_meals_gradle.entity.OrderCartDetails;
 
-/* 結帳 */
-public class CheckOutReq {
+/* 成立訂單(還沒付款) */
+public class CreateOrderReq {
 	
 	private String orderCartId;
 	
@@ -19,10 +19,6 @@ public class CheckOutReq {
 	private BigDecimal taxAmount;
 	
 	private BigDecimal totalAmount;
-	
-	private String paymentMethod;
-	
-	private String transactionId;
 	
 	private List<OrderCartDetails> OrderCartDetailsList;
 
@@ -74,22 +70,6 @@ public class CheckOutReq {
 		this.totalAmount = totalAmount;
 	}
 
-	public String getPaymentMethod() {
-		return paymentMethod;
-	}
-
-	public void setPaymentMethod(String paymentMethod) {
-		this.paymentMethod = paymentMethod;
-	}
-
-	public String getTransactionId() {
-		return transactionId;
-	}
-
-	public void setTransactionId(String transactionId) {
-		this.transactionId = transactionId;
-	}
-
 	public List<OrderCartDetails> getOrderCartDetailsList() {
 		return OrderCartDetailsList;
 	}
@@ -97,5 +77,5 @@ public class CheckOutReq {
 	public void setOrderCartDetailsList(List<OrderCartDetails> orderCartDetailsList) {
 		OrderCartDetailsList = orderCartDetailsList;
 	}
-	
+
 }

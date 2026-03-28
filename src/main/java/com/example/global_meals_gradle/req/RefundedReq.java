@@ -6,6 +6,8 @@ public class RefundedReq {
 	private String orderDateId;
 	
 	private String id;
+	
+	private String status; // 傳入字串，例如 "CANCELLED" 或 "REFUNDED"，後端再轉成ENUM
 
 	public String getOrderDateId() {
 		return orderDateId;
@@ -21,6 +23,14 @@ public class RefundedReq {
 
 	public void setId(String id) {
 		this.id = id;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
 	}
 	
 }

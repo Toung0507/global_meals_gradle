@@ -1,7 +1,5 @@
 package com.example.global_meals_gradle.entity;
 
-import java.time.LocalDateTime;
-
 import com.example.global_meals_gradle.constants.OperationType;
 
 import jakarta.persistence.*;
@@ -23,9 +21,6 @@ public class OrderCart {
 	@Enumerated(EnumType.STRING) // 關鍵：存儲字串
     @Column(name = "operation_type")
 	private OperationType operationType;
-	
-	@Column(name = "order_time")
-	private LocalDateTime orderTime;
 
 	public int getId() {
 		return id;
@@ -58,13 +53,4 @@ public class OrderCart {
 	public void setOperationType(OperationType operationType) {
 		this.operationType = operationType;
 	}
-
-	public LocalDateTime getOrderTime() {
-		return orderTime;
-	}
-
-	public void setOrderTime(LocalDateTime orderTime) {
-		this.orderTime = orderTime;
-	}
-
 }
