@@ -21,7 +21,7 @@ import com.example.global_meals_gradle.res.GetOrdersDetailVo;
 import com.example.global_meals_gradle.res.GetOrdersVo;
 
 @Service
-public class OrderService {
+public class OrdersService {
 	
 	@Autowired
 	private OrdersDao ordersDao;
@@ -71,7 +71,7 @@ public class OrderService {
 	}
 	
 	/* 訂單狀態: 退款或取消 */
-	public BasicRes orderStatus(RefundedReq req) {
+	public BasicRes ordersStatus(RefundedReq req) {
 		// 參數檢查
 		
         // 將前端傳來的字串轉成 Enum 物件
