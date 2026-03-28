@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.entity.Orders;
@@ -25,4 +26,12 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "select * from orders where member_id = ?1", nativeQuery = true)
 	public List<GetOrdersVo> getOrderByMemberId(int memberId);
 	
+	@Modifying
+    @Transactional
+    @Query(value = "update orders SET status = :status WHERE id = :id AND date_id = :orderDateId", nativeQuery = true)
+	public int updateOrderStatus(
+        @Param("status") String status, // AI 是說要字串型態，我有說資料庫是設ENUM
+        @Param("id") String id, 
+        @Param("order_date_id") String orderDateId
+    );
 }
