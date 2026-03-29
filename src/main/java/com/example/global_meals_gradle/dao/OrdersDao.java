@@ -26,9 +26,9 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			BigDecimal taxAmount, BigDecimal totalAmount);
 	
 	/* 根據 orderDateId 查詢特定訂單 */
-	// ORDER BY id (排序)(字串排序需長度樣(補零))  DESC (倒序)  LIMIT 1 (限制筆數)
+	// ORDER BY id (排序)(字串排序需長度樣(補零))  DESC (倒序)  LIMIT 1 (限制筆數)  FOR UPDATE: 查詢到的這筆資料會被鎖住
 	// Optional: 如果當天還沒有人下單（第一筆），它會回傳 Optional.empty()，你的 Service 就可以判斷 isPresent() 來給出第一個號碼 0001。
-	@Query(value = "select * from orders where order_date_id = ?1 order by id desc limit 1", nativeQuery = true)
+	@Query(value = "select * from orders where order_date_id = ?1 order by id desc limit 1 for update", nativeQuery = true)
 	public Optional<Orders> getOrderByOrderDateId(String orderDateId);
 	
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
