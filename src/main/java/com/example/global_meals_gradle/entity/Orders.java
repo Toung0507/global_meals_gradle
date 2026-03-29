@@ -28,7 +28,7 @@ public class Orders {
 	@Column(name = "member_id")
 	private int memberId;
 	
-	@Column(name = "subtotal_befor_tax", precision = 12, scale = 2) // DECIMAL(12,2)
+	@Column(name = "subtotal_before_tax", precision = 12, scale = 2) // DECIMAL(12,2)
 	private BigDecimal subtotalBeforeTax;
 	
 	@Column(name = "tax_amount", precision = 12, scale = 2) // DECIMAL(12,2)

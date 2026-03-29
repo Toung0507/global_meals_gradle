@@ -19,7 +19,5 @@ public interface PromotionsDao extends JpaRepository<Promotions, Integer> {
 			+ "values (?1, ?2, ?3, ?4)", nativeQuery = true)
 	public void insert(String name, LocalDate startTime, LocalDate endTime, int maxExchange);
 	
-	/* 取的目前活動的最大id */
-	@Query(value = "select max(id) from promotions", nativeQuery = true)
-	public int getMaxId();
+	
 }

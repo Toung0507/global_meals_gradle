@@ -20,6 +20,13 @@ public interface OrderCartDetailsDao extends JpaRepository<OrderCartDetails, Int
 	public void insert(int orderCartId, int productId, int quantity,// 
 			BigDecimal price, boolean gift, String discountNote);
 	
+//	查詢 ？號車裡面有沒有 ？ 號商品，有就加數量，沒有就新建購物車
+//	public void findByCartIdAndProductId
+//	把 ？號車裡『所有的商品』都拿出來給我算小計！不包含贈品
+//	public void findAllByCartId
+//	把 7 號車裡標記為『贈品(is_gift=true)』的東西全刪了,因為加點的情況下，滿 500 送紅茶，滿 1000 送酸辣湯，不把舊的贈品刪掉重新算滿額贈，就會兩個贈品都送
+	//deleteAllGiftsByCartId
+	
 	/* 刪除購物車 id=? 的所有商品(之後在新增新的商品細項) */
 	@Modifying
 	@Transactional
