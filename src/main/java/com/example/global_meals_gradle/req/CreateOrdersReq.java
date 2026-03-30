@@ -14,6 +14,8 @@ public class CreateOrdersReq {
 	
 	private int memberId;
 	
+	private String phone;
+	
 	private BigDecimal subtotalBeforeTax;
 	
 	private BigDecimal taxAmount;
@@ -44,6 +46,14 @@ public class CreateOrdersReq {
 
 	public void setMemberId(int memberId) {
 		this.memberId = memberId;
+	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public void setPhone(String phone) {
+		this.phone = phone;
 	}
 
 	public BigDecimal getSubtotalBeforeTax() {

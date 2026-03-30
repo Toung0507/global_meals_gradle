@@ -1,5 +1,7 @@
 package com.example.global_meals_gradle.req;
 
+import com.example.global_meals_gradle.constants.OrdersStatus;
+
 /* 刪除或取消訂單 */
 public class RefundedReq {
 
@@ -7,7 +9,7 @@ public class RefundedReq {
 	
 	private String id;
 	
-	private String status; // 傳入字串，例如 "CANCELLED" 或 "REFUNDED"，後端再轉成ENUM
+	private OrdersStatus status; // 傳入字串，例如 "CANCELLED" 或 "REFUNDED"，後端再轉成ENUM
 
 	public String getOrderDateId() {
 		return orderDateId;
@@ -25,11 +27,11 @@ public class RefundedReq {
 		this.id = id;
 	}
 
-	public String getStatus() {
+	public OrdersStatus getStatus() {
 		return status;
 	}
 
-	public void setStatus(String status) {
+	public void setStatus(OrdersStatus status) {
 		this.status = status;
 	}
 	

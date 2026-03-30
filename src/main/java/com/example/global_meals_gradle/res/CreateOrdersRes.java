@@ -2,7 +2,7 @@ package com.example.global_meals_gradle.res;
 
 import java.math.BigDecimal;
 
-/* 成立訂單回傳前端資料(訂單編號、總金額) */
+/* 成立訂單回傳給前端的資料(訂單編號、總金額) */
 public class CreateOrdersRes extends BasicRes {
 
 	private String id;
