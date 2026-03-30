@@ -6,6 +6,16 @@ public class BasicRes {
 
 	private String message;
 
+	public BasicRes() {
+		super();
+	}
+
+	public BasicRes(int code, String message) {
+		super();
+		this.code = code;
+		this.message = message;
+	}
+
 	public int getCode() {
 		return code;
 	}

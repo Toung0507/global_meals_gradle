@@ -1,5 +1,7 @@
 package com.example.global_meals_gradle.constants;
 
+import org.springframework.util.StringUtils;
+
 public enum TaxType {
 	
 	INCLUSIVE("INCLUSIVE"), //
@@ -17,6 +19,20 @@ public enum TaxType {
 
 	public void setTaxType(String taxType) {
 		this.taxType = taxType;
+	}
+	
+	// 參數檢查
+	public static boolean check(String input) {
+		
+		if(!StringUtils.hasText(input)) {
+			return false;
+		}
+		for(TaxType type : values()) {
+			if(input.equalsIgnoreCase(type.getTaxType())) {
+				return true;
+			}
+		}
+		return false;
 	}
 	
 
