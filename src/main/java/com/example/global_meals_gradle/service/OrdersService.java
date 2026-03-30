@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,10 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.dao.MembersDao;
 import com.example.global_meals_gradle.dao.OrderCartDetailsDao;
 import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.dao.ProductsDao;
+import com.example.global_meals_gradle.entity.Members;
+import com.example.global_meals_gradle.entity.OrderCartDetails;
 import com.example.global_meals_gradle.entity.Orders;
+import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
 import com.example.global_meals_gradle.req.RefundedReq;
@@ -42,6 +47,9 @@ public class OrdersService {
 
 	@Autowired
 	private ProductsDao productsDao;
+	
+	@Autowired
+	private MembersDao membersDao;
 
 	// 這樣在呼叫 self.executeInsert 時，Spring 才會啟動 @Transactional 的代理機制。
 	@Autowired
@@ -185,24 +193,75 @@ public class OrdersService {
 	// 加上 @Transactional，確保這段動作在資料庫中是原子性的（要嘛全成功，要嘛全失敗）。
 	@Transactional(rollbackFor = Exception.class)
 	public CreateOrdersRes executeInsert(CreateOrdersReq req, String todayStr) {
+		// 取的購物車清單
+		List<OrderCartDetails> cartDetailsList = req.getOrderCartDetailsList();
+		// [防止死鎖]：將商品按照 ID 從小到大排序   Comparator.comparingInt 用來建立比較器，依照某個「int 型別的 key」來排序。
+		cartDetailsList.sort(Comparator.comparingInt(o -> o.getProductId()));
+		for (OrderCartDetails detail : cartDetailsList) {
+			// 取得 商品id 與 使用者想買的數量
+	        int productId = detail.getProductId();
+	        int quantityToBuy = detail.getQuantity(); 
+	        // 根據商品 id 去商品表搜尋庫存並鎖定該資料，避免超賣
+	        Products product = productsDao.findByIdForUpdate(productId);
+	        // 安全檢查：萬一資料庫找不到這個商品 ID
+	        if (product == null) {
+	        	// return 不會觸發回滾，要用 throw
+	        	// 假設購物車有 A、B 兩個商品。先扣了 A 的庫存，接著檢查 B 時發現庫存不足，你用了 return。這時，A 的庫存已經被扣掉了，且不會還原，但訂單卻沒成立。這就是所謂的「資料不一致」。
+//	            return new CreateOrdersRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(), ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
+	            throw new RuntimeException("商品編號 " + productId + " 不存在");
+	        }
+	        // 庫存檢查：如果庫存  比要買的數量還少
+	        if (product.getStockQuantity() < quantityToBuy) {
+	            // 拋出例外後，事務會自動回滾，前面扣掉的其他商品庫存也會還回去
+//	        	return new CreateOrdersRes(ReplyMessage.STOCK_NOT_ENOUGH.getCode(), ReplyMessage.STOCK_NOT_ENOUGH.getMessage());
+	        	throw new RuntimeException("商品「" + product.getName() + "」庫存不足");
+	        }
+	        // 執行資料庫更新：將庫存減掉購買數量
+	        int affectedRows = productsDao.upDateStock(productId, quantityToBuy);
+	        
+	        // 如果更新失敗（例如剛好有人同時改了這行），也視為失敗  1 = 有成功更新/0 = 沒被更新 
+	        if (affectedRows == 0) {
+	            throw new RuntimeException("系統繁忙，更新庫存失敗");
+	        }
+		}
+		
+		// 判斷是會員(> 1)還是訪客(= 1)
+		if(req.getMemberId() > 1) {
+			// 利用會員id 撈取並鎖定會員資料(點數、9折卷)
+			Members member = membersDao.findByIdForUpdate(req.getMemberId());
+			// 如果是 null 則代表沒有這筆會員資料
+			if(member != null) {
+				// 判斷有無9折劵，如果沒有，可以集點
+				if(member.isDiscount() == false) {
+					// 取得目前會員點數
+					int memberPoints = member.getOrderCount();
+					// 已有沒有9點做判斷，如果已有9點，那要多加一個開啟9折劵的程式
+					if(memberPoints < 9) {
+						membersDao.addPoint(member.getId());
+					}else {
+						membersDao.reachFullPointsAndGiveCoupon(member.getId());
+					}
+				}
+			}
+		}
 
-		// 1. 去資料庫找今天最後一筆訂單 (DAO 裡面要有 ORDER BY id DESC LIMIT 1)
+		// 去資料庫找今天最後一筆訂單 (DAO 裡面要有 ORDER BY id DESC LIMIT 1)
 		Optional<Orders> lastOrder = ordersDao.getOrderByOrderDateId(todayStr);
 
 		int nextSeq = 1; // 預設從 1 開始
 		if (lastOrder.isPresent()) {
-			// 2. 如果今天有訂單，把最大的序號轉成數字並 +1
+			// 如果今天有訂單，把最大的序號轉成數字並 +1
 			nextSeq = Integer.parseInt(lastOrder.get().getId()) + 1;
 		}
 
-		// 3. 將數字格式化為 5 位字串，例如 1 變成 "00001"
+		// 將數字格式化為 5 位字串，例如 1 變成 "00001"
 		String newId = String.format("%05d", nextSeq);
 
-		// 4. 執行新增主訂單 (使用你在圖 3 寫的 DAO insert 方法)
+		// 執行新增主訂單 (使用你在圖 3 寫的 DAO insert 方法)
 		ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
 				req.getPhone(), req.getSubtotalBeforeTax(), req.getTaxAmount(), req.getTotalAmount());
 
-		// 5. 成功後回傳結果
+		// 成功後回傳結果
 		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
