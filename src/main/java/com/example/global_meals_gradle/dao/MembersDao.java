@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface MembersDao extends JpaRepository<Members, Integer> {
     // 繼承 JpaRepository 就能直接使用 findById(Integer id) 和 save(Members entity)
+	//findMemberById
 }

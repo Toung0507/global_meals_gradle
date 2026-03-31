@@ -3,7 +3,7 @@ package com.example.global_meals_gradle.res;
 import com.example.global_meals_gradle.vo.CartItemVO;
 import java.math.BigDecimal;
 import java.util.List;
-
+//-----------可能還需要修改
 /** 整個購物車的最終結果 (回傳給前端專用) */
 public class CartViewRes extends BasicRes {
 

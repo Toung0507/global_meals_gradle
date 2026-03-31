@@ -13,11 +13,40 @@ public class CartRemoveReq {
    
     @Min(value = 1, message = "商品 ID 必須大於 0")
     private int productId;
+    
+    
+    private Integer memberId;
+
+
+	public int getCartId() {
+		return cartId;
+	}
+
+
+	public void setCartId(int cartId) {
+		this.cartId = cartId;
+	}
+
+
+	public int getProductId() {
+		return productId;
+	}
+
+
+	public void setProductId(int productId) {
+		this.productId = productId;
+	}
+
+
+	public Integer getMemberId() {
+		return memberId;
+	}
+
+
+	public void setMemberId(Integer memberId) {
+		this.memberId = memberId;
+	}
 
    
-    public int getCartId() { return cartId; }
-    public void setCartId(int cartId) { this.cartId = cartId; }
-
-    public int getProductId() { return productId; }
-    public void setProductId(int productId) { this.productId = productId; }
+   
 }

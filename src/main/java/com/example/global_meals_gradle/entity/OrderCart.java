@@ -28,6 +28,11 @@ public class OrderCart {
 //	@Column(name = "order_time")
 //	private LocalDateTime orderTime;
 
+	
+	public OrderCart() {
+		super();
+	}
+	
 	public int getId() {
 		return id;
 	}
@@ -47,6 +52,8 @@ public class OrderCart {
 	public int getOperation() {
 		return operation;
 	}
+
+	
 
 	public void setOperation(int operation) {
 		this.operation = operation;
