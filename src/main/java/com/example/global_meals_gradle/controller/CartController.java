@@ -18,6 +18,7 @@ import com.example.global_meals_gradle.res.CartViewRes;
 import com.example.global_meals_gradle.service.CartService;
 
 import jakarta.validation.Valid;
+//------------還沒有編輯完
 /*1.@RestController:@Controller + @ResponseBody 的組合
  * 作用：從 Service 拿回來的 Java 物件（如 CartViewRes）直接翻譯成前端看得懂的 JSON 格式。
  * 2.@RequestMapping：定義 URL 路由的基礎路徑。
