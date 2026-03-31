@@ -11,8 +11,9 @@ import com.example.global_meals_gradle.entity.Products;
 @Repository
 public interface ProductsDao extends JpaRepository<Products, Integer> {
 
-	@Query(value = "select name from products where id = ?1", nativeQuery = true)
-	public String getProductsNameById(int id);
+  // 用在雙層迴圈，改成用 JOIN 先註解不使用
+	// @Query(value = "select name from products where id = ?1", nativeQuery = true)
+	// public String getProductsNameById(int id);
 	
 	/*  用於訂單成立 */
 	public Products findByIdForUpdate(int id);

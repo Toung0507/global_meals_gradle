@@ -85,6 +85,8 @@ public class Members {
 	public void setCreatedAt(LocalDate createdAt) {
 		this.createdAt = createdAt;
 	}
+
+	
 	
 
 }
