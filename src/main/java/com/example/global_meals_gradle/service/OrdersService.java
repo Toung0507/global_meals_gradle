@@ -136,19 +136,11 @@ public class OrdersService {
 			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
 				// 建立一個新的訂單物件
 				GetOrdersVo newVo = new GetOrdersVo();
-<<<<<<< HEAD
 				newVo.setId(row[0].toString());  // o.id
 				newVo.setOrderDateId(row[1].toString());  // o.order_date_id
 				newVo.setGlobalAreaId((Integer) row[2]);  // o.global_area_id 
 				newVo.setTotalAmount((BigDecimal) row[3]);  // o.total_amount
 				newVo.setStatus(row[4].toString());          // o.status 
-=======
-				newVo.setId(row[0].toString()); // o.id
-				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
-				newVo.setGlobalAreaId((Integer) row[2]); // o.global_area_id (新增)
-				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
-				newVo.setStatus(row[4].toString()); // o.status (新增)
->>>>>>> 110b24eac55b8fe6f3a95e565cbb760aa7306ded
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -228,7 +220,6 @@ public class OrdersService {
 		cartDetailsList.sort(Comparator.comparingInt(o -> o.getProductId()));
 		for (OrderCartDetails detail : cartDetailsList) {
 			// 取得 商品id 與 使用者想買的數量
-<<<<<<< HEAD
 	        int productId = detail.getProductId();
 	        int quantityToBuy = detail.getQuantity();
 	        // 根據商品 id 去商品表搜尋庫存並鎖定該資料，避免超賣
@@ -277,35 +268,6 @@ public class OrdersService {
 	        	}
 	        }
 	    }
-=======
-			int productId = detail.getProductId();
-			int quantityToBuy = detail.getQuantity();
-			// 根據商品 id 去商品表搜尋庫存並鎖定該資料，避免超賣
-			Products product = productsDao.findByIdForUpdate(productId);
-			// 安全檢查：萬一資料庫找不到這個商品 ID
-			if (product == null) {
-				// return 不會觸發回滾，要用 throw
-				// 假設購物車有 A、B 兩個商品。先扣了 A 的庫存，接著檢查 B 時發現庫存不足，你用了 return。這時，A
-				// 的庫存已經被扣掉了，且不會還原，但訂單卻沒成立。這就是所謂的「資料不一致」。
-				// return new CreateOrdersRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(), ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
-				throw new RuntimeException("商品編號 " + productId + " 不存在");
-			}
-			// 庫存檢查：如果庫存 比要買的數量還少
-			if (product.getStockQuantity() < quantityToBuy) {
-				// 拋出例外後，事務會自動回滾，前面扣掉的其他商品庫存也會還回去
-	        	// return new CreateOrdersRes(ReplyMessage.STOCK_NOT_ENOUGH.getCode(), ReplyMessage.STOCK_NOT_ENOUGH.getMessage());
-				throw new RuntimeException("商品「" + product.getName() + "」庫存不足");
-			}
-			// 執行資料庫更新：將庫存減掉購買數量
-			int affectedRows = productsDao.upDateStock(productId, quantityToBuy);
-
-			// 如果更新失敗（例如剛好有人同時改了這行），也視為失敗 1 = 有成功更新/0 = 沒被更新
-			if (affectedRows == 0) {
-				throw new RuntimeException("系統繁忙，更新庫存失敗");
-			}
-		}
-
->>>>>>> 110b24eac55b8fe6f3a95e565cbb760aa7306ded
 		// 判斷是會員(> 1)還是訪客(= 1)
 		if (req.getMemberId() > 1) {
 			// 利用會員id 撈取並鎖定會員資料(點數、9折卷)
