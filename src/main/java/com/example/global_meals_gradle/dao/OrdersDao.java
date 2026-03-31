@@ -55,7 +55,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	public List<GetOrdersVo> getOrderByMemberId(int memberId);
 
 	/* 查詢該會員的訂單紀錄 */
-	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, o.status, o.completed_at"
+	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, o.status, o.completed_at,"
 			+ "d.quantity, d.price, d.is_gift, d.discount_note, " + "p.name as product_name " + "FROM orders o "
 			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
 			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.member_id = ?1 "

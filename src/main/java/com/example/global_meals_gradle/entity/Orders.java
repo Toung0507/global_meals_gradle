@@ -53,9 +53,6 @@ public class Orders {
 	@Column(name = "completed_at")
 	private LocalDateTime completedAt;
 	
-	@Column(name = "phone")
-	private String phone ;
-	
 	public String getId() {
 		return id;
 	}

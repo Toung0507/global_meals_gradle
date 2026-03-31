@@ -11,6 +11,9 @@ public class GetAllOrdersRes extends BasicRes {
 		super();
 	}
 
+	public GetAllOrdersRes(int code, String message) {
+		super(code, message);
+	}
 
 	public GetAllOrdersRes(int code, String message, List<GetOrdersVo> getOrderVoList) {
 		super(code, message);

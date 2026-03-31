@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CartService {
@@ -91,7 +92,7 @@ public class CartService {
 
 				// 🚨 【大腦呼叫倉庫】去 Products 表查一下這個商品到底多少錢？
 
-				Products product = productsDao.findProductById(req.getProductId());
+				Optional<Products> product = productsDao.findById(req.getProductId());
 
 				// 回傳的可能是 null，所以大腦要自己做安全檢查
 				if (product == null) {
@@ -101,7 +102,7 @@ public class CartService {
 				OrderCartDetails newDetail = new OrderCartDetails();
 				newDetail.setOrderCartId(currentCartId);
 				newDetail.setProductId(req.getProductId());
-				newDetail.setPrice(product.getBasePrice());
+				newDetail.setPrice(product.get().getBasePrice());
 				newDetail.setGift(false); // 客人選的，絕對不是贈品
 
 				// 存進資料庫做 INSERT
@@ -190,9 +191,9 @@ public class CartService {
              vo.setGift(detail.isGift());
              vo.setDiscountNote(detail.getDiscountNote());
              // (B) 🚨 大腦再次呼叫倉庫！去 Products 表查出它的名字 (為了放到 vo.setProductName)
-             Products p = productsDao.findProductById(detail.getProductId());
+             Optional<Products> p = productsDao.findById(detail.getProductId());
              if (p != null) {
-                 vo.setProductName(p.getName()); // 假設你的實體欄位叫做 name
+                 vo.setProductName(p.get().getName()); // 假設你的實體欄位叫做 name
              }
              // (C) 單品小計 = 單價 × 數量 (必須使用 BigDecimal.valueOf 把 int 數量轉成物件才能相乘)
              BigDecimal lineTotal = detail.getPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));

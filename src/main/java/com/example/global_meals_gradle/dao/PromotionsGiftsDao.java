@@ -17,15 +17,19 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     @Transactional
     @Query(value = "INSERT INTO promotions_gifts(promotions_id, full_amount, gift_product_id, is_active) " +
                    "VALUES (?1, ?2, ?3, ?4)", nativeQuery = true)
-    void insert(int promotionsId, BigDecimal fullAmount, int giftProductId, boolean active);
+    public void insert(int promotionsId, BigDecimal fullAmount, int giftProductId, boolean active);
     
     /* 贈品狀態改變: 上下架 */
     @Modifying
     @Transactional
     @Query(value = "UPDATE promotions_gifts SET is_active = NOT is_active WHERE id = ?1", nativeQuery = true)
-    void updateStatus(int id);
+    public void updateStatus(int id);
 
     /* 核心邏輯：取得所有目前上架中的贈品門檻 */
     @Query(value = "SELECT * FROM promotions_gifts WHERE is_active = 1", nativeQuery = true)
-    List<PromotionsGifts> findAllActiveGifts();
+    public List<PromotionsGifts> findAllActiveGifts();
+    
+    /* 根據商品id取的門檻資料 */
+    @Query(value = "SELECT full_amount FROM promotions_gifts WHERE gift_product_id = ?1 AND is_active = 1", nativeQuery = true)
+    public BigDecimal findFullAmountByGiftProductId(int giftProductId);
 }

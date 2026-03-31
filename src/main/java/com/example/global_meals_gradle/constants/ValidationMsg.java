@@ -26,12 +26,14 @@ public class ValidationMsg {
 	
 	public static final String STATUS_ERROR = "Status Error";  // 訂單狀態錯誤
 	
-	public static final String PAYMENT_METHID_ERROR = "PaymentMethod Error";
+	public static final String PAYMENT_METHID_ERROR = "Payment Method Error";
 	
-	public static final String TRANSACTION_ID_ERROR = "TransactionId Error";
+	public static final String TRANSACTION_ID_ERROR = "Transaction Id Error";
 
-	public static final String ORDER_CART_ID_ERROR = "OrderCartId Error";
+	public static final String ORDER_CART_ID_ERROR = "Order Cart Id Error";
 	
 	public static final String PHONE_ERROR = "Phone Error";
+	
+	public static final String ORDER_CART_DETAILS_NOT_EMPTY = "Order Cart Details Not Empty";
 
 }

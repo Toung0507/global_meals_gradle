@@ -27,31 +27,31 @@ public class OrdersController {
 	private OrdersService ordersService;
 	
 	/* 取的該會員的歷史訂單 */
-	@PostMapping("GetAllOrdersList")
+	@PostMapping("Orders/GetAllOrdersList")
 	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req) {
 		return ordersService.getAllOrders(req);
 	}
 	
 	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED */
-	@PostMapping("ordersStatus")
+	@PostMapping("Orders/ordersStatus")
 	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req) {
 		return ordersService.ordersStatus(req);
 	}
 	
 	/* 成立訂單(未結帳) */
-	@PostMapping("createOrdersRes")
+	@PostMapping("Orders/createOrdersRes")
 	public CreateOrdersRes createOrdersRes(@RequestBody CreateOrdersReq req) {
 		return ordersService.createOrders(req);
 	}
 	
 	/* 結帳 */
-	@PostMapping("pay")
+	@PostMapping("Orders/pay")
 	public BasicRes pay(@Valid @RequestBody PayReq req) {
 		return ordersService.pay(req);
 	}
 	
 	/* 報電話號碼取餐 */
-	@GetMapping("getOrderByPhone")
+	@GetMapping("Orders/getOrderByPhone")
 	public CreateOrdersRes getOrderByPhone(@RequestParam("phone") String phone) {
 		return ordersService.getOrderByPhone(phone);
 	}
