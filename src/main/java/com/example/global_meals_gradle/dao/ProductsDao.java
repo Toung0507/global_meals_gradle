@@ -20,23 +20,30 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	// 2. 【隱形功能】繼承來的 .findById(id)
 	// 用途：修改商品前，先撈出舊資料。
 
-	// [練習 1] 寫一個依區域搜尋的方法 (自動命名)
+	// 3. 依區域搜尋商品的方法 (自動命名)
 	public List<Products> findByRegionCountry(String regionCountry);
 
-	// [練習 2] 寫一個給前台看的菜單方法 (手寫 SQL)
+	// 4. 給前台看的菜單方法 (手寫 SQL)
 	@Query(value = "SELECT * FROM products WHERE region_country = ?1 AND "//
 			+ "is_active = 1 AND deleted_at IS NULL", nativeQuery = true)
 	public List<Products> getMenu(String regionCountry);
 
-	// [練習 3] 寫一個軟刪除方法 (手寫 SQL)
+	// 5. 軟刪除方法 (手寫 SQL)
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE products SET deleted_at = NOW() , isWHERE id = ?1 ", nativeQuery = true)
+	@Query(value = "UPDATE products SET deleted_at = NOW() , is_active = 0 WHERE id = ?1 ", nativeQuery = true)
 	public int softDeleteProduct(int productsId);
 
-	// [練習 4] 寫一個扣庫存的方法 (手寫 SQL)
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE products SET stock_quantity = ?2 WHERE id = ?1", nativeQuery = true)
-	public int updateStockQuantity(int productsId, int stock);
+
+	// 6. 扣庫存的方法 (手動實作樂觀鎖)
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE products SET stock_quantity = ?2, version = version + 1 " +
+                   "WHERE id = ?1 AND version = ?3", nativeQuery = true)
+    public int updateStockWithOptimisticLock(int productsId, int newStock, int currentVersion);
+
+    // 7. 前台實時確認庫存 (只抓數字，不抓整張表，效能最快)
+    @Query(value = "SELECT stock_quantity FROM products WHERE id = ?1 AND deleted_at IS NULL", nativeQuery = true)
+    public Integer getStockById(int productsId);
+
 }
