@@ -122,9 +122,11 @@ public class OrdersService {
 			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
 				// 建立一個新的訂單物件
 				GetOrdersVo newVo = new GetOrdersVo();
-				newVo.setId(row[0].toString());
-				newVo.setOrderDateId(row[1].toString());
-				newVo.setTotalAmount((BigDecimal) row[2]);
+				newVo.setId(row[0].toString());  // o.id
+				newVo.setOrderDateId(row[1].toString());  // o.order_date_id
+				newVo.setGlobalAreaId((Integer) row[2]);  // o.global_area_id (新增)
+				newVo.setTotalAmount((BigDecimal) row[3]);  // o.total_amount
+				newVo.setStatus(row[4].toString());          // o.status (新增)
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -262,23 +264,24 @@ public class OrdersService {
 				req.getPhone(), req.getSubtotalBeforeTax(), req.getTaxAmount(), req.getTotalAmount());
 
 		// 成功後回傳結果
-		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(),// 
+				newId, todayStr, req.getTotalAmount());
 	}
 
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
 	public BasicRes pay(PayReq req) {
-		// 參數檢查
+		// 參數檢查(有在Req那裏自動檢查)
 
 		// 新增(更新)的資料(付款方式、交易號碼、狀態) (status 在 req 是設 ENUM，在 DAO 是設 String，所以要加 name() )
 		ordersDao.updatePay(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), req.getTransactionId(),
-				req.getStatus());
+				OrdersStatus.COMPLETED);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
 	/* 訂單狀態: 退款或取消 */
 	public BasicRes ordersStatus(RefundedReq req) {
 		// 參數檢查
-
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
 		// 執行訂單狀態更新
 		int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
 		// 判斷是否成功
@@ -287,5 +290,16 @@ public class OrdersService {
 		} else {
 			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), ReplyMessage.ORDER_NOT_FOUND.getMessage());
 		}
+	}
+	
+	/* 報電話號碼查詢最新一單 */
+	public CreateOrdersRes getOrderByPhone(String phone) {
+		// 取的今天的日期字串，參考成立訂單
+		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+		// 取的資料根據電話號碼跟今天日期
+		GetOrdersVo order = ordersDao.getOrderByPhone(todayStr, phone);
+		
+		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(),// 
+				order.getId(), order.getOrderDateId(), order.getTotalAmount());
 	}
 }

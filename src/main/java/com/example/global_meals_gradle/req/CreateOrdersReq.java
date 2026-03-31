@@ -3,17 +3,22 @@ package com.example.global_meals_gradle.req;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.example.global_meals_gradle.constants.ValidationMsg;
 import com.example.global_meals_gradle.entity.OrderCartDetails;
+
+import jakarta.validation.constraints.NotBlank;
 
 /* 成立訂單(還沒付款) */
 public class CreateOrdersReq {
 	
+	@NotBlank(message = ValidationMsg.ORDER_CART_ID_ERROR)
 	private String orderCartId;
 	
 	private int globalAreaId;
 	
 	private int memberId;
 	
+	@NotBlank(message = ValidationMsg.PHONE_ERROR)
 	private String phone;
 	
 	private BigDecimal subtotalBeforeTax;

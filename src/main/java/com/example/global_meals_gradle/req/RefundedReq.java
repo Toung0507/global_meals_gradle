@@ -1,15 +1,24 @@
 package com.example.global_meals_gradle.req;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
+import com.example.global_meals_gradle.constants.ValidationMsg;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 /* 刪除或取消訂單 */
 public class RefundedReq {
 
+	/* @NotBlank: 限制屬性值不能是 1.空子串 2.全空白字串 3.null
+	 * message 是指當屬性值違反限制時得到的訊息，等號後面的值必須是常數(final) */
+	@NotBlank(message = ValidationMsg.ORDER_DATE_ID_ERROR)
 	private String orderDateId;
 	
+	@NotBlank(message = ValidationMsg.ID_ERROR)
 	private String id;
 	
-	private OrdersStatus status; // 傳入字串，例如 "CANCELLED" 或 "REFUNDED"，後端再轉成ENUM
+	@NotNull(message = ValidationMsg.STATUS_ERROR)
+	private OrdersStatus status; 
 
 	public String getOrderDateId() {
 		return orderDateId;

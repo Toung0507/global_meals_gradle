@@ -34,6 +34,14 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	// 來給出第一個號碼 0001。
 	@Query(value = "select * from orders where order_date_id = ?1 order by id desc limit 1 for update", nativeQuery = true)
 	public Optional<Orders> getOrderByOrderDateId(String orderDateId);
+	
+	/* 根據電話號碼查詢最新的一筆訂單 */
+	@Query(value = "select * from orders where order_date_id = ?1 and phone = ?2 order by id desc limit 1", nativeQuery = true)
+	public GetOrdersVo getOrderByPhone(String orderDateId, String phone);
+	
+	/* 依據訂單編號查詢該筆訂單 */
+	@Query(value = "select * from orders where order_date_id = ?1 and id = ?2", nativeQuery = true)
+	public Orders getOrderByOrderDateIdAndId(String orderDateId, String id);
 
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
 	@Modifying
@@ -45,7 +53,8 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "select * from orders where member_id = ?1", nativeQuery = true)
 	public List<GetOrdersVo> getOrderByMemberId(int memberId);
 
-	@Query(value = "SELECT o.id, o.order_date_id, o.total_amount, "
+	/* 查詢該會員的訂單紀錄 */
+	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, o.status, o.completed_at"
 			+ "d.quantity, d.price, d.is_gift, d.discount_note, " + "p.name as product_name " + "FROM orders o "
 			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
 			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.member_id = ?1 "

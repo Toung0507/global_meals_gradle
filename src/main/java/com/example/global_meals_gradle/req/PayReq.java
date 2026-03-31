@@ -1,19 +1,23 @@
 package com.example.global_meals_gradle.req;
 
-import com.example.global_meals_gradle.constants.OrdersStatus;
+import com.example.global_meals_gradle.constants.ValidationMsg;
 
-/* 付款完成: 會傳付款方法、序號、狀態 */
+import jakarta.validation.constraints.NotBlank;
+
+/* 付款完成: 會傳訂單編號、付款方法、序號 */
 public class PayReq {
 
+	@NotBlank(message = ValidationMsg.ID_ERROR)
 	private String id;
 	
+	@NotBlank(message = ValidationMsg.ORDER_DATE_ID_ERROR)
 	private String orderDateId;
 	
+	@NotBlank(message = ValidationMsg.PAYMENT_METHID_ERROR)
 	private String paymentMethod;
 	
+	@NotBlank(message = ValidationMsg.TRANSACTION_ID_ERROR)
 	private String transactionId;
-	
-	private OrdersStatus status;
 
 	public String getId() {
 		return id;
@@ -46,13 +50,4 @@ public class PayReq {
 	public void setTransactionId(String transactionId) {
 		this.transactionId = transactionId;
 	}
-
-	public OrdersStatus getStatus() {
-		return status;
-	}
-
-	public void setStatus(OrdersStatus status) {
-		this.status = status;
-	}
-	
 }
