@@ -8,7 +8,6 @@ public class BasicRes {
 
 	public BasicRes() {
 		super();
-		// TODO Auto-generated constructor stub
 	}
 
 	public BasicRes(int code, String message) {
@@ -32,5 +31,5 @@ public class BasicRes {
 	public void setMessage(String message) {
 		this.message = message;
 	}
-	
+
 }

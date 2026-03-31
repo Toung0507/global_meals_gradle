@@ -12,5 +12,5 @@ public class HistoricalOrdersReq {
 	public void setMemberId(int memberId) {
 		this.memberId = memberId;
 	}
-	
+
 }

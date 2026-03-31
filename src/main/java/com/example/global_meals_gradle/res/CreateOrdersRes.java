@@ -6,19 +6,17 @@ import java.math.BigDecimal;
 public class CreateOrdersRes extends BasicRes {
 
 	private String id;
-	
+
 	private String orderDateId;
-	
+
 	private BigDecimal totalAmount;
 
 	public CreateOrdersRes() {
 		super();
-		// TODO Auto-generated constructor stub
 	}
 
 	public CreateOrdersRes(int code, String message) {
 		super(code, message);
-		// TODO Auto-generated constructor stub
 	}
 
 	public CreateOrdersRes(int code, String message, String id, String orderDateId, BigDecimal totalAmount) {
@@ -51,5 +49,5 @@ public class CreateOrdersRes extends BasicRes {
 	public void setTotalAmount(BigDecimal totalAmount) {
 		this.totalAmount = totalAmount;
 	}
-	
+
 }

@@ -7,26 +7,26 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "members")
 public class Members {
-	
+
 	@Id
 	@Column(name = "id")
 	private int id;
-	
+
 	@Column(name = "name")
 	private String name;
-	
+
 	@Column(name = "phone", unique = true)
 	private String phone;
-	
+
 	@Column(name = "password")
 	private String password;
-	
+
 	@Column(name = "order_count")
 	private int orderCount;
-	
+
 	@Column(name = "is_discount")
 	private boolean discount;
-	
+
 	@Column(name = "created_at")
 	private LocalDate createdAt;
 
@@ -85,8 +85,5 @@ public class Members {
 	public void setCreatedAt(LocalDate createdAt) {
 		this.createdAt = createdAt;
 	}
-
-	
-	
 
 }

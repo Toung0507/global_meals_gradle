@@ -7,23 +7,23 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "promotions")
 public class Promotions {
-	
+
 	@Id
 	@Column(name = "id")
 	private int id;
-	
+
 	@Column(name = "name")
 	private String name;
-	
+
 	@Column(name = "start_time")
 	private LocalDate startTime;
-	
+
 	@Column(name = "end_time")
 	private LocalDate endTime;
-	
+
 	@Column(name = "max_exchange")
 	private int maxExchange = -1;
-	
+
 	@Column(name = "exchange_count")
 	private int exchangeCount;
 
@@ -74,6 +74,5 @@ public class Promotions {
 	public void setExchangeCount(int exchangeCount) {
 		this.exchangeCount = exchangeCount;
 	}
-	
 
 }

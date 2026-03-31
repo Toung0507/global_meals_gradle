@@ -9,30 +9,30 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "staff")
 public class Staff {
-	
+
 	@Id
 	@Column(name = "id")
 	private int id;
-	
+
 	@Column(name = "name")
 	private String name;
-	
+
 	@Column(name = "account", unique = true)
 	private String account;
-	
+
 	@Column(name = "password")
 	private String password;
-	
+
 	@Enumerated(EnumType.STRING) // 關鍵：存儲字串
-    @Column(name = "role")
+	@Column(name = "role")
 	private StaffRole role;
-	
+
 	@Column(name = "global_area_id")
 	private int globalAreaId;
-	
+
 	@Column(name = "is_status")
 	private boolean status;
-	
+
 	@Column(name = "hire_at")
 	private LocalDate hireAt;
 
@@ -99,7 +99,5 @@ public class Staff {
 	public void setHireAt(LocalDate hireAt) {
 		this.hireAt = hireAt;
 	}
-	
-	
 
 }

@@ -2,11 +2,10 @@ package com.example.global_meals_gradle.res;
 
 import java.util.List;
 
-
 public class GetAllOrdersRes extends BasicRes {
 
 	private List<GetOrdersVo> getOrderVoList;
-	
+
 	public GetAllOrdersRes() {
 		super();
 	}
@@ -27,5 +26,5 @@ public class GetAllOrdersRes extends BasicRes {
 	public void setGetOrderVoList(List<GetOrdersVo> getOrderVoList) {
 		this.getOrderVoList = getOrderVoList;
 	}
-	
+
 }

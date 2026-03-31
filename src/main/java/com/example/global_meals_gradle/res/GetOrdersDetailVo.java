@@ -4,17 +4,17 @@ import java.math.BigDecimal;
 
 // 查詢訂單用的內層的訂單產品明細
 public class GetOrdersDetailVo {
-	
+
 	private String name; // 產品名稱 Products
-	
+
 	private int quantity;
-	
+
 	private BigDecimal price;
-	
+
 	private boolean gift;
-	
+
 	private String discountNote;
-	
+
 	public String getName() {
 		return name;
 	}
@@ -54,5 +54,5 @@ public class GetOrdersDetailVo {
 	public void setDiscountNote(String discountNote) {
 		this.discountNote = discountNote;
 	}
-	
+
 }

@@ -9,18 +9,18 @@ import com.example.global_meals_gradle.constants.OrdersStatus;
 /* 查詢訂單中的外層 */
 public class GetOrdersVo {
 
-	private String id;    
-	
+	private String id;
+
 	private String orderDateId;
-	
+
 	private int globalAreaId;
-	
+
 	private BigDecimal totalAmount;
-	
+
 	private String status;
-	
+
 	private LocalDateTime completedAt;
-	
+
 	private List<GetOrdersDetailVo> GetOrdersDetailVoList;
 
 	public String getId() {
@@ -38,7 +38,7 @@ public class GetOrdersVo {
 	public void setOrderDateId(String orderDateId) {
 		this.orderDateId = orderDateId;
 	}
-	
+
 	public int getGlobalAreaId() {
 		return globalAreaId;
 	}
@@ -78,5 +78,5 @@ public class GetOrdersVo {
 	public void setGetOrdersDetailVoList(List<GetOrdersDetailVo> getOrdersDetailVoList) {
 		GetOrdersDetailVoList = getOrdersDetailVoList;
 	}
-	
+
 }
