@@ -9,13 +9,13 @@ public class PayReq {
 
 	@NotBlank(message = ValidationMsg.ID_ERROR)
 	private String id;
-	
+
 	@NotBlank(message = ValidationMsg.ORDER_DATE_ID_ERROR)
 	private String orderDateId;
-	
+
 	@NotBlank(message = ValidationMsg.PAYMENT_METHID_ERROR)
 	private String paymentMethod;
-	
+
 	@NotBlank(message = ValidationMsg.TRANSACTION_ID_ERROR)
 	private String transactionId;
 

@@ -2,11 +2,11 @@ package com.example.global_meals_gradle.constants;
 
 public enum ReplyMessage {
 
-	SUCCESS(200, "Success!!"),
-	ORDER_NOT_FOUND(400, "Order Not Found!!"),
-	STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"),
+	SUCCESS(200, "Success!!"), //
+	ORDER_NOT_FOUND(400, "Order Not Found!!"), //
+	STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"), //
 	PRODUCT_NOT_FOUND(400, "Product Not Found!!");
-	
+
 	private int code;
 
 	private String message;

@@ -23,8 +23,8 @@ import jakarta.validation.Valid;
  * 作用：從 Service 拿回來的 Java 物件（如 CartViewRes）直接翻譯成前端看得懂的 JSON 格式。
  * 2.@RequestMapping：定義 URL 路由的基礎路徑。
  * 3.@CrossOrigin(origins = "http://localhost:4200") ：
- *  4.@PathVariable：
- *  5.@RequestParam：
+ * 4.@PathVariable：
+ * 5.@RequestParam：
  * 6. @GetMapping("/{cartId}")、@PostMapping("/sync")、@DeleteMapping("/item")、@PostMapping("/coupon")：
  * GET：獲取資料（看）、POST：提交、新增或執行複雜邏輯（動）、DELETE：刪除資料。如何使用： 放在方法上方，括號內填入子路徑
  * DELETE /item 比 POST /deleteItem 更符合國際標準。
@@ -37,34 +37,33 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/cart")
-@CrossOrigin(origins =  "http://localhost:4200") 
+@CrossOrigin(origins = "http://localhost:4200")
 public class CartController {
-	//把大腦請進來
+	// 把大腦請進來
 	@Autowired
 	private CartService cartService;
-	
-	
-//	「查看購物車」方法
+
+	//	「查看購物車」方法
 	@GetMapping("/{cartId}")
-	public CartViewRes viewCart(
-	        @PathVariable int cartId,
-	        @RequestParam(required = false) Integer memberId) {
-	    return cartService.viewCart(cartId, memberId);
+	public CartViewRes viewCart(@PathVariable int cartId, @RequestParam(required = false) Integer memberId) {
+		return cartService.viewCart(cartId, memberId);
 	}
-//	「同步商品」方法
+
+	//	「同步商品」方法
 	@PostMapping("/sync")
 	public CartViewRes syncItem(@Valid @RequestBody CartSyncReq req) {
-	    return cartService.syncItem(req);
+		return cartService.syncItem(req);
 	}
-//	刪除單品」方法
+
+	//	刪除單品」方法
 	@DeleteMapping("/item")
 	public CartViewRes removeItem(@Valid @RequestBody CartRemoveReq req) {
-	    return cartService.removeItem(req);
+		return cartService.removeItem(req);
 	}
-	
-//	「切換折價券」方法
+
+	//	「切換折價券」方法
 	@PostMapping("/coupon")
 	public CartViewRes applyCoupon(@Valid @RequestBody CartCouponReq req) {
-	    return cartService.applyCoupon(req);
+		return cartService.applyCoupon(req);
 	}
 }

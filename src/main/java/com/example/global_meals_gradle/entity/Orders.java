@@ -11,51 +11,48 @@ import jakarta.persistence.*;
 @Table(name = "orders")
 @IdClass(value = OrdersId.class)
 public class Orders {
-	
+
 	@Id
 	@Column(name = "id")
 	private String id;
-	
+
 	@Column(name = "order_date_id")
 	private String orderDateId;
-	
+
 	@Column(name = "order_cart_id")
 	private int orderCartId;
-	
+
 	@Column(name = "global_area_id")
 	private int globalAreaId;
-	
+
 	@Column(name = "member_id")
 	private int memberId;
-	
+
 	@Column(name = "phone")
 	private String phone;
-	
+
 	@Column(name = "subtotal_before_tax", precision = 12, scale = 2) // DECIMAL(12,2)
 	private BigDecimal subtotalBeforeTax;
-	
+
 	@Column(name = "tax_amount", precision = 12, scale = 2) // DECIMAL(12,2)
 	private BigDecimal taxAmount;
-	
+
 	@Column(name = "total_amount", precision = 12, scale = 2) // DECIMAL(12,2)
 	private BigDecimal totalAmount;
-	
+
 	@Column(name = "payment_method")
 	private String paymentMethod;
-	
+
 	@Column(name = "transaction_id")
 	private String transactionId;
-	
+
 	@Enumerated(EnumType.STRING) // 關鍵：存儲字串
-    @Column(name = "status")
+	@Column(name = "status")
 	private OrdersStatus status;
-	
+
 	@Column(name = "completed_at")
 	private LocalDateTime completedAt;
-	
-	@Column(name = "phone")
-	private String phone ;
-	
+
 	public String getId() {
 		return id;
 	}

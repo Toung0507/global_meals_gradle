@@ -5,20 +5,20 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "global_area")
 public class GlobalArea {
-	
+
 	@Id
 	@Column(name = "id")
 	private int id;
-	
+
 	@Column(name = "country")
 	private String country;
-	
+
 	@Column(name = "branch")
 	private String branch;
-	
+
 	@Column(name = "address")
 	private String address;
-	
+
 	@Column(name = "phone")
 	private String phone;
 
@@ -61,7 +61,5 @@ public class GlobalArea {
 	public void setPhone(String phone) {
 		this.phone = phone;
 	}
-	
-	
 
 }

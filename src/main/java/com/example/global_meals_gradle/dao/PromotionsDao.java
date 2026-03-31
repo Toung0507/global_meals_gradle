@@ -11,18 +11,18 @@ import com.example.global_meals_gradle.entity.Promotions;
 @Repository
 public interface PromotionsDao extends JpaRepository<Promotions, Integer> {
 
-    /* 新增活動方案 */
-    @Modifying
-    @Transactional
-    @Query(value = "INSERT INTO promotions(name, start_time, end_time, max_exchange, exchange_count) " +
-                   "VALUES (?1, ?2, ?3, ?4, 0)", nativeQuery = true)
-    void insert(String name, LocalDate startTime, LocalDate endTime, int maxExchange);
-    
-    /* 取得目前活動的最大 id */
-    @Query(value = "SELECT MAX(id) FROM promotions", nativeQuery = true)
-    int getMaxId();
+	/* 新增活動方案 */
+	@Modifying
+	@Transactional
+	@Query(value = "INSERT INTO promotions(name, start_time, end_time, max_exchange, exchange_count) "
+			+ "VALUES (?1, ?2, ?3, ?4, 0)", nativeQuery = true)
+	void insert(String name, LocalDate startTime, LocalDate endTime, int maxExchange);
 
-    /* 根據 ID 查詢活動名稱 (用於 Res 回傳) */
-    @Query(value = "SELECT name FROM promotions WHERE id = ?1", nativeQuery = true)
-    String findNameById(int id);
+	/* 取得目前活動的最大 id */
+	@Query(value = "SELECT MAX(id) FROM promotions", nativeQuery = true)
+	int getMaxId();
+
+	/* 根據 ID 查詢活動名稱 (用於 Res 回傳) */
+	@Query(value = "SELECT name FROM promotions WHERE id = ?1", nativeQuery = true)
+	String findNameById(int id);
 }

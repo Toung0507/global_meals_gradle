@@ -10,23 +10,23 @@ import jakarta.validation.constraints.NotBlank;
 
 /* 成立訂單(還沒付款) */
 public class CreateOrdersReq {
-	
+
 	@NotBlank(message = ValidationMsg.ORDER_CART_ID_ERROR)
 	private String orderCartId;
-	
+
 	private int globalAreaId;
-	
+
 	private int memberId;
-	
+
 	@NotBlank(message = ValidationMsg.PHONE_ERROR)
 	private String phone;
-	
+
 	private BigDecimal subtotalBeforeTax;
-	
+
 	private BigDecimal taxAmount;
-	
+
 	private BigDecimal totalAmount;
-	
+
 	private List<OrderCartDetails> OrderCartDetailsList;
 
 	public String getOrderCartId() {
