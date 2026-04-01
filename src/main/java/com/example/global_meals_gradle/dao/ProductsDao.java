@@ -16,8 +16,8 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	// public String getProductsNameById(int id);
 	
 	/*  用於訂單成立 */
-	@Query(value = "select * from products where id = ?1 for update", nativeQuery = true)
-	public Products findByIdForUpdate(int id);
+	@Query(value = "select * from products where id = ?1", nativeQuery = true)
+	public Products findById(int id);
 
 	/* 庫存減少 */
 	// stock_quantity >= ?2: 防止「沒鎖好」的意外
@@ -25,4 +25,11 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	@Transactional
 	@Query(value = "update products set stock_quantity = stock_quantity - ?2 where id = ?1 and stock_quantity >= ?2", nativeQuery = true)
 	public int upDateStock(int id, int stockQuantity);
+	
+	// 6. 扣庫存的方法 (手動實作樂觀鎖)
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE products SET stock_quantity = ?2, version = version + 1 " +
+                   "WHERE id = ?1 AND version = ?3", nativeQuery = true)
+    public int updateStockWithOptimisticLock(int productsId, int newStock, int currentVersion);
 }
