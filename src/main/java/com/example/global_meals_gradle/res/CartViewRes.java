@@ -20,17 +20,6 @@ public class CartViewRes extends BasicRes {
 	/** 稅前應付總額（所有商品 LineTotal 的總和，必須排除贈品價格） */
 	private BigDecimal subtotal;
 
-	/**
-	 * 套用折價券後的實際應付金額 - null = 尚未使用折價券（前端顯示 subtotal 即可）<br>
-	 * - 有值 = 已套用折價券（前端顯示這個打折後的金額）
-	 */
-	private BigDecimal discountedTotal;
-
-	/**
-	 * 告訴前端：這個會員是否有折價券可用？ true → 前端顯示「是否使用折價券？」的選擇按鈕
-	 */
-	private boolean hasCoupon;
-
 	public int getCartId() {
 		return cartId;
 	}
@@ -71,19 +60,16 @@ public class CartViewRes extends BasicRes {
 		this.subtotal = subtotal;
 	}
 
-	public BigDecimal getDiscountedTotal() {
-		return discountedTotal;
-	}
+	/**
+	 * 套用折價券後的實際應付金額 - null = 尚未使用折價券（前端顯示 subtotal 即可）<br>
+	 * - 有值 = 已套用折價券（前端顯示這個打折後的金額）
+	 */
+//	private BigDecimal discountedTotal;
 
-	public void setDiscountedTotal(BigDecimal discountedTotal) {
-		this.discountedTotal = discountedTotal;
-	}
+	/**
+	 * 告訴前端：這個會員是否有折價券可用？ true → 前端顯示「是否使用折價券？」的選擇按鈕
+	 */
+//	private boolean hasCoupon;
 
-	public boolean isHasCoupon() {
-		return hasCoupon;
-	}
-
-	public void setHasCoupon(boolean hasCoupon) {
-		this.hasCoupon = hasCoupon;
-	}
+	
 }

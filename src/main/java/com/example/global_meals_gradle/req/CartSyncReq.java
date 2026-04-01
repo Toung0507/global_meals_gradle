@@ -30,8 +30,8 @@ public class CartSyncReq {
 	// 只要這個欄位在某些情境下會是空的（沒有值），我們就必須用大寫的 Integer，如果用 int ，是用0去撈資料
 	private Integer staffId;
 	
-	// 訪客
-	private Integer memberId;
+	// 訪客也一定會傳過來，所以不可能是null
+	private int memberId;
 
 	public Integer getCartId() {
 		return cartId;
@@ -81,11 +81,11 @@ public class CartSyncReq {
 		this.staffId = staffId;
 	}
 
-	public Integer getMemberId() {
+	public int getMemberId() {
 		return memberId;
 	}
 
-	public void setMemberId(Integer memberId) {
+	public void setMemberId(int memberId) {
 		this.memberId = memberId;
 	}
 
