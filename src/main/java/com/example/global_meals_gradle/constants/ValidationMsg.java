@@ -17,7 +17,7 @@ public class ValidationMsg {
 
 	public static final String QUESTION_ERROR = "Question Error!!";
 
-	/* 訂單 */
+	/* 訂單(劭頴) */
 	public static final String ORDER_DATE_ID_ERROR = "Order Date Id Error";
 	
 	public static final String ID_ERROR = "Id Error";  // 訂單id錯誤

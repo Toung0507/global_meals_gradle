@@ -1,6 +1,7 @@
 package com.example.global_meals_gradle.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import com.example.global_meals_gradle.entity.OrderCartDetails;
 import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
+import com.example.global_meals_gradle.req.DiscountReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
 import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.req.PayReq;
@@ -336,26 +338,37 @@ public class OrdersService {
 		// 參數檢查(在req有做自動檢查)
 		try {
 			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+			// 找不到該筆訂單
 			if (order == null) { // 找不到該筆訂單
 				return new GetAllOrdersRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 						ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 			}
-			if (order.getStatus().equals(OrdersStatus.COMPLETED)) {
-				// 執行訂單狀態更新
-				int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
-				// 判斷是否成功
-				if (result > 0) {
-					// 如果是會員，點數扣回
-					if(order.getMemberId() > 1) {
-						membersDao.reducePoint(order.getMemberId());
-					}
-					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-				} else {
-					throw new RuntimeException("退款失敗");
-				}
+			// 訂單狀態錯誤
+			if (!order.getStatus().equals(OrdersStatus.COMPLETED)) {
+				return new GetAllOrdersRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
-			return new GetAllOrdersRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+			// 執行訂單狀態更新
+			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
+			// 判斷是否成功
+			if (result > 0) {
+				// 如果是會員，點數扣回
+				if (order.getMemberId() > 1) {
+					Members member = membersDao.findById(order.getMemberId());
+					if(member == null) {
+						throw new RuntimeException("退款失敗：查無會員資料");
+					}
+					if(member.getOrderCount() >10) {
+						membersDao.reducePoint(order.getMemberId());
+					}else {
+						membersDao.reducePointClose(order.getMemberId());
+					}
+				}
+				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			} else {
+				throw new RuntimeException("退款失敗");
+			}
+
 		} catch (Exception e) {
 			throw new RuntimeException("退款失敗");
 		}
@@ -370,5 +383,36 @@ public class OrdersService {
 
 		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
 				order.getId(), order.getOrderDateId(), order.getTotalAmount());
+	}
+
+	/* 判斷有無要使用優惠劵 */
+	@Transactional(rollbackFor = Exception.class)
+	public BasicRes useDiscount(DiscountReq req) {
+		try {
+			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+			if (!req.isUseDiscount()) {   // 判斷有無要使用優惠劵
+				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			}
+			if (order.getMemberId() <= 1) {   // 判斷是訪客
+				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			}
+			Members member = membersDao.findById(order.getMemberId());
+			if (!member.isDiscount()) { // 判斷該會員有無優惠劵
+				return new BasicRes(ReplyMessage.DISCOUNT_ERROR.getCode(), ReplyMessage.DISCOUNT_ERROR.getMessage());
+			}
+
+			membersDao.useDiscount(order.getMemberId()); // 做更改(點數歸零，優惠劵關閉)
+			BigDecimal total = order.getTotalAmount();
+			total = total.multiply(new BigDecimal("0.8")); // 總額打8折
+			// 無條件進位到整數
+			// setScale(0) 代表保留 0 位小數
+			total = total.setScale(0, RoundingMode.UP);
+			ordersDao.upDateTotalAmount(req.getId(), req.getOrderDateId(), total);
+
+			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+		} catch (Exception e) {
+			throw new RuntimeException("無法使用優惠劵");
+		}
+
 	}
 }
