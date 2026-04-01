@@ -13,11 +13,11 @@ import com.example.global_meals_gradle.entity.OrderCart;
 public interface OrderCartDao extends JpaRepository<OrderCart, Integer> {
 
 	/* 建立購物車 */
-	@Modifying
-	@Transactional
-	@Query(value = "insert into order_cart(global_area_id, operation, operation_type)"
-			+ "values (?1, ?2, ?3)", nativeQuery = true)
-	public void insert(int globalAreaId, int operation, OperationType operationType);
-	
-	
+	//	@Modifying
+	//	@Transactional
+	//	@Query(value = "insert into order_cart(global_area_id, operation, operation_type)"
+	//			+ "values (?1, ?2, ?3)", nativeQuery = true)
+	//	public void insert(int globalAreaId, int operation, OperationType operationType);
+	//	
+
 }

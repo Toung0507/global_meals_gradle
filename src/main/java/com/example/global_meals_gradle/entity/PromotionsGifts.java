@@ -7,20 +7,20 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "promotions_gifts")
 public class PromotionsGifts {
-	
+
 	@Id
 	@Column(name = "id")
 	private int id;
-	
+
 	@Column(name = "promotions_id")
 	private int promotionsId;
-	
+
 	@Column(name = "full_amount", precision = 12, scale = 4) // DECIMAL(12,4)
 	private BigDecimal fullAmount;
-	
+
 	@Column(name = "gift_product_id")
 	private int giftProductId;
-	
+
 	@Column(name = "is_active")
 	private boolean active = true;
 
@@ -63,6 +63,5 @@ public class PromotionsGifts {
 	public void setActive(boolean active) {
 		this.active = active;
 	}
-	
 
 }
