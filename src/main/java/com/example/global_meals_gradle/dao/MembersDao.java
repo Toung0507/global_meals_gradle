@@ -29,6 +29,14 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 	/* 增加該會員點數並把9折劵打開 */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE members SET order_count = 10, is_discount = true WHERE id = ?1", nativeQuery = true)
+	@Query(value = "UPDATE members SET order_count = order_count + 1, is_discount = true WHERE id = ?1", nativeQuery = true)
 	public void reachFullPointsAndGiveCoupon(int id);
+	
+	/* 減少該會員點數 */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE members SET order_count = order_count - 1 WHERE id = ?1", nativeQuery = true)
+	public void reducePoint(int id);
+
+	
 }

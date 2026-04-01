@@ -38,7 +38,6 @@ import com.example.global_meals_gradle.res.GetOrdersDetailVo;
 import com.example.global_meals_gradle.res.GetOrdersVo;
 
 /*	待做:
- * 	訂單退款或取消，點數回朔問題
  * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額，還要判斷有沒有用會員的9折劵
  */
 
@@ -276,7 +275,7 @@ public class OrdersService {
 				giftProductIds.add(detail.getProductId());
 			}
 		}
-		
+
 		// ====== 贈品門檻檢查 ======
 		if (!giftProductIds.isEmpty()) { // 判斷贈品清單有沒有資料
 			for (Integer giftId : giftProductIds) {
@@ -291,7 +290,7 @@ public class OrdersService {
 				}
 			}
 		}
-		
+
 		// ====== 會員邏輯(點數處理) ======
 		// 判斷是會員(> 1)還是訪客(= 1)
 		if (req.getMemberId() > 1) {
@@ -325,33 +324,41 @@ public class OrdersService {
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
 	public BasicRes pay(PayReq req) {
 		// 參數檢查(有在Req那裏自動檢查)
-
 		// 新增(更新)的資料(付款方式、交易號碼、狀態) (status 在 req 是設 ENUM，在 DAO 是設 String，所以要加 name() )
 		ordersDao.updatePay(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), req.getTransactionId(),
 				OrdersStatus.COMPLETED);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
-	/* 訂單狀態: 退款或取消 */ // 待做: 目前差點數回朔問題
+	/* 訂單狀態: 退款或取消 */
+	@Transactional(rollbackFor = Exception.class)
 	public BasicRes ordersStatus(RefundedReq req) {
 		// 參數檢查(在req有做自動檢查)
-		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-		if (order == null) { // 找不到該筆訂單
-			return new GetAllOrdersRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
-					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
-		}
-		if (order.getStatus().equals(OrdersStatus.COMPLETED)) {
-			// 執行訂單狀態更新
-			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
-			// 判斷是否成功
-			if (result > 0) {
-				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-			} else {
-				return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), ReplyMessage.ORDER_NOT_FOUND.getMessage());
+		try {
+			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+			if (order == null) { // 找不到該筆訂單
+				return new GetAllOrdersRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
+						ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 			}
+			if (order.getStatus().equals(OrdersStatus.COMPLETED)) {
+				// 執行訂單狀態更新
+				int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
+				// 判斷是否成功
+				if (result > 0) {
+					// 如果是會員，點數扣回
+					if(order.getMemberId() > 1) {
+						membersDao.reducePoint(order.getMemberId());
+					}
+					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+				} else {
+					throw new RuntimeException("退款失敗");
+				}
+			}
+			return new GetAllOrdersRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+		} catch (Exception e) {
+			throw new RuntimeException("退款失敗");
 		}
-		return new GetAllOrdersRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-				ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 	}
 
 	/* 報電話號碼查詢最新一單 */
