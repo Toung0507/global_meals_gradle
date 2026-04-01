@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Min;
 public class Products {
 
 	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY) // 為了跟 service 的 .save() 做搭配，跟 JPA 說我這一行一定是自動給號
 	@Column(name = "id")
 	private int id;
 
