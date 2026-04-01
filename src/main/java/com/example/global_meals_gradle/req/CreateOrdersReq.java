@@ -3,27 +3,34 @@ package com.example.global_meals_gradle.req;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.example.global_meals_gradle.constants.ValidationMsg;
 import com.example.global_meals_gradle.entity.OrderCartDetails;
 
-/* 結帳 */
-public class CheckOutReq {
-	
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+
+/* 成立訂單(還沒付款) */
+public class CreateOrdersReq {
+
+	@NotBlank(message = ValidationMsg.ORDER_CART_ID_ERROR)
 	private String orderCartId;
-	
+
 	private int globalAreaId;
-	
+
 	private int memberId;
-	
+
+	@NotBlank(message = ValidationMsg.PHONE_ERROR)
+	private String phone;
+
 	private BigDecimal subtotalBeforeTax;
-	
+
 	private BigDecimal taxAmount;
-	
+
 	private BigDecimal totalAmount;
 	
-	private String paymentMethod;
-	
-	private String transactionId;
-	
+	@NotEmpty(message = ValidationMsg.ORDER_CART_DETAILS_NOT_EMPTY)
+	@Valid // 這樣才會去檢查 OrderCartDetails 類別裡面的標註
 	private List<OrderCartDetails> OrderCartDetailsList;
 
 	public String getOrderCartId() {
@@ -50,6 +57,14 @@ public class CheckOutReq {
 		this.memberId = memberId;
 	}
 
+	public String getPhone() {
+		return phone;
+	}
+
+	public void setPhone(String phone) {
+		this.phone = phone;
+	}
+
 	public BigDecimal getSubtotalBeforeTax() {
 		return subtotalBeforeTax;
 	}
@@ -74,22 +89,6 @@ public class CheckOutReq {
 		this.totalAmount = totalAmount;
 	}
 
-	public String getPaymentMethod() {
-		return paymentMethod;
-	}
-
-	public void setPaymentMethod(String paymentMethod) {
-		this.paymentMethod = paymentMethod;
-	}
-
-	public String getTransactionId() {
-		return transactionId;
-	}
-
-	public void setTransactionId(String transactionId) {
-		this.transactionId = transactionId;
-	}
-
 	public List<OrderCartDetails> getOrderCartDetailsList() {
 		return OrderCartDetailsList;
 	}
@@ -97,5 +96,5 @@ public class CheckOutReq {
 	public void setOrderCartDetailsList(List<OrderCartDetails> orderCartDetailsList) {
 		OrderCartDetailsList = orderCartDetailsList;
 	}
-	
+
 }

@@ -8,17 +8,17 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "exchange_rates")
 public class ExchangeRates {
-	
+
 	@Id
 	@Column(name = "id")
 	private int id;
-	
+
 	@Column(name = "currency_code", unique = true)
 	private String currencyCode;
-	
+
 	@Column(name = "rate_to_twd", precision = 12, scale = 6) // DECIMAL(12,6)
 	private BigDecimal rateToTwd;
-	
+
 	@Column(name = "updated_at")
 	private LocalDateTime updatedAt;
 
@@ -53,6 +53,5 @@ public class ExchangeRates {
 	public void setUpdatedAt(LocalDateTime updatedAt) {
 		this.updatedAt = updatedAt;
 	}
-	
 
 }
