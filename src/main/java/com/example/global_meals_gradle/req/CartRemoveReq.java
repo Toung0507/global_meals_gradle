@@ -12,7 +12,7 @@ public class CartRemoveReq {
 	@Min(value = 1, message = "商品 ID 必須大於 0")
 	private int productId;
 
-	private Integer memberId;
+	private int memberId;
 
 	public int getCartId() {
 		return cartId;
@@ -30,12 +30,13 @@ public class CartRemoveReq {
 		this.productId = productId;
 	}
 
-	public Integer getMemberId() {
+	public int getMemberId() {
 		return memberId;
 	}
 
-	public void setMemberId(Integer memberId) {
+	public void setMemberId(int memberId) {
 		this.memberId = memberId;
 	}
 
+	
 }

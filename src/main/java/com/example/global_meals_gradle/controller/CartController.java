@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.global_meals_gradle.req.CartCouponReq;
+
 import com.example.global_meals_gradle.req.CartRemoveReq;
 import com.example.global_meals_gradle.req.CartSyncReq;
 import com.example.global_meals_gradle.res.CartViewRes;
@@ -36,7 +36,7 @@ import jakarta.validation.Valid;
  */
 
 @RestController
-@RequestMapping("/api/cart")
+//@RequestMapping("/api/cart")
 @CrossOrigin(origins = "http://localhost:4200")
 public class CartController {
 	// 把大腦請進來
@@ -44,26 +44,26 @@ public class CartController {
 	private CartService cartService;
 
 	//	「查看購物車」方法
-	@GetMapping("/{cartId}")
-	public CartViewRes viewCart(@PathVariable int cartId, @RequestParam(required = false) Integer memberId) {
+	@GetMapping("cart/{cartId}")
+	public CartViewRes viewCart(@PathVariable int cartId, @RequestParam int memberId) {
 		return cartService.viewCart(cartId, memberId);
 	}
 
 	//	「同步商品」方法
-	@PostMapping("/sync")
+	@PostMapping("cart/sync")
 	public CartViewRes syncItem(@Valid @RequestBody CartSyncReq req) {
 		return cartService.syncItem(req);
 	}
 
 	//	刪除單品」方法
-	@DeleteMapping("/item")
+	@DeleteMapping("cart/item")
 	public CartViewRes removeItem(@Valid @RequestBody CartRemoveReq req) {
 		return cartService.removeItem(req);
 	}
 
-	//	「切換折價券」方法
-	@PostMapping("/coupon")
-	public CartViewRes applyCoupon(@Valid @RequestBody CartCouponReq req) {
-		return cartService.applyCoupon(req);
-	}
+//	//	「切換折價券」方法----不再購物車裡顯示了
+//	@PostMapping("/coupon")
+//	public CartViewRes applyCoupon(@Valid @RequestBody CartCouponReq req) {
+//		return cartService.applyCoupon(req);
+//	}
 }

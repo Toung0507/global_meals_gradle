@@ -8,14 +8,15 @@ import com.example.global_meals_gradle.vo.*;
 import com.example.global_meals_gradle.constants.OperationType;
 
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.Optional;
+
+
 
 @Service
 public class CartService {
@@ -30,8 +31,8 @@ public class CartService {
 	private ProductsDao productsDao;
 	@Autowired
 	private PromotionsGiftsDao promotionsGiftsDao;
-	@Autowired
-	private MembersDao membersDao;
+//	@Autowired
+//	private MembersDao membersDao;
 
 //	【核心 API 1:同步購物車，包括刪除單品】
 	@Transactional
@@ -53,7 +54,7 @@ public class CartService {
 			if ("STAFF".equals(req.getOperationType())) {
 				newCart.setOperation(req.getStaffId()); // 員工點餐存 staffId
 			} else {
-				newCart.setOperation(req.getMemberId() != null ? req.getMemberId() : 1); // 顧客點餐存 memberId 或 1
+				newCart.setOperation(req.getMemberId());
 			}
 
 			// 這裡必須用 Spring Data JPA 內建的 save(),「新建主表」時我們強烈建議用 save()！
@@ -95,18 +96,17 @@ public class CartService {
 				// 🚨 【大腦呼叫倉庫】去 Products 表查一下這個商品到底多少錢？
 
 				// 思云有協助修改 -- 有問題問
-				Optional<Products> product = productsDao.findById(req.getProductId());
+				Products product = productsDao.findById(req.getProductId());
 
-				// 回傳的可能是 null，所以大腦要自己做安全檢查
-				// 檢查包裹是否為空 (Optional 不能直接跟 null 比較，要用 .isPresent() 或 .isEmpty())
-				if (product.isEmpty()) {
-					throw new RuntimeException("找不到商品 ID: " + req.getProductId());
+				if (product == null) {
+				    throw new RuntimeException("找不到商品 ID: " + req.getProductId());
 				}
 
 				OrderCartDetails newDetail = new OrderCartDetails();
 				newDetail.setOrderCartId(currentCartId);
 				newDetail.setProductId(req.getProductId());
-				newDetail.setPrice(product.get().getBasePrice()); // 需要多一個 .get() 才能將資料取出
+				newDetail.setPrice(product.getBasePrice()); 
+				newDetail.setQuantity(req.getQuantity());
 				newDetail.setGift(false); // 客人選的，絕對不是贈品
 
 				// 存進資料庫做 INSERT
@@ -133,6 +133,7 @@ public class CartService {
 	/**
 	 * 【核心 API 3】切換是否使用折價券 (對應 CartCouponReq)
 	 */
+	/*
 	@Transactional
 	public CartViewRes applyCoupon(CartCouponReq req) {
 		// 我們先取得目前的購物車結算結果
@@ -151,11 +152,12 @@ public class CartService {
 
 		return currentCart;
 	}
+	*/
 
 	/**
 	 * [api4】單純查看購物車內容 (例如前端一進到購物車頁面要拉取資料)
 	 */
-	public CartViewRes viewCart(int cartId, Integer memberId) {
+	public CartViewRes viewCart(int cartId, int memberId) {
 		// 什麼都不用改，直接結算現有的東西！
 		return getCartView(cartId, memberId);
 	}
@@ -165,7 +167,7 @@ public class CartService {
 	/**
 	 * 【共用方法】計算一台車的總金額、處理滿額贈、並包裝成 CartViewRes 回傳
 	 */
-	public CartViewRes getCartView(int cartId, Integer memberId) {
+	public CartViewRes getCartView(int cartId, int memberId) {
 		// 1. 準備一個「裝回應結果」的空盒子res
 		CartViewRes res = new CartViewRes();
 		res.setCartId(cartId);
@@ -189,9 +191,9 @@ public class CartService {
 			vo.setDiscountNote(detail.getDiscountNote());
 			// (B) 🚨 大腦再次呼叫倉庫！去 Products 表查出它的名字 (為了放到 vo.setProductName)
 			// 思云已改，有問題詢問
-			Optional<Products> p = productsDao.findById(detail.getProductId());
-			if (p.isPresent()) {
-				vo.setProductName(p.get().getName()); // 假設你的實體欄位叫做 name
+			Products p = productsDao.findById(detail.getProductId());
+			if (p != null) {
+			    vo.setProductName(p.getName());
 			}
 			// (C) 單品小計 = 單價 × 數量 (必須使用 BigDecimal.valueOf 把 int 數量轉成物件才能相乘)
 			BigDecimal lineTotal = detail.getPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
@@ -216,9 +218,9 @@ public class CartService {
 		// 重新計算滿額贈：
 		// - 1. 先把購物車裡原本的「系統舊贈品」全部殺光
 		orderCartDetailsDao.deleteAllGiftsByCartId(cartId);
-		// -2. 去滿額贈活動表，把「正在舉辦中」且「金額由大到小排序」的所有贈品規則撈出來
-		// 此區的 JPA 寫法 是錯誤請修正
-		List<PromotionsGifts> activeGifts = promotionsGiftsDao.findAllActiveGiftsOrdered();
+		// -2. 去滿額贈活動表，把「正在舉辦中」的所有贈品規則撈出來
+	
+		List<PromotionsGifts> activeGifts = promotionsGiftsDao.findAllActiveGifts();
 
 		// -3. 從門檻最高的贈品開始檢查 (因為前面有用 findAllActiveGiftsOrdered() 幫由大到小排序了！)
 		for (PromotionsGifts giftRule : activeGifts) {
@@ -250,8 +252,8 @@ public class CartService {
 				giftVo.setDiscountNote(giftDetail.getDiscountNote());
 				giftVo.setLineTotal(BigDecimal.ZERO); // 因為0元，小計也是0
 
-				// 去查一下贈品的名字，讓前端可以顯示 (假設你實體叫做 getName() )
-				Products giftProduct = productsDao.findProductById(giftDetail.getProductId());
+				// 去查一下贈品的名字，讓前端可以顯示 (假設你實體叫做 getName() )？？？
+				Products giftProduct = productsDao.findById(giftDetail.getProductId());
 				if (giftProduct != null) {
 					giftVo.setProductName(giftProduct.getName());
 				}
@@ -267,29 +269,30 @@ public class CartService {
 		// ==========================================
 		// 最後一步：判斷客人是否擁有折價券
 		// ==========================================
-
-		boolean hasCoupon = false; // 預設大家一開始都沒有券
-
-		// 1. 判斷他到底是不是會員？(你前面已經定好：1號是訪客)
-		if (memberId != null && memberId > 1) {
-
-			// 2. 去 Members 表查這個會員的資料
-			// 思云修正
-			Optional<Members> member = membersDao.findById(memberId);
-
-			// 3. 判斷他身上有沒有我們發的滿 10 次折價券？
-			if (member.isPresent()) {
-				if (member.get().isDiscount()) {
-					hasCoupon = true; // 恭喜！他有券！
-				}
-			}
-		}
+//
+//		boolean hasCoupon = false; // 預設大家一開始都沒有券
+//
+//		// 1. 判斷他到底是不是會員？(你前面已經定好：1號是訪客)
+//		if (memberId > 1) {
+//
+//			// 2. 去 Members 表查這個會員的資料
+//			// 思云修正
+//			//艷羽把req的memberid類型改成了int，因為知道了員工在Pos機幫訪客點餐的時候，訪客也是會告訴員工訪客的電話號碼的，這樣方便訪客查訂單記錄
+//			Members member = membersDao.findById(memberId);
+//			
+//			// 3. 判斷他身上有沒有我們發的滿 10 次折價券？
+//			if (member != null) {
+//		        if (member.isDiscount()) {
+//		            hasCoupon = true; // 恭喜！他有券！
+//		        }
+//		    }
+//		}
 
 		// 4. 把判斷結果和清單小計通通放進回應結果盒子裡
 		res.setItems(voList);
 		res.setSubtotal(subtotal);
-		res.setHasCoupon(hasCoupon);
-		res.setDiscountedTotal(null); // 這個金額只有當他按下「我要用折價券」時才會算出數字，目前是 null 不影響
+//		res.setHasCoupon(hasCoupon);
+		//res.setDiscountedTotal(null);  這個金額只有當他按下「我要用折價券」時才會算出數字，目前是 null 不影響
 
 		return res;
 	}

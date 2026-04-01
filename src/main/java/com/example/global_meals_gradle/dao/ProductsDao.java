@@ -16,8 +16,8 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	// public String getProductsNameById(int id);
 	
 	/*  用於訂單成立 */
-	@Query(value = "select * from products where id = ?1 for update", nativeQuery = true)
-	public Products findByIdForUpdate(int id);
+	@Query(value = "select * from products where id = ?1 ", nativeQuery = true)
+	public Products findById(int id);
 
 	/* 庫存減少 */
 	// stock_quantity >= ?2: 防止「沒鎖好」的意外

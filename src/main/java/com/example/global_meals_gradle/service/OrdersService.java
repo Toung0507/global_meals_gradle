@@ -223,7 +223,7 @@ public class OrdersService {
 	        int productId = detail.getProductId();
 	        int quantityToBuy = detail.getQuantity();
 	        // 根據商品 id 去商品表搜尋庫存並鎖定該資料，避免超賣
-	        Products product = productsDao.findByIdForUpdate(productId);
+	        Products product = productsDao.findById(productId);
 	        // 安全檢查：萬一資料庫找不到這個商品 ID
 	        if (product == null) {
 	        	// return 不會觸發回滾，要用 throw
