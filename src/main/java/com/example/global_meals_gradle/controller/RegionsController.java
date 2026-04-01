@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.req.CreateRegionsReq;
@@ -14,6 +15,7 @@ import com.example.global_meals_gradle.service.RegionsService;
 import jakarta.validation.Valid;
 
 @RestController
+@RequestMapping("/lazybaobao")
 @CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true") // 允許 Angular 跨域呼叫
 public class RegionsController {
 	

@@ -15,9 +15,9 @@ public interface ExchangeRatesDao extends JpaRepository<ExchangeRates, Integer>{
 	// 新增/更新匯率
 	@Modifying
 	@Transactional
-	@Query(value = "inser into exchange_rates (currency_code, rate_to_twd) "
-			+ " values (?1, ?2) "
-			+ "on duplicate key update rate_to_twd = ?2", nativeQuery = true)
+	@Query(value = "INSERT into exchange_rates (currency_code, rate_to_twd, updated_at) "
+			+ " values (?1, ?2, now()) "
+			+ "ON DUPLICATE KEY UPDATE rate_to_twd = ?2, updated_at = now()", nativeQuery = true)
 	public void upserRate(String code, BigDecimal rate);
 
 }

@@ -21,6 +21,7 @@ public class RegionsService {
 	public BasicRes create(CreateRegionsReq req) {
 		/* 參數檢查:使用@Valid */
 		// 新增國家稅值
+		// 在使用 nativeQuery = true 時，JPA 有時無法自動將 TaxType (Enum) 轉換為資料庫認識的字串。建議在傳參時呼叫 .name()。
 		try {
 			regionsDao.insert(req.getCountry(), req.getCurrencyCode(), req.getTaxRate(), req.getTaxType().name());
 		} catch (Exception e) {
