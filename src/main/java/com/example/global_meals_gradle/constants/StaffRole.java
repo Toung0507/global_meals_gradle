@@ -1,11 +1,11 @@
 package com.example.global_meals_gradle.constants;
 
 public enum StaffRole {
-	
+
 	ADMIN("ADMIN"), //
 	REGION_MANAGER("REGION_MANAGER"), //
 	STAFF("STAFF");
-	
+
 	private String staffRole;
 
 	private StaffRole(String staffRole) {
@@ -19,8 +19,5 @@ public enum StaffRole {
 	public void setStaffRole(String staffRole) {
 		this.staffRole = staffRole;
 	}
-
-	
-	
 
 }

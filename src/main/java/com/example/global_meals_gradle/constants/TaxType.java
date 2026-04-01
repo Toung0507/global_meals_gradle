@@ -3,10 +3,10 @@ package com.example.global_meals_gradle.constants;
 import org.springframework.util.StringUtils;
 
 public enum TaxType {
-	
+
 	INCLUSIVE("INCLUSIVE"), //
 	EXCLUSIVE("EXCLUSIVE");
-	
+
 	private String taxType;
 
 	private TaxType(String taxType) {
