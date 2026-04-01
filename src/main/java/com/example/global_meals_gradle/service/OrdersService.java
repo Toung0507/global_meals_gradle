@@ -40,7 +40,7 @@ import com.example.global_meals_gradle.res.GetOrdersDetailVo;
 import com.example.global_meals_gradle.res.GetOrdersVo;
 
 /*	待做:
- * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額，還要判斷有沒有用會員的9折劵
+ * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額
  */
 
 @Service
@@ -297,7 +297,7 @@ public class OrdersService {
 		// 判斷是會員(> 1)還是訪客(= 1)
 		if (req.getMemberId() > 1) {
 			// 利用會員id 撈取並鎖定會員資料(點數、9折卷)
-			Members member = membersDao.findByIdForUpdate(req.getMemberId());
+			Members member = membersDao.findById(req.getMemberId());
 			// 如果是 null 則代表沒有這筆會員資料
 			if (member != null) {
 				// 判斷有無9折劵，如果沒有，可以集點

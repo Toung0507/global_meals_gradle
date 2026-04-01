@@ -11,13 +11,9 @@ import com.example.global_meals_gradle.entity.Members;
 @Repository
 public interface MembersDao extends JpaRepository<Members, Integer> {
 
-	/* 根據 id 取的該筆會員資料，並鎖定*/
+	/* 根據 id 取的該筆會員資料 */
 	@Query(value = "select * from members where id = ?1", nativeQuery = true)
 	public Members findById(int id);
-	
-	/* 根據 id 取的該筆會員資料，並鎖定*/
-	@Query(value = "select * from members where id = ?1 for update", nativeQuery = true)
-	public Members findByIdForUpdate(int id);
 
 	/* 增加該會員點數 */
 	@Modifying
