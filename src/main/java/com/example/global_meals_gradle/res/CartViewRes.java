@@ -1,6 +1,5 @@
 package com.example.global_meals_gradle.res;
 
-import com.example.global_meals_gradle.vo.CartItemVO;
 import java.math.BigDecimal;
 import java.util.List;
 

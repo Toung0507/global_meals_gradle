@@ -17,7 +17,7 @@ public interface OrderCartDao extends JpaRepository<OrderCart, Integer> {
 	//	@Transactional
 	//	@Query(value = "insert into order_cart(global_area_id, operation, operation_type)"
 	//			+ "values (?1, ?2, ?3)", nativeQuery = true)
-	//	public void insert(int globalAreaId, int operation, OperationType operationType);
+	//	public void insert(int globalAreaId, int operation, String operationType);
 	//	
 
 }

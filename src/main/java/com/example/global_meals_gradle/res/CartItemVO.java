@@ -1,4 +1,4 @@
-package com.example.global_meals_gradle.vo;
+package com.example.global_meals_gradle.res;
 
 import java.math.BigDecimal;
 

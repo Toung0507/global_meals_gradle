@@ -4,7 +4,7 @@ import com.example.global_meals_gradle.dao.*;
 import com.example.global_meals_gradle.entity.*;
 import com.example.global_meals_gradle.req.*;
 import com.example.global_meals_gradle.res.*;
-import com.example.global_meals_gradle.vo.*;
+
 import com.example.global_meals_gradle.constants.OperationType;
 
 import org.springframework.beans.factory.annotation.Autowired;
