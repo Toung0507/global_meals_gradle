@@ -11,7 +11,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.entity.OrdersId;
 import com.example.global_meals_gradle.res.GetOrdersVo;
@@ -49,8 +48,16 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Transactional
 	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1 "
 			+ " AND order_date_id = ?2", nativeQuery = true)
-	public void updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
-			OrdersStatus status);
+	public void updatePayNotUseDiscount(String id, String orderDateId, String paymentMethod, String transactionId,
+			String status);
+	
+	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態，如果有使用優惠劵，則總金額需更改) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1,"
+			+ "total_amount = ?6 AND order_date_id = ?2", nativeQuery = true)
+	public void updatePayUseDiscount(String id, String orderDateId, String paymentMethod, String transactionId,
+			String status, BigDecimal totalAmount);
 
 	/* 查詢該會員的訂單紀錄 */
 	@Query(value = "SELECT * FROM orders WHERE member_id = ?1", nativeQuery = true)
@@ -64,11 +71,11 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
 	public List<Object[]> getFullOrderHistory(int memberId);
 
-	/* 訂單狀態更新 */
+	/* 訂單狀態更新(用於退款或取消訂單) */
 	@Modifying
 	@Transactional
 	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND date_id = :orderDateId AND status = 'COMPLETED'", nativeQuery = true)
-	public int updateOrderStatus(@Param("status") OrdersStatus status, // AI 是說要字串型態，我有說資料庫是設ENUM
+	public int updateOrderStatus(@Param("status") String status, // AI 是說要字串型態，我有說資料庫是設ENUM
 			@Param("id") String id, @Param("order_date_id") String orderDateId);
 	
 	/* 更改總金額 */

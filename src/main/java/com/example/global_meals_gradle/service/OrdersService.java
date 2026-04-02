@@ -38,6 +38,7 @@ import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
 import com.example.global_meals_gradle.res.GetOrdersDetailVo;
 import com.example.global_meals_gradle.res.GetOrdersVo;
+import com.example.global_meals_gradle.res.TotalAmountRes;
 
 /*	待做:
  * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額
@@ -323,12 +324,33 @@ public class OrdersService {
 				newId, todayStr, req.getTotalAmount());
 	}
 
-	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
+	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態、如果有使用優惠劵，則總金額需更改與優惠劵須關閉與次數變為1) */
 	public BasicRes pay(PayReq req) {
 		// 參數檢查(有在Req那裏自動檢查)
-		// 新增(更新)的資料(付款方式、交易號碼、狀態) (status 在 req 是設 ENUM，在 DAO 是設 String，所以要加 name() )
-		ordersDao.updatePay(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), req.getTransactionId(),
-				OrdersStatus.COMPLETED);
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+		if (order == null) {
+			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
+					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+		}
+		// 判斷有無使用優惠劵
+		if (!req.isUseDiscount()) { // 如果沒有，就只要更新 付款方式、交易號碼、狀態
+			if (order.getTotalAmount() != req.getTotalAmount()) { // 沒有使用優惠劵的情況下，兩者要相等
+				return new BasicRes(ReplyMessage.TOTAL_AMOUNT_ERROR.getCode(), //
+						ReplyMessage.TOTAL_AMOUNT_ERROR.getMessage());
+			}
+			// 新增(更新)的資料(付款方式、交易號碼、狀態)
+			ordersDao.updatePayNotUseDiscount(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), //
+					req.getTransactionId(), "COMPLETED");
+			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+		}
+		Members member = membersDao.findById(order.getMemberId());
+		if (!member.isDiscount()) { // 如果優惠劵的開關是關閉的，那沒有優惠劵可以使用
+			return new BasicRes(ReplyMessage.NOT_DISCOUNT_ERROR.getCode(), //
+					ReplyMessage.NOT_DISCOUNT_ERROR.getMessage());
+		}
+		membersDao.useDiscount(order.getMemberId()); // 做更改(次數變一，優惠劵關閉)
+		ordersDao.updatePayUseDiscount(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), //
+				req.getTransactionId(), "COMPLETED", req.getTotalAmount());
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
@@ -355,12 +377,12 @@ public class OrdersService {
 				// 如果是會員，點數扣回
 				if (order.getMemberId() > 1) {
 					Members member = membersDao.findById(order.getMemberId());
-					if(member == null) {
+					if (member == null) {
 						throw new RuntimeException("退款失敗：查無會員資料");
 					}
-					if(member.getOrderCount() >10) {
+					if (member.getOrderCount() > 10) {
 						membersDao.reducePoint(order.getMemberId());
-					}else {
+					} else {
 						membersDao.reducePointClose(order.getMemberId());
 					}
 				}
@@ -384,24 +406,26 @@ public class OrdersService {
 		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
 				order.getId(), order.getOrderDateId(), order.getTotalAmount());
 	}
-
-	/* 判斷有無要使用優惠劵 */
+	
+	/* 判斷有無要使用優惠劵 */  // 這目前用不到，改成前端判斷處理有沒有使用優惠劵的判斷
 	@Transactional(rollbackFor = Exception.class)
-	public BasicRes useDiscount(DiscountReq req) {
+	public TotalAmountRes useDiscount(DiscountReq req) {
 		try {
 			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-			if (!req.isUseDiscount()) {   // 判斷有無要使用優惠劵
-				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			if (!req.isUseDiscount()) { // 判斷有無要使用優惠劵
+				return new TotalAmountRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			}
-			if (order.getMemberId() <= 1) {   // 判斷是訪客
-				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			if (order.getMemberId() <= 1) { // 判斷是訪客
+				return new TotalAmountRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			}
+			/* 這裡應該不用做判斷?因為已經交易完成友產生交易序號了
 			Members member = membersDao.findById(order.getMemberId());
 			if (!member.isDiscount()) { // 判斷該會員有無優惠劵
-				return new BasicRes(ReplyMessage.DISCOUNT_ERROR.getCode(), ReplyMessage.DISCOUNT_ERROR.getMessage());
+				return new TotalAmountRes(ReplyMessage.DISCOUNT_ERROR.getCode(),
+						ReplyMessage.DISCOUNT_ERROR.getMessage());
 			}
-
-			membersDao.useDiscount(order.getMemberId()); // 做更改(點數歸零，優惠劵關閉)
+			*/
+			membersDao.useDiscount(order.getMemberId()); // 做更改(次數變一，優惠劵關閉)
 			BigDecimal total = order.getTotalAmount();
 			total = total.multiply(new BigDecimal("0.8")); // 總額打8折
 			// 無條件進位到整數
@@ -409,10 +433,9 @@ public class OrdersService {
 			total = total.setScale(0, RoundingMode.UP);
 			ordersDao.upDateTotalAmount(req.getId(), req.getOrderDateId(), total);
 
-			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			return new TotalAmountRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), total);
 		} catch (Exception e) {
 			throw new RuntimeException("無法使用優惠劵");
 		}
-
 	}
 }

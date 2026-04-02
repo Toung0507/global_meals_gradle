@@ -4,6 +4,7 @@ import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.validation.constraints.NotBlank;
 
+/* 判斷有無使用8折劵 */
 public class DiscountReq {
 
 	@NotBlank(message = ValidationMsg.ID_ERROR)
@@ -12,7 +13,7 @@ public class DiscountReq {
 	@NotBlank(message = ValidationMsg.ORDER_DATE_ID_ERROR)
 	private String orderDateId;
 
-	private boolean isUseDiscount;  // 判斷有沒有使用9折劵
+	private boolean isUseDiscount;  // 判斷有沒有使用8折劵
 
 	public String getId() {
 		return id;

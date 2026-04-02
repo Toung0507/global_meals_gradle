@@ -9,12 +9,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.req.CreateOrdersReq;
+import com.example.global_meals_gradle.req.DiscountReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
+import com.example.global_meals_gradle.res.TotalAmountRes;
 import com.example.global_meals_gradle.service.OrdersService;
 
 import jakarta.validation.Valid;
@@ -44,7 +46,7 @@ public class OrdersController {
 		return ordersService.createOrders(req);
 	}
 
-	/* 結帳 */
+	/* 結帳完成 */
 	@PostMapping("Orders/pay")
 	public BasicRes pay(@Valid @RequestBody PayReq req) {
 		return ordersService.pay(req);
@@ -54,5 +56,11 @@ public class OrdersController {
 	@GetMapping("Orders/getOrderByPhone")
 	public CreateOrdersRes getOrderByPhone(@RequestParam("phone") String phone) {
 		return ordersService.getOrderByPhone(phone);
+	}
+
+	/* 判斷有無使用折價劵(介於 成立訂單 與 結帳完成 之間) */
+	@PostMapping("Orders/isUseDiscount")
+	public TotalAmountRes isUseDiscount(@RequestBody DiscountReq req) {
+		return ordersService.useDiscount(req);
 	}
 }

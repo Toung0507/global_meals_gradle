@@ -11,7 +11,9 @@ public enum ReplyMessage {
 	ORDER_NUMBER_NOT_FOUND(400, "Order Number Not Found!!"),
 	ORDERS_STATUS_ERROR(400, "Orders Status Error!!"),
 	DISCOUNT_ERROR(400, "Disscount Error!!"),
-	MEMBER_ERROR(400, "Member ERROR!!");
+	MEMBER_ERROR(400, "Member ERROR!!"),
+	TOTAL_AMOUNT_ERROR(400, "Total Amount ERROR!!"),
+	NOT_DISCOUNT_ERROR(400, "Not Discount ERROR!!");
 	
 	
 	private int code;
