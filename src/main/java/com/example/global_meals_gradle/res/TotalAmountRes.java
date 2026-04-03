@@ -2,7 +2,7 @@ package com.example.global_meals_gradle.res;
 
 import java.math.BigDecimal;
 
-/* 回傳總金額(用於有無優惠劵api) */
+/* 回傳總金額(用於有無優惠劵api) */   // 目前也因為優惠劵前端判斷的原因，先保留
 public class TotalAmountRes extends BasicRes {
 
 	private BigDecimal taxAmount;

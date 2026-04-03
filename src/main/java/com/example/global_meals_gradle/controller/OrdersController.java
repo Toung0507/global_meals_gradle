@@ -57,7 +57,8 @@ public class OrdersController {
 	public CreateOrdersRes getOrderByPhone(@RequestParam("phone") String phone) {
 		return ordersService.getOrderByPhone(phone);
 	}
-
+	
+	// 目前暫定的想法是前端判斷優惠劵，先留著，如果流程有更改
 	/* 判斷有無使用折價劵(介於 成立訂單 與 結帳完成 之間) */
 	@PostMapping("Orders/isUseDiscount")
 	public TotalAmountRes isUseDiscount(@RequestBody DiscountReq req) {

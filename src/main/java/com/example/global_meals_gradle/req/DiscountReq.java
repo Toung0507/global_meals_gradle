@@ -4,7 +4,7 @@ import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.validation.constraints.NotBlank;
 
-/* 判斷有無使用8折劵 */
+/* 判斷有無使用8折劵 */  // 目前不會用到，先保留
 public class DiscountReq {
 
 	@NotBlank(message = ValidationMsg.ID_ERROR)

@@ -45,5 +45,5 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 	@Modifying 
 	@Transactional
 	@Query(value = "UPDATE members SET order_count = 1, is_discount = false WHERE id = ?1 AND is_discount = true", nativeQuery = true)
-	public void useDiscount(int id);
+	public int useDiscount(int id);
 }

@@ -59,9 +59,9 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	// 6. 扣庫存的方法 (手動實作樂觀鎖)
     @Modifying
     @Transactional
-    @Query(value = "UPDATE products SET stock_quantity = ?2, version = version + 1 " +
-                   "WHERE id = ?1 AND version = ?3", nativeQuery = true)
-    public int updateStockWithOptimisticLock(int productsId, int newStock, int currentVersion);
+    @Query(value = "UPDATE products SET stock_quantity = stock_quantity - ?2, version = version + 1 " +
+                   "WHERE id = ?1 AND version = ?3 AND stock_quantity >= ?2", nativeQuery = true)
+    public int updateStockWithOptimisticLock(int productsId, int quantityToBuy, int currentVersion);
 
 	// 7. 前台實時確認庫存 (只抓數字，不抓整張表，效能最快)
 	@Query(value = "SELECT stock_quantity FROM products WHERE id = ?1 AND deleted_at IS NULL", nativeQuery = true)
