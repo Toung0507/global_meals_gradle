@@ -342,7 +342,7 @@ public class OrdersService {
 				}
 			}
 		}
-		
+
 		String newId = ""; // 先宣告變數
 		try {
 			// ====== 產生新訂單編號 (悲觀鎖排隊入口) ======
@@ -398,17 +398,14 @@ public class OrdersService {
 				if (member == null) {
 					throw new RuntimeException(req.getMemberId() + "錯誤，查無會員資料");
 				}
-				// 判斷有無9折劵，如果沒有，可以集點
-				if (member.isDiscount() == false) {
-					// 取得目前會員點數
-					int memberPoints = member.getOrderCount();
-					// 已有沒有9點做判斷，如果已有9點，那要多加一個開啟9折劵的程式
-					if (memberPoints < 9) {
-						membersDao.addPoint(member.getId());
-					} else {
-						membersDao.reachFullPointsAndGiveCoupon(member.getId());
-					}
-				}
+				int addResult = membersDao.addPoint(member.getId());  // 加次數(如果次數 < 9或 > 9 )
+				if (addResult == 0) {  // 加點失敗，可能次數剛好是 9
+		            // 次數剛好是9，加完變10 開券
+		            int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId());
+		            if (couponResult == 0) {
+		                throw new RuntimeException("會員次數更新失敗");
+		            }
+		        }
 				if (req.isUseDiscount()) { // 如果有使用優惠劵，須把它關閉、點數變1
 					int updated = membersDao.useDiscount(member.getId());
 					if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
@@ -432,7 +429,7 @@ public class OrdersService {
 		}
 	}
 
-	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態、如果有使用優惠劵，則總金額需更改與優惠劵須關閉與次數變為1) */
+	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
 	public BasicRes pay(PayReq req) {
 		// 參數檢查(有在Req那裏自動檢查)
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
@@ -440,25 +437,9 @@ public class OrdersService {
 			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 		}
-		// 判斷有無使用優惠劵
-		if (!req.isUseDiscount()) { // 如果沒有，就只要更新 付款方式、交易號碼、狀態
-			if (order.getTotalAmount() != req.getTotalAmount()) { // 沒有使用優惠劵的情況下，兩者要相等
-				return new BasicRes(ReplyMessage.TOTAL_AMOUNT_ERROR.getCode(), //
-						ReplyMessage.TOTAL_AMOUNT_ERROR.getMessage());
-			}
-			// 新增(更新)的資料(付款方式、交易號碼、狀態)
-			ordersDao.updatePayNotUseDiscount(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), //
-					req.getTransactionId(), "COMPLETED");
-			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-		}
-		Members member = membersDao.findById(order.getMemberId());
-		if (!member.isDiscount()) { // 如果優惠劵的開關是關閉的，那沒有優惠劵可以使用
-			return new BasicRes(ReplyMessage.NOT_DISCOUNT_ERROR.getCode(), //
-					ReplyMessage.NOT_DISCOUNT_ERROR.getMessage());
-		}
-		membersDao.useDiscount(order.getMemberId()); // 做更改(次數變一，優惠劵關閉)
-		ordersDao.updatePayUseDiscount(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), //
-				req.getTransactionId(), "COMPLETED", req.getTotalAmount());
+		// 新增(更新)的資料(付款方式、交易號碼、狀態)
+		ordersDao.updatePayNotUseDiscount(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), //
+				req.getTransactionId(), "COMPLETED");
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
@@ -470,12 +451,12 @@ public class OrdersService {
 			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
 			// 找不到該筆訂單
 			if (order == null) { // 找不到該筆訂單
-				return new GetAllOrdersRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
+				return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 						ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 			}
 			// 訂單狀態錯誤
 			if (!order.getStatus().equals(OrdersStatus.COMPLETED)) {
-				return new GetAllOrdersRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
 						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
 			// 執行訂單狀態更新
@@ -488,19 +469,15 @@ public class OrdersService {
 					if (member == null) {
 						throw new RuntimeException("退款失敗：查無會員資料");
 					}
-					if (member.getOrderCount() > 10) {
-						membersDao.reducePoint(order.getMemberId());
-					} else {
-						membersDao.reducePointClose(order.getMemberId());
-					}
+				    membersDao.smartReducePoint(order.getMemberId());
 				}
 				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			} else {
-				throw new RuntimeException("退款失敗");
+				throw new RuntimeException("更新訂單狀態失敗");
 			}
 
 		} catch (Exception e) {
-			throw new RuntimeException("退款失敗");
+			throw new RuntimeException("退款流程發生錯誤: " + e.getMessage());
 		}
 	}
 

@@ -1,7 +1,5 @@
 package com.example.global_meals_gradle.req;
 
-import java.math.BigDecimal;
-
 import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.validation.constraints.NotBlank;
@@ -20,10 +18,6 @@ public class PayReq {
 
 	@NotBlank(message = ValidationMsg.TRANSACTION_ID_ERROR)
 	private String transactionId;
-
-	private BigDecimal totalAmount;
-
-	private boolean isUseDiscount;
 
 	public String getId() {
 		return id;
@@ -55,21 +49,5 @@ public class PayReq {
 
 	public void setTransactionId(String transactionId) {
 		this.transactionId = transactionId;
-	}
-
-	public BigDecimal getTotalAmount() {
-		return totalAmount;
-	}
-
-	public void setTotalAmount(BigDecimal totalAmount) {
-		this.totalAmount = totalAmount;
-	}
-
-	public boolean isUseDiscount() {
-		return isUseDiscount;
-	}
-
-	public void setUseDiscount(boolean isUseDiscount) {
-		this.isUseDiscount = isUseDiscount;
 	}
 }
