@@ -11,8 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-
+import com.example.global_meals_gradle.req.CartClearReq;
 import com.example.global_meals_gradle.req.CartRemoveReq;
+import com.example.global_meals_gradle.req.CartSelectGiftReq;
 import com.example.global_meals_gradle.req.CartSyncReq;
 import com.example.global_meals_gradle.res.CartViewRes;
 import com.example.global_meals_gradle.service.CartService;
@@ -39,31 +40,73 @@ import jakarta.validation.Valid;
 //@RequestMapping("/api/cart")
 @CrossOrigin(origins = "http://localhost:4200")
 public class CartController {
-	// 把大腦請進來
-	@Autowired
-	private CartService cartService;
-
-	//	「查看購物車」方法
-	@GetMapping("cart/{cartId}")
-	public CartViewRes viewCart(@PathVariable int cartId, @RequestParam int memberId) {
-		return cartService.viewCart(cartId, memberId);
-	}
-
-	//	「同步商品」方法
-	@PostMapping("cart/sync")
-	public CartViewRes syncItem(@Valid @RequestBody CartSyncReq req) {
-		return cartService.syncItem(req);
-	}
-
-	//	刪除單品」方法
-	@DeleteMapping("cart/item")
-	public CartViewRes removeItem(@Valid @RequestBody CartRemoveReq req) {
-		return cartService.removeItem(req);
-	}
-
-//	//	「切換折價券」方法----不再購物車裡顯示了
-//	@PostMapping("/coupon")
-//	public CartViewRes applyCoupon(@Valid @RequestBody CartCouponReq req) {
-//		return cartService.applyCoupon(req);
-//	}
+	 // @Autowired：讓 Spring 自動注入已建好的 CartService，不需要手動 new
+    @Autowired
+    private CartService cartService;
+    // ──────────────────────────────────────────
+    // API 1：查看購物車
+    // HTTP Method：GET（只讀，取得資料）
+    // URL：GET /cart/{cartId}?memberId=X
+    // 前端呼叫時機：① 頁面初次載入 ② 按下「確認下單」前的最後一次驗算
+    // ──────────────────────────────────────────
+    @GetMapping("cart/{cartId}")
+    public CartViewRes viewCart(
+        @PathVariable int cartId,         // 從 URL 路徑取出 cartId（例：/cart/7）
+        @RequestParam int memberId        // 從 URL 附加的查詢參數取出 memberId（例：?memberId=3）
+    ) {
+        return cartService.viewCart(cartId, memberId);
+    }
+    // ──────────────────────────────────────────
+    // API 2：同步商品（加入 / 更新數量）
+    // HTTP Method：POST（有寫入操作）
+    // URL：POST /cart/sync
+    // 前端呼叫時機：使用者手動增減數量且「停手 1 秒後」（前端 Debounce）
+    // 前端 Body 範例：{ "cartId": 7, "productId": 5, "quantity": 3, ... }
+    // ──────────────────────────────────────────
+    @PostMapping("cart/sync")
+    public CartViewRes syncItem(
+        @Valid @RequestBody CartSyncReq req  // @Valid 觸發欄位驗證；@RequestBody 把 JSON 轉成 Java 物件
+    ) {
+        return cartService.syncItem(req);
+    }
+    // ──────────────────────────────────────────
+    // API 3：刪除購物車裡的單一商品
+    // HTTP Method：DELETE（刪除操作）
+    // URL：DELETE /cart/item
+    // 前端呼叫時機：使用者點擊商品旁邊的「刪除」圖示
+    // 前端 Body 範例：{ "cartId": 7, "productId": 5, "memberId": 3 }
+    // ──────────────────────────────────────────
+    @DeleteMapping("cart/item")
+    public CartViewRes removeItem(
+        @Valid @RequestBody CartRemoveReq req
+    ) {
+        return cartService.removeItem(req);
+    }
+    // ──────────────────────────────────────────
+    // API 4：使用者選擇贈品（或選「不要贈品」）
+    // HTTP Method：POST（有寫入操作）
+    // URL：POST /cart/gift
+    // 前端呼叫時機：使用者從贈品下拉列表選擇了一個選項後點擊確認
+    // 前端 Body 範例 1（選了大盤雞）：{ "cartId": 7, "memberId": 3, "selectedGiftProductId": 101 }
+    // 前端 Body 範例 2（不要贈品）：  { "cartId": 7, "memberId": 3, "selectedGiftProductId": null }
+    // ──────────────────────────────────────────
+    @PostMapping("cart/gift")
+    public CartViewRes selectGift(
+        @Valid @RequestBody CartSelectGiftReq req
+    ) {
+        return cartService.selectGift(req);
+    }
+    // ──────────────────────────────────────────
+    // API 5：清空購物車
+    // HTTP Method：DELETE（刪除操作）
+    // URL：DELETE /cart/clear
+    // 前端呼叫時機：使用者點擊「清空購物車」按鈕
+    // 前端 Body 範例：{ "cartId": 7, "memberId": 3 }
+    // ──────────────────────────────────────────
+    @DeleteMapping("cart/clear")
+    public CartViewRes clearCart(
+        @Valid @RequestBody CartClearReq req
+    ) {
+        return cartService.clearCart(req);
+    }
 }

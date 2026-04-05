@@ -18,11 +18,12 @@ public interface OrderCartDetailsDao extends JpaRepository<OrderCartDetails, Int
 	@Query(value = "SELECT * FROM order_cart_details WHERE order_cart_id = ?1 AND product_id = ?2 AND is_gift = false ", nativeQuery = true)
 	public OrderCartDetails findByCartIdAndProductId(int orderCartId, int productId);
 
-	//	把 ？號車裡『所有商品與贈品』,目的：都拿出來給我算小計！
+	// 把 ？號車裡『所有商品與贈品』,目的：都拿出來給我算小計！
 	@Query(value = "SELECT * FROM order_cart_details WHERE order_cart_id = ?1", nativeQuery = true)
 	public List<OrderCartDetails> findAllByCartId(int orderCartId);
 
-	//	把 7 號車裡標記為『贈品(is_gift=true)』的東西全刪了,因為加點的情況下，滿 500 送紅茶，滿 1000 送酸辣湯，不把舊的贈品刪掉重新算滿額贈，就會兩個贈品都送
+	// 把 7 號車裡標記為『贈品(is_gift=true)』的東西全刪了,因為加點的情況下，滿 500 送紅茶，滿 1000
+	// 送酸辣湯，不把舊的贈品刪掉重新算滿額贈，就會兩個贈品都送
 	@Modifying
 	@Transactional
 	@Query(value = "DELETE FROM order_cart_details WHERE order_cart_id = ?1 AND is_gift = true", nativeQuery = true)
@@ -34,9 +35,15 @@ public interface OrderCartDetailsDao extends JpaRepository<OrderCartDetails, Int
 	@Query(value = "DELETE FROM order_cart_details WHERE order_cart_id = ?1 AND product_id = ?2", nativeQuery = true)
 	public void deleteByCartIdAndProductId(int orderCartId, int productId);
 
-	/* 刪除購物車 id=? 的所有商品(之後在新增新的商品細項) */
-	//	@Modifying
-	//	@Transactional
-	//	@Query(value = "delete from order_cart_details where id = ?1", nativeQuery = true)
-	//	public void delete(int quizId);
+	/*
+	 * 清空購物車
+	 */
+	@Modifying
+	@Transactional
+	@Query(value = "DELETE FROM order_cart_details WHERE order_cart_id = ?1", nativeQuery = true)
+	void deleteAllByCartId(int orderCartId);
+
+	/* 查找這台購物車裡已經選擇的贈品 */
+	@Query(value = "SELECT * FROM order_cart_details WHERE order_cart_id = ?1 AND is_gift = true", nativeQuery = true)
+	List<OrderCartDetails> findSelectGiftsByCartId(int orderCartId);
 }
