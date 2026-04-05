@@ -20,8 +20,14 @@ public enum ReplyMessage {
 	GIFT_NOT_AVAILABLE(400, "Gift Not Available!!"), 
 	NOT_REACH_FULLAMOUNT(400, "Not Reach fullamount!"),
 	GIFT_SEND_LIGHT(400, "Gift Send light!!"), 
-	CART_NOT_FOUND(400, "Cart Not Found!!");
+	CART_NOT_FOUND(400, "Cart Not Found!!"),
 
+	
+	// 促銷活動相關錯誤-致遠//////////
+	PROMOTION_NOT_FOUND(400, "Promotion Not Found!!"),           // 找不到符合條件的促銷活動
+	PROMOTION_GIFTS_NOT_FOUND(400, "Promotion Gift Not Found!!"), // 找不到符合條件的贈品
+	MEMBER_COUPON_NOT_AVAILABLE(400, "Member Coupon Not Available!!"); // 會員沒有折扣券但傳入 useCoupon=true
+	//////////////////////////////////////
 	private int code;
 
 	private String message;

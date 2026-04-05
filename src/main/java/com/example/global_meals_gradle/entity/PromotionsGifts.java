@@ -17,6 +17,17 @@ public class PromotionsGifts {
 
 	@Column(name = "full_amount", precision = 12, scale = 4) // DECIMAL(12,4)
 	private BigDecimal fullAmount;
+	
+	@Column(name = "quantity")
+	private int quantity;
+
+	public int getQuantity() {
+		return quantity;
+	}
+
+	public void setQuantity(int quantity) {
+		this.quantity = quantity;
+	}
 
 	@Column(name = "gift_product_id")
 	private int giftProductId;
