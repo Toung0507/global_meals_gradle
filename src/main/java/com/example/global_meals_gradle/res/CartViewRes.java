@@ -3,7 +3,6 @@ package com.example.global_meals_gradle.res;
 import java.math.BigDecimal;
 import java.util.List;
 
-// -----------可能還需要修改
 /** 整個購物車的最終結果 (回傳給前端專用) */
 public class CartViewRes extends BasicRes {
 
@@ -18,6 +17,25 @@ public class CartViewRes extends BasicRes {
 
 	/** 稅前應付總額（所有商品 LineTotal 的總和，必須排除贈品價格） */
 	private BigDecimal subtotal;
+
+	// 使用者「有資格可以選」的贈品清單（下拉列表的選項來源）
+	// 只有當 subtotal >= 某個門檻時，才會有資料
+	// 如果消費金額達不到任何門檻，這個清單是空的，前端不顯示下拉列表
+	private List<AvailableGiftVO> availableGifts;
+
+	// 稅務資訊（稅率、稅的類型、稅額）
+	// 如果這台購物車的分店沒有稅務設定，這個欄位是 null
+	private TaxInfoVO taxInfo;
+
+	// 最終總計金額 = subtotal + taxAmount（EXCLUSIVE）或 = subtotal（INCLUSIVE）
+	// 後端算好直接給前端顯示，前端不需要自己做加總
+	private BigDecimal totalAmount;
+
+	// 警告訊息清單（後端在重新驗算時發現的問題）
+	// 例如：「「大份薯條」已下架或不存在，請將其移除」
+	// 例如：「「牛肉麵」的價格已從 $150 調整為 $180」
+	// 如果一切正常，這個清單是空的（不是 null，是空清單）
+	private List<String> warningMessages;
 
 	public int getCartId() {
 		return cartId;
@@ -59,6 +77,38 @@ public class CartViewRes extends BasicRes {
 		this.subtotal = subtotal;
 	}
 
+	public List<AvailableGiftVO> getAvailableGifts() {
+		return availableGifts;
+	}
+
+	public void setAvailableGifts(List<AvailableGiftVO> availableGifts) {
+		this.availableGifts = availableGifts;
+	}
+
+	public TaxInfoVO getTaxInfo() {
+		return taxInfo;
+	}
+
+	public void setTaxInfo(TaxInfoVO taxInfo) {
+		this.taxInfo = taxInfo;
+	}
+
+	public BigDecimal getTotalAmount() {
+		return totalAmount;
+	}
+
+	public void setTotalAmount(BigDecimal totalAmount) {
+		this.totalAmount = totalAmount;
+	}
+
+	public List<String> getWarningMessages() {
+		return warningMessages;
+	}
+
+	public void setWarningMessages(List<String> warningMessages) {
+		this.warningMessages = warningMessages;
+	}
+
 	/**
 	 * 套用折價券後的實際應付金額 - null = 尚未使用折價券（前端顯示 subtotal 即可）<br>
 	 * - 有值 = 已套用折價券（前端顯示這個打折後的金額）
@@ -70,5 +120,4 @@ public class CartViewRes extends BasicRes {
 	 */
 //	private boolean hasCoupon;
 
-	
 }

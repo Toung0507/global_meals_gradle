@@ -11,13 +11,8 @@ import com.example.global_meals_gradle.entity.OrderCart;
 
 @Repository
 public interface OrderCartDao extends JpaRepository<OrderCart, Integer> {
-
-	/* 建立購物車 */
-	//	@Modifying
-	//	@Transactional
-	//	@Query(value = "insert into order_cart(global_area_id, operation, operation_type)"
-	//			+ "values (?1, ?2, ?3)", nativeQuery = true)
-	//	public void insert(int globalAreaId, int operation, String operationType);
-	//	
-
+	// 根據購物車 ID 查詢購物車主表
+	// 用途：在 getCartView() 中拿到 globalAreaId，後續用來查稅率
+	@Query(value = "SELECT * FROM order_cart WHERE id = ?1", nativeQuery = true)
+	OrderCart findById(int id);
 }

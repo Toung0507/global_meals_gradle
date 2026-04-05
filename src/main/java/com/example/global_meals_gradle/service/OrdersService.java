@@ -1,6 +1,7 @@
 package com.example.global_meals_gradle.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import com.example.global_meals_gradle.entity.OrderCartDetails;
 import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
+import com.example.global_meals_gradle.req.DiscountReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
 import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.req.PayReq;
@@ -38,8 +40,7 @@ import com.example.global_meals_gradle.res.GetOrdersDetailVo;
 import com.example.global_meals_gradle.res.GetOrdersVo;
 
 /*	待做:
- * 	訂單退款或取消，點數回朔問題
- * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額，還要判斷有沒有用會員的9折劵
+ * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額
  */
 
 @Service
@@ -56,7 +57,7 @@ public class OrdersService {
 
 	@Autowired
 	private MembersDao membersDao;
-	
+
 	@Autowired
 	private PromotionsGiftsDao promotionsGiftsDao;
 
@@ -111,8 +112,9 @@ public class OrdersService {
 	public GetAllOrdersRes getAllOrders(HistoricalOrdersReq req) {
 		// 會員id檢查，如果是null，就是id有誤
 		Members member = membersDao.findById(req.getMemberId());
-		if(member == null) {
-			return new GetAllOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(), ReplyMessage.MEMBER_NOT_FOUND.getMessage());
+		if (member == null) {
+			return new GetAllOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
+					ReplyMessage.MEMBER_NOT_FOUND.getMessage());
 		}
 		List<Object[]> rawData = ordersDao.getFullOrderHistory(req.getMemberId());
 		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
@@ -136,11 +138,11 @@ public class OrdersService {
 			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
 				// 建立一個新的訂單物件
 				GetOrdersVo newVo = new GetOrdersVo();
-				newVo.setId(row[0].toString());  // o.id
-				newVo.setOrderDateId(row[1].toString());  // o.order_date_id
-				newVo.setGlobalAreaId((Integer) row[2]);  // o.global_area_id 
-				newVo.setTotalAmount((BigDecimal) row[3]);  // o.total_amount
-				newVo.setStatus(row[4].toString());          // o.status 
+				newVo.setId(row[0].toString()); // o.id
+				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
+				newVo.setGlobalAreaId((Integer) row[2]); // o.global_area_id
+				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
+				newVo.setStatus(row[4].toString()); // o.status
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -210,6 +212,18 @@ public class OrdersService {
 	// 加上 @Transactional，確保這段動作在資料庫中是原子性的（要嘛全成功，要嘛全失敗）。
 	@Transactional(rollbackFor = Exception.class)
 	public CreateOrdersRes executeInsert(CreateOrdersReq req, String todayStr) {
+		// ====== 產生新訂單編號 (悲觀鎖排隊入口) ======
+		// 去資料庫找今天最後一筆訂單 (DAO 裡面要有 ORDER BY id DESC LIMIT 1)
+		Optional<Orders> lastOrder = ordersDao.getOrderByOrderDateId(todayStr);
+		int nextSeq = 1; // 預設從 1 開始
+		if (lastOrder.isPresent()) {
+			// 如果今天有訂單，把最大的序號轉成數字並 +1
+			nextSeq = Integer.parseInt(lastOrder.get().getId()) + 1;
+		}
+		// 將數字格式化為 4 位字串，例如 1 變成 "0001"
+		String newId = String.format("%04d", nextSeq);
+
+		// ====== 處理商品與扣庫存 (樂觀鎖) ======
 		// 初始化總金額 (使用 BigDecimal.ZERO 確保精準度)
 		BigDecimal total = BigDecimal.ZERO;
 		// 迴圈計算總額時，順便把「所有的贈品 ID」存進這個清單
@@ -220,58 +234,70 @@ public class OrdersService {
 		cartDetailsList.sort(Comparator.comparingInt(o -> o.getProductId()));
 		for (OrderCartDetails detail : cartDetailsList) {
 			// 取得 商品id 與 使用者想買的數量
-	        int productId = detail.getProductId();
-	        int quantityToBuy = detail.getQuantity();
-	        // 根據商品 id 去商品表搜尋庫存並鎖定該資料，避免超賣
-	        Products product = productsDao.findById(productId);
-	        // 安全檢查：萬一資料庫找不到這個商品 ID
-	        if (product == null) {
-	        	// return 不會觸發回滾，要用 throw
-	        	// 假設購物車有 A、B 兩個商品。先扣了 A 的庫存，接著檢查 B 時發現庫存不足，你用了 return。這時，A 的庫存已經被扣掉了，且不會還原，但訂單卻沒成立。這就是所謂的「資料不一致」。
-	            // return new CreateOrdersRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(), ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
-	            throw new RuntimeException("商品編號 " + productId + " 不存在");
-	        }
-	        // 庫存檢查：如果庫存  比要買的數量還少
-	        if (product.getStockQuantity() < quantityToBuy) {
-	            // 拋出例外後，事務會自動回滾，前面扣掉的其他商品庫存也會還回去
-	        	// return new CreateOrdersRes(ReplyMessage.STOCK_NOT_ENOUGH.getCode(), ReplyMessage.STOCK_NOT_ENOUGH.getMessage());
-	        	throw new RuntimeException("商品「" + product.getName() + "」庫存不足");
-	        }
-	        // --- 金額計算 ---
-	        // 不是贈品的才要計算金額 / 贈品的Id要存進贈品清單
-	        if(!detail.isGift()) {
-	        	// 將數量轉為 BigDecimal 後與單價相乘，累加到 total
-	        	BigDecimal itemPrice = product.getBasePrice(); 
-	        	BigDecimal itemQty = BigDecimal.valueOf(quantityToBuy);
-	        	total = total.add(itemPrice.multiply(itemQty));  // BigDecimal 是不可變的，加完後的結果必須重新賦值給 total。
-	        }else {
-	        	giftProductIds.add(detail.getProductId());
-	        }
-	        // 執行資料庫更新：將庫存減掉購買數量
-	        int affectedRows = productsDao.upDateStock(productId, quantityToBuy);
-	        // 如果更新失敗（例如剛好有人同時改了這行），也視為失敗  1 = 有成功更新/0 = 沒被更新 
-	        if (affectedRows == 0) {
-	            throw new RuntimeException("系統繁忙，更新庫存失敗");
-	        }
+			int productId = detail.getProductId();
+			int quantityToBuy = detail.getQuantity();
+			// 根據商品 id 去商品表搜尋庫存並鎖定該資料，避免超賣
+			Products product = productsDao.findById(productId);
+			// 安全檢查：萬一資料庫找不到這個商品 ID
+			if (product == null) {
+				// return 不會觸發回滾，要用 throw
+				// 假設購物車有 A、B 兩個商品。先扣了 A 的庫存，接著檢查 B 時發現庫存不足，你用了 return。這時，A
+				// 的庫存已經被扣掉了，且不會還原，但訂單卻沒成立。這就是所謂的「資料不一致」。
+				// return new CreateOrdersRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(),
+				// ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
+				throw new RuntimeException("商品編號 " + productId + " 不存在");
+			}
+			// 庫存檢查：如果庫存 比要買的數量還少
+			if (product.getStockQuantity() < quantityToBuy) {
+				// 拋出例外後，事務會自動回滾，前面扣掉的其他商品庫存也會還回去
+				// return new CreateOrdersRes(ReplyMessage.STOCK_NOT_ENOUGH.getCode(),
+				// ReplyMessage.STOCK_NOT_ENOUGH.getMessage());
+				throw new RuntimeException("商品「" + product.getName() + "」庫存不足");
+			}
+			// 取得舊的版本號 (這就是你要帶入 SQL 的 ?3)
+			int oldVersion = product.getVersion();
+			// 計算扣除後的庫存 (這就是 ?2)
+			int newStock = product.getStockQuantity() - detail.getQuantity();
+			// 執行「手動樂觀鎖」更新
+			int affectedRows = productsDao.updateStockWithOptimisticLock(product.getId(), newStock,
+					product.getVersion());
+			// 如果回傳 0，代表這期間 version 被動過，拋出異常觸發外層重試
+			if (affectedRows == 0) {
+				throw new RuntimeException("庫存版本衝突，準備重試");
+			}
+
+			// ====== 金額計算/贈品id儲存 ======
+			// 不是贈品的才要計算金額 / 贈品的Id要存進贈品清單
+			if (!detail.isGift()) {
+				// 將數量轉為 BigDecimal 後與單價相乘，累加到 total
+				BigDecimal itemPrice = product.getBasePrice();
+				BigDecimal itemQty = BigDecimal.valueOf(quantityToBuy);
+				total = total.add(itemPrice.multiply(itemQty)); // BigDecimal 是不可變的，加完後的結果必須重新賦值給 total。
+			} else {
+				giftProductIds.add(detail.getProductId());
+			}
 		}
-		// 贈品低消檢查
-		if (!giftProductIds.isEmpty()) {  // 判斷贈品清單有沒有資料
-	        for (Integer giftId : giftProductIds) {
-	            // promotionGiftsDao 可以根據贈品 ID 查門檻
-	        	BigDecimal giftRule = promotionsGiftsDao.findFullAmountByGiftProductId(giftId);
-	            
-	        	if (giftRule != null) {  // 如果有取得金額
-	        	    // 2. 直接拿 total 跟這個金額比
-	        	    if (total.compareTo(giftRule) < 0) {  // compareTo：這是 BigDecimal 比較大小的標準寫法
-	        	        throw new RuntimeException("金額未達門檻 " + giftRule + "，無法領取贈品 ID: " + giftId);
-	        	    }
-	        	}
-	        }
-	    }
+
+		// ====== 贈品門檻檢查 ======
+		if (!giftProductIds.isEmpty()) { // 判斷贈品清單有沒有資料
+			for (Integer giftId : giftProductIds) {
+				// promotionGiftsDao 可以根據贈品 ID 查門檻
+				BigDecimal giftRule = promotionsGiftsDao.findFullAmountByGiftProductId(giftId);
+
+				if (giftRule != null) { // 如果有取得金額
+					// 2. 直接拿 total 跟這個金額比
+					if (total.compareTo(giftRule) < 0) { // compareTo：這是 BigDecimal 比較大小的標準寫法
+						throw new RuntimeException("金額未達門檻 " + giftRule + "，無法領取贈品 ID: " + giftId);
+					}
+				}
+			}
+		}
+
+		// ====== 會員邏輯(點數處理) ======
 		// 判斷是會員(> 1)還是訪客(= 1)
 		if (req.getMemberId() > 1) {
 			// 利用會員id 撈取並鎖定會員資料(點數、9折卷)
-			Members member = membersDao.findByIdForUpdate(req.getMemberId());
+			Members member = membersDao.findById(req.getMemberId());
 			// 如果是 null 則代表沒有這筆會員資料
 			if (member != null) {
 				// 判斷有無9折劵，如果沒有，可以集點
@@ -288,19 +314,7 @@ public class OrdersService {
 			}
 		}
 
-		// 去資料庫找今天最後一筆訂單 (DAO 裡面要有 ORDER BY id DESC LIMIT 1)
-		Optional<Orders> lastOrder = ordersDao.getOrderByOrderDateId(todayStr);
-
-		int nextSeq = 1; // 預設從 1 開始
-		if (lastOrder.isPresent()) {
-			// 如果今天有訂單，把最大的序號轉成數字並 +1
-			nextSeq = Integer.parseInt(lastOrder.get().getId()) + 1;
-		}
-
-		// 將數字格式化為 5 位字串，例如 1 變成 "00001"
-		String newId = String.format("%05d", nextSeq);
-
-		// 執行新增主訂單 (使用你在圖 3 寫的 DAO insert 方法)
+		// ====== 執行新增主訂單 ======
 		ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
 				req.getPhone(), total, req.getTaxAmount(), req.getTotalAmount());
 
@@ -312,33 +326,52 @@ public class OrdersService {
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
 	public BasicRes pay(PayReq req) {
 		// 參數檢查(有在Req那裏自動檢查)
-
 		// 新增(更新)的資料(付款方式、交易號碼、狀態) (status 在 req 是設 ENUM，在 DAO 是設 String，所以要加 name() )
 		ordersDao.updatePay(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), req.getTransactionId(),
 				OrdersStatus.COMPLETED);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
-	/* 訂單狀態: 退款或取消 */    // 待做: 目前差點數回朔問題
+	/* 訂單狀態: 退款或取消 */
+	@Transactional(rollbackFor = Exception.class)
 	public BasicRes ordersStatus(RefundedReq req) {
 		// 參數檢查(在req有做自動檢查)
-		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-		if(order == null) {  // 找不到該筆訂單
-			return new GetAllOrdersRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(),// 
-					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
-		}
-		if(order.getStatus().equals(OrdersStatus.COMPLETED)) {
+		try {
+			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+			// 找不到該筆訂單
+			if (order == null) { // 找不到該筆訂單
+				return new GetAllOrdersRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
+						ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+			}
+			// 訂單狀態錯誤
+			if (!order.getStatus().equals(OrdersStatus.COMPLETED)) {
+				return new GetAllOrdersRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+			}
 			// 執行訂單狀態更新
 			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
 			// 判斷是否成功
 			if (result > 0) {
+				// 如果是會員，點數扣回
+				if (order.getMemberId() > 1) {
+					Members member = membersDao.findById(order.getMemberId());
+					if(member == null) {
+						throw new RuntimeException("退款失敗：查無會員資料");
+					}
+					if(member.getOrderCount() >10) {
+						membersDao.reducePoint(order.getMemberId());
+					}else {
+						membersDao.reducePointClose(order.getMemberId());
+					}
+				}
 				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			} else {
-				return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), ReplyMessage.ORDER_NOT_FOUND.getMessage());
+				throw new RuntimeException("退款失敗");
 			}
+
+		} catch (Exception e) {
+			throw new RuntimeException("退款失敗");
 		}
-		return new GetAllOrdersRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(),// 
-				ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 	}
 
 	/* 報電話號碼查詢最新一單 */
@@ -350,5 +383,36 @@ public class OrdersService {
 
 		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
 				order.getId(), order.getOrderDateId(), order.getTotalAmount());
+	}
+
+	/* 判斷有無要使用優惠劵 */
+	@Transactional(rollbackFor = Exception.class)
+	public BasicRes useDiscount(DiscountReq req) {
+		try {
+			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+			if (!req.isUseDiscount()) {   // 判斷有無要使用優惠劵
+				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			}
+			if (order.getMemberId() <= 1) {   // 判斷是訪客
+				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			}
+			Members member = membersDao.findById(order.getMemberId());
+			if (!member.isDiscount()) { // 判斷該會員有無優惠劵
+				return new BasicRes(ReplyMessage.DISCOUNT_ERROR.getCode(), ReplyMessage.DISCOUNT_ERROR.getMessage());
+			}
+
+			membersDao.useDiscount(order.getMemberId()); // 做更改(點數歸零，優惠劵關閉)
+			BigDecimal total = order.getTotalAmount();
+			total = total.multiply(new BigDecimal("0.8")); // 總額打8折
+			// 無條件進位到整數
+			// setScale(0) 代表保留 0 位小數
+			total = total.setScale(0, RoundingMode.UP);
+			ordersDao.upDateTotalAmount(req.getId(), req.getOrderDateId(), total);
+
+			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+		} catch (Exception e) {
+			throw new RuntimeException("無法使用優惠劵");
+		}
+
 	}
 }

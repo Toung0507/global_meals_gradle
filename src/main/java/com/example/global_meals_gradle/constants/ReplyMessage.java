@@ -2,15 +2,17 @@ package com.example.global_meals_gradle.constants;
 
 public enum ReplyMessage {
 
-	SUCCESS(200, "Success!!"),
-	ORDER_NOT_FOUND(400, "Order Not Found!!"),
-	STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"),
-	PRODUCT_NOT_FOUND(400, "Product Not Found!!"),
-	MEMBER_NOT_FOUND(400, "Member Not Found!!"),
-	ORDER_NUMBER_NOT_FOUND(400, "Order Number Not Found!!"),
-	ORDERS_STATUS_ERROR(400, "Orders Status Error!!");
-	
-	
+	/* 劭頴 */
+	SUCCESS(200, "Success!!"), ORDER_NOT_FOUND(400, "Order Not Found!!"), STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"),
+	PRODUCT_NOT_FOUND(400, "Product Not Found!!"), MEMBER_NOT_FOUND(400, "Member Not Found!!"),
+	ORDER_NUMBER_NOT_FOUND(400, "Order Number Not Found!!"), ORDERS_STATUS_ERROR(400, "Orders Status Error!!"),
+	DISCOUNT_ERROR(400, "Disscount Error!!"), MEMBER_ERROR(400, "Member ERROR!!"),
+
+	/* 艷羽 */
+	// 贈品已下架（也是滿XX送XX這個規則下架了）或不存在
+	GIFT_NOT_AVAILABLE(400, "Gift Not Available!!"), NOT_REACH_FULLAMOUNT(400, "Not Reach fullamount!"),
+	GIFT_SEND_LIGHT(400, "Gift Send light!!"), CART_NOT_FOUND(400, "Cart Not Found!!");
+
 	private int code;
 
 	private String message;
