@@ -1,7 +1,15 @@
 package com.example.global_meals_gradle.constants;
 
 public enum ReplyMessage {
-
+	
+	// 昱文
+	// Service RegionsService
+	REGIONS_ID_ERROR(400, "Regions Id Error!!"),//
+	// Service GlobalAreaService
+	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"),//
+	
+	
+	// 劭穎
 	SUCCESS(200, "Success!!"),
 	ORDER_NOT_FOUND(400, "Order Not Found!!"),
 	STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"),
@@ -10,9 +18,8 @@ public enum ReplyMessage {
 	ORDER_NUMBER_NOT_FOUND(400, "Order Number Not Found!!"),
 	ORDERS_STATUS_ERROR(400, "Orders Status Error!!");
 	
-	
 	private int code;
-
+	
 	private String message;
 
 	private ReplyMessage(int code, String message) {
@@ -35,4 +42,7 @@ public enum ReplyMessage {
 	public void setMessage(String message) {
 		this.message = message;
 	}
+	
+	
+
 }
