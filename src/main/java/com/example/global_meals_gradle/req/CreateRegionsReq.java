@@ -28,10 +28,9 @@ public class CreateRegionsReq {
 	@JsonAlias("tax_rate")
 	private BigDecimal taxRate;
     
-//    @NotBlank(message = ValidationMsg.TAX_TYPE_ERROR)
-	@NotNull(message = ValidationMsg.TAX_TYPE_ERROR) // Enum 建議用 NotNull
+    @NotBlank(message = ValidationMsg.TAX_TYPE_ERROR)
     @JsonAlias("tax_type")
-	private TaxType taxType;
+	private String taxType;
 
 	public String getCountry() {
 		return country;
@@ -57,14 +56,13 @@ public class CreateRegionsReq {
 		this.taxRate = taxRate;
 	}
 
-	public TaxType getTaxType() {
+	public String getTaxType() {
 		return taxType;
 	}
 
-	public void setTaxType(TaxType taxType) {
+	public void setTaxType(String taxType) {
 		this.taxType = taxType;
 	}
-    
-    
 
+	
 }

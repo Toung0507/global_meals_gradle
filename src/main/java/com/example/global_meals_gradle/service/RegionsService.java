@@ -9,6 +9,7 @@ import com.example.global_meals_gradle.dao.RegionsDao;
 import com.example.global_meals_gradle.req.CreateRegionsReq;
 import com.example.global_meals_gradle.req.UpdateRegionsReq;
 import com.example.global_meals_gradle.res.BasicRes;
+import com.example.global_meals_gradle.res.RegionsRes;
 
 @Service
 public class RegionsService {
@@ -21,9 +22,8 @@ public class RegionsService {
 	public BasicRes create(CreateRegionsReq req) {
 		/* 參數檢查:使用@Valid */
 		// 新增國家稅值
-		// 在使用 nativeQuery = true 時，JPA 有時無法自動將 TaxType (Enum) 轉換為資料庫認識的字串。建議在傳參時呼叫 .name()。
 		try {
-			regionsDao.insert(req.getCountry(), req.getCurrencyCode(), req.getTaxRate(), req.getTaxType().name());
+			regionsDao.insert(req.getCountry(), req.getCurrencyCode(), req.getTaxRate(), req.getTaxType());
 		} catch (Exception e) {
 			throw e;
 		}
@@ -42,12 +42,18 @@ public class RegionsService {
 //					ReplyMessage.REGIONS_ID_ERROR.getMessage());
 //		}
 		try {
-			regionsDao.update(req.getId(), req.getTaxRate(), req.getTaxType().name());
+			regionsDao.update(req.getId(), req.getTaxRate(), req.getTaxType());
 		} catch (Exception e) {
 			throw e;
 		}
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage());
+	}
+	
+	// 取得各國稅制清單
+	public RegionsRes getAllTax() {
+		return new RegionsRes(ReplyMessage.SUCCESS.getCode(), //
+				ReplyMessage.SUCCESS.getMessage(), regionsDao.getAll());
 	}
 	
 }

@@ -2,9 +2,11 @@ package com.example.global_meals_gradle.service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -18,17 +20,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
+import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.dao.ExchangeRatesDao;
+import com.example.global_meals_gradle.entity.ExchangeRates;
+import com.example.global_meals_gradle.req.ExchangeRatesReq;
+import com.example.global_meals_gradle.res.ExchangeRatesRes;
 
 @Service
 public class ExchangeRatesService {
 
 	@Autowired
-	ExchangeRatesDao exchangeRatesDao;
+	private ExchangeRatesDao exchangeRatesDao;
 
 	// 這裡注入的就是 RestClientConfig 產生的那個 Bean
 	@Autowired
-	RestClient restClient;
+	private RestClient restClient;
 
 	/* 如果要從設定檔中取值，要用 @Value ，以及後面的字串格式 "${設定檔中寫的變數}" */
 	// 這裡填入您的 API Key
@@ -81,7 +87,7 @@ public class ExchangeRatesService {
 							// 確保數值轉換為 BigDecimal 以維持精確度
 							BigDecimal rate = new BigDecimal(entry.getValue().toString());
 							// 6. 呼叫 DAO 執行 Upsert (新增或更新匯率)
-							exchangeRatesDao.upserRate(currencyCode, rate);
+							exchangeRatesDao.upsertRate(currencyCode, rate);
 							;
 
 							System.out.println("已更新目標匯率: " + currencyCode + " = " + rate);
@@ -93,7 +99,7 @@ public class ExchangeRatesService {
 		} catch (Exception e) {
 			// 在這裡可以加入日誌系統記錄錯誤 (如 Log4j 或 Slf4j)
 			throw e;
-		}
+		}		
 		// =======================================================================================================
 		/* RestTemplate版 */
 //    	// 1. 初始化 RestTemplate 實例
@@ -145,6 +151,32 @@ public class ExchangeRatesService {
 //        } catch (Exception e) {
 //            System.err.println("WebClient 執行異常: " + e.getMessage());
 //        }
+	}
+	
+	// 取得匯率清單(全部的歷史紀錄)
+	public ExchangeRatesRes getAllRates() {
+		return new ExchangeRatesRes(ReplyMessage.SUCCESS.getCode(), //
+				ReplyMessage.SUCCESS.getMessage(), exchangeRatesDao.getAll());
+	}
+	
+	// 取得匯率清單(依據日期)
+	public ExchangeRatesRes getAllByDate(ExchangeRatesReq req) {
+		LocalDate searchDate;
+		// 判斷是否有日期，若無則預設今天
+		if(req != null) {
+			searchDate = req.getDate();
+		}else {
+			searchDate = LocalDate.now();
+		}
+		List<ExchangeRates> ratesList = exchangeRatesDao.getRatesByDate(searchDate);
+		// 自動補位邏輯：如果該日無資料（例如凌晨四點前），自動減一天 (searchDate.minusDays(1)) 查詢
+		if(ratesList == null || ratesList.isEmpty()) {
+			searchDate = searchDate.minusDays(1);
+			ratesList = exchangeRatesDao.getRatesByDate(searchDate);
+			System.out.println("查詢時間點暫無當日匯率，自動切換至前一天：" + searchDate);
+		}
+		return new ExchangeRatesRes(ReplyMessage.SUCCESS.getCode(), //
+				ReplyMessage.SUCCESS.getMessage(), ratesList);
 	}
 
 }

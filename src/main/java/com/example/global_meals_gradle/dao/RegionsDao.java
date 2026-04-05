@@ -1,6 +1,7 @@
 package com.example.global_meals_gradle.dao;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -8,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.example.global_meals_gradle.constants.TaxType;
 import com.example.global_meals_gradle.entity.Regions;
 
 @Repository
@@ -19,7 +19,7 @@ public interface RegionsDao extends JpaRepository<Regions, Integer>{
 	 * 所以這邊需要改成 String taxType */
 	@Modifying
 	@Transactional
-	@Query(value = "insert into regions (country, currency_code, tax_rate, tax_type, created_at, updated_at) "
+	@Query(value = "INSERT INTO regions (country, currency_code, tax_rate, tax_type, created_at, updated_at) "
 			+ " values (?1, ?2, ?3, ?4, curdate(), curdate())", nativeQuery = true)
 	public void insert(String country, String currencyCode, BigDecimal taxRate, String taxType);
 	
@@ -27,7 +27,11 @@ public interface RegionsDao extends JpaRepository<Regions, Integer>{
 	// 修改時通常需要手動觸發 updated_at = CURDATE()，否則該欄位會維持在舊的新增日期。
 	@Modifying
 	@Transactional
-	@Query(value = "update regions set tax_rate = ?2, tax_type = ?3, updated_at = curdate() where id = ?1", nativeQuery = true)
+	@Query(value = "UPDATE regions SET tax_rate = ?2, tax_type = ?3, updated_at = curdate() WHERE id = ?1", nativeQuery = true)
 	public void update(int id, BigDecimal taxRate, String taxType);
+	
+	// 查詢各國稅率
+	@Query(value = "SELECT * FROM regions", nativeQuery = true)
+	public List<Regions> getAll();
 
 }
