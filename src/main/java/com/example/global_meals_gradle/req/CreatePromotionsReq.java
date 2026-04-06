@@ -9,13 +9,13 @@ import com.example.global_meals_gradle.entity.PromotionsGifts;
 public class CreatePromotionsReq {
 
 	private String name;
-	
+
 	private LocalDate startTime;
-	
+
 	private LocalDate endTime;
-	
+
 	private int maxExchange = -1;
-	
+
 	private List<PromotionsGifts> promotionsGiftsList;
 
 	public String getName() {
@@ -57,5 +57,5 @@ public class CreatePromotionsReq {
 	public void setPromotionsGiftsList(List<PromotionsGifts> promotionsGiftsList) {
 		this.promotionsGiftsList = promotionsGiftsList;
 	}
-	
+
 }

@@ -4,9 +4,9 @@ import java.io.Serializable;
 
 @SuppressWarnings("serial")
 public class OrdersId implements Serializable {
-	
+
 	private String orderDateId;
-	
+
 	private String id;
 
 	public String getOrderDateId() {
