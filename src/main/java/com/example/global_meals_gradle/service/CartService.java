@@ -34,6 +34,10 @@ public class CartService {
 	private PromotionsGiftsDao promotionsGiftsDao;
 //	@Autowired
 //	private MembersDao membersDao;
+	@Autowired
+	private GlobalAreaDao globalAreaDao;
+	@Autowired
+	private RegionsDao regionsDao;
 
 //	核心 API 1:同步購物車，包括刪除單品
 //	 前端呼叫時機：使用者改了數量且「停手 1 秒後」（Debounce 防抖邏輯）

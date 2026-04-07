@@ -33,5 +33,9 @@ public interface RegionsDao extends JpaRepository<Regions, Integer>{
 	// 查詢各國稅率
 	@Query(value = "SELECT * FROM regions", nativeQuery = true)
 	public List<Regions> getAll();
+	// 根據「國家名稱」查詢該國的稅務設定（tax_rate、tax_type）
+	 @Query(value = "SELECT * FROM regions WHERE country = ?1", nativeQuery = true)
+	    Regions findByCountry(String country);  
+	
 
 }
