@@ -16,8 +16,18 @@ public enum ReplyMessage {
 	PRODUCT_NOT_FOUND(400, "Product Not Found!!"),
 	MEMBER_NOT_FOUND(400, "Member Not Found!!"),
 	ORDER_NUMBER_NOT_FOUND(400, "Order Number Not Found!!"),
-	ORDERS_STATUS_ERROR(400, "Orders Status Error!!");
+
+	ORDERS_STATUS_ERROR(400, "Orders Status Error!!"),
 	
+	// 促銷活動相關錯誤-致遠//////////
+	PROMOTION_NOT_FOUND(400, "Promotion Not Found!!"),           // 找不到符合條件的促銷活動
+	PROMOTION_GIFTS_NOT_FOUND(400, "Promotion Gift Not Found!!"), // 找不到符合條件的贈品
+	MEMBER_COUPON_NOT_AVAILABLE(400, "Member Coupon Not Available!!"); // 會員沒有折扣券但傳入 useCoupon=true
+	//////////////////////////////////////
+
+	
+	
+
 	private int code;
 	
 	private String message;

@@ -21,11 +21,8 @@ public class Promotions {
 	@Column(name = "end_time")
 	private LocalDate endTime;
 
-	@Column(name = "max_exchange")
-	private int maxExchange = -1;
-
-	@Column(name = "exchange_count")
-	private int exchangeCount;
+	@Column(name = "is_active")
+	private boolean active;
 
 	public int getId() {
 		return id;
@@ -59,20 +56,13 @@ public class Promotions {
 		this.endTime = endTime;
 	}
 
-	public int getMaxExchange() {
-		return maxExchange;
+	public boolean isActive() {
+		return active;
 	}
 
-	public void setMaxExchange(int maxExchange) {
-		this.maxExchange = maxExchange;
+	public void setActive(boolean active) {
+		this.active = active;
 	}
-
-	public int getExchangeCount() {
-		return exchangeCount;
-	}
-
-	public void setExchangeCount(int exchangeCount) {
-		this.exchangeCount = exchangeCount;
-	}
+	
 
 }
