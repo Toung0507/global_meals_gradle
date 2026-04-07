@@ -251,7 +251,7 @@ public class CartService {
 				giftVo.setLineTotal(BigDecimal.ZERO); // 因為0元，小計也是0
 
 				// 去查一下贈品的名字，讓前端可以顯示 (假設你實體叫做 getName() )
-				Products giftProduct = productsDao.findProductById(giftDetail.getProductId());
+				Products giftProduct = productsDao.findById(giftDetail.getProductId());
 				if (giftProduct != null) {
 					giftVo.setProductName(giftProduct.getName());
 				}
