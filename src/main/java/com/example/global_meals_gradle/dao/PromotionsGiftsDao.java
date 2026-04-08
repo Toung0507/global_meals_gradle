@@ -30,9 +30,14 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 			+ "ORDER BY gifts.full_amount DESC " + "LIMIT 1", nativeQuery = true)
 	PromotionsGifts findTopQualifiedGift(@Param("total") BigDecimal total);
 
-	/* 核心邏輯：取得所有目前上架中的贈品門檻 */
-	@Query(value = "SELECT * FROM promotions_gifts WHERE is_active = 1", nativeQuery = true)
-	public List<PromotionsGifts> findAllActiveGifts();
+	/* 核心邏輯：取得所有目前上架的有效期內的活動的上架中的贈品門檻 /規則*/
+	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
+		    + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
+		    + "WHERE gifts.is_active = 1 "
+		    + "AND prom.is_active = 1 "
+		    + "AND prom.start_time <= CURRENT_DATE "
+		    + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
+		public List<PromotionsGifts> findAllActiveGifts();
 
 	/* 根據商品id取的門檻資料 */
 	@Query(value = "SELECT full_amount FROM promotions_gifts WHERE gift_product_id = ?1 AND is_active = 1", nativeQuery = true)
@@ -42,6 +47,12 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 	 * 根據「贈品商品 ID」找到對應的目前 上架的規則 用途：在 selectGift() 裡驗證使用者選的贈品是否還有效
 	 * 例如：使用者選了大盤雞（giftProductId = 101），後端查這條規則是否還 is_active = 1
 	 */
-	@Query(value = "SELECT * FROM promotions_gifts WHERE gift_product_id = ?1 AND is_active = 1", nativeQuery = true)
-	PromotionsGifts findActiveRuleByGiftProductId(int giftProductId);
+	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
+		    + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
+		    + "WHERE gifts.gift_product_id = ?1 "
+		    + "AND gifts.is_active = 1 "
+		    + "AND prom.is_active = 1 "
+		    + "AND prom.start_time <= CURRENT_DATE "
+		    + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
+		PromotionsGifts findActiveRuleByGiftProductId(int giftProductId);
 }

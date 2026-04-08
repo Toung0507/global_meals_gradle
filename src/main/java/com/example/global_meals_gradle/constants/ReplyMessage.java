@@ -31,7 +31,7 @@ public enum ReplyMessage {
 	GIFT_NOT_AVAILABLE(400, "Gift Not Available!!"), //
 	NOT_REACH_FULLAMOUNT(400, "Not Reach fullamount!"), //
 	GIFT_SEND_LIGHT(400, "Gift Send light!!"), //
-	CART_NOT_FOUND(400, "Cart Not Found!!") ;
+	CART_NOT_FOUND(404, "Cart Not Found!!") ;
 
 	private int code;
 
