@@ -22,11 +22,11 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Modifying
 	@Transactional
 	@Query(value = "INSERT INTO orders (id, order_date_id, order_cart_id, global_area_id, member_id, phone, "
-			+ " subtotal_before_tax, tax_amount, total_amount) "
-			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", nativeQuery = true)
+			+ " subtotal_before_tax, tax_amount, total_amount, status, is_use_discount) "
+			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)", nativeQuery = true)
 	public void insert(String id, String orderDateId, String orderCartId, int globalAreaId, int memberId, String phone, //
 			BigDecimal subtotalBeforeTax, //
-			BigDecimal taxAmount, BigDecimal totalAmount);
+			BigDecimal taxAmount, BigDecimal totalAmount, String status, boolean useDiscount);
 
 	/* 根據 orderDateId 查詢特定訂單 */
 	// ORDER BY id (排序)(字串排序需長度樣(補零)) DESC (倒序) LIMIT 1 (限制筆數) FOR UPDATE:
@@ -50,8 +50,8 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Modifying
 	@Transactional
 	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1 "
-			+ " AND order_date_id = ?2", nativeQuery = true)
-	public void updatePayNotUseDiscount(String id, String orderDateId, String paymentMethod, String transactionId,
+			+ " AND order_date_id = ?2 AND status = 'UNPAID'", nativeQuery = true)
+	public void updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
 			String status);
 	
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態，如果有使用優惠劵，則總金額需更改) */

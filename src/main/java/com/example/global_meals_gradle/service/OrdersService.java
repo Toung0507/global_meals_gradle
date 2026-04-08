@@ -392,7 +392,7 @@ public class OrdersService {
 			if (!giftProductIds.isEmpty()) {
 			    for (Integer giftId : giftProductIds) {
 			        // 執行原子扣除
-			        int affectedGiftRows = promotionsGiftsDao.reduceGiftQuota(giftId);
+			        int affectedGiftRows = promotionsGiftsDao.reduceGiftQuota(req.getPromotionsId(),giftId);
 			        
 			        if (affectedGiftRows == 0) {
 			            // 代表這秒鐘剛好被別人領完了
@@ -428,7 +428,7 @@ public class OrdersService {
 
 			// ====== 執行新增主訂單 ======
 			ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
-					req.getPhone(), finalSubtotal, taxAmount, afterTax);
+					req.getPhone(), finalSubtotal, taxAmount, afterTax, "UNPAID", req.isUseDiscount());
 
 			// 成功後回傳結果
 			return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
@@ -449,8 +449,17 @@ public class OrdersService {
 			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 		}
+		// 檢查訂單狀態：只有「未付款」的訂單可以執行付款
+	    // 如果訂單已經是 COMPLETED, 則不需要重複付款
+	    if (OrdersStatus.COMPLETED.equals(order.getStatus())) {
+	        return new BasicRes(ReplyMessage.SUCCESS.getCode(), "訂單已支付完成，無需重複操作");
+	    }
+	    // 如果訂單是其他狀態（如 REFUNDED, CANCELLED），則不允許付款
+	    if (!OrdersStatus.UNPAID.equals(order.getStatus())) {
+	        return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "訂單狀態錯誤，無法付款");
+	    }
 		// 新增(更新)的資料(付款方式、交易號碼、狀態)
-		ordersDao.updatePayNotUseDiscount(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), //
+		ordersDao.updatePay(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), //
 				req.getTransactionId(), "COMPLETED");
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
@@ -467,7 +476,8 @@ public class OrdersService {
 						ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 			}
 			// 訂單狀態錯誤
-			if (!order.getStatus().equals(OrdersStatus.COMPLETED)) {
+			if (!order.getStatus().equals(OrdersStatus.COMPLETED) //
+					&& !order.getStatus().equals(OrdersStatus.UNPAID)) {
 				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
 						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
@@ -475,13 +485,20 @@ public class OrdersService {
 			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
 			// 判斷是否成功
 			if (result > 0) {
-				// 如果是會員，點數扣回
+				// 如果是會員，次數扣回
 				if (order.getMemberId() > 1) {
 					Members member = membersDao.findById(order.getMemberId());
 					if (member == null) {
 						throw new RuntimeException("退款失敗：查無會員資料");
 					}
-				    membersDao.smartReducePoint(order.getMemberId());
+					// 這裡利用你新加的欄位來判斷
+	                if (order.isUseDiscount()) {
+	                    // 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
+	                    membersDao.restoreCouponAndPoints(order.getMemberId());
+	                } else {
+	                    // 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
+	                    membersDao.smartReducePoint(order.getMemberId());
+	                }
 				}
 				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			} else {

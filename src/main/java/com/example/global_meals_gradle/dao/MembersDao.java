@@ -37,15 +37,23 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 			+ "WHERE id = ?1 AND order_count > 0", nativeQuery = true)
 	public int reducePoint(int id);
 
-	/* 次數 = 10 時，減少該會員點數並關閉優惠劵 */
+	/* 撤銷訂單時次數 = 10 時，減少該會員點數並關閉優惠劵 */
 	@Modifying
 	@Transactional
 	@Query(value = "UPDATE members SET order_count = order_count - 1,"
 			+ "is_discount = false "
 			+ "WHERE id = ?1 AND order_count = 10 AND is_discount = true", nativeQuery = true)
 	public int reducePointClose(int id);
+	
+	/* 還原優惠券與點數邏輯(該訂單有使用優惠劵) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE members " +
+	               "SET is_discount = true, order_count = 10 " +
+	               "WHERE id = ?1", nativeQuery = true)
+	int restoreCouponAndPoints(int id);
 
-	/* 撤銷訂單時回扣點數(會自己判斷，類似switch 或 if-else if) */
+	/* 撤銷訂單時回扣次數(會自己判斷，類似switch 或 if-else if)(該訂單未使用優惠劵) */
 	/*
 	 * CASE WHEN 條件1 THEN 結果1 WHEN 條件2 THEN 結果2 ELSE 預設結果 END
 	 */

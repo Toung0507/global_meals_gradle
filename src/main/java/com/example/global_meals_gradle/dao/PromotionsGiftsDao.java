@@ -79,6 +79,7 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     /* 更新贈品兌換次數 */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE promotions_gifts SET quantity = quantity -1 WHERE id = ?1 AND is_active = 1 AND quantity > 0", nativeQuery = true)
-    public int reduceGiftQuota(int id);
+    @Query(value = "UPDATE promotions_gifts SET quantity = quantity -1 WHERE promotions_id = ?1 "
+    		+ "And gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
+    public int reduceGiftQuota(int promotionsId, int giftProductId);
 }

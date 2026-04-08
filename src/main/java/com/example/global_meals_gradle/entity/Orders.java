@@ -53,6 +53,9 @@ public class Orders {
 	@Column(name = "completed_at")
 	private LocalDateTime completedAt;
 	
+	@Column(name = "is_use_discount")
+	private boolean useDiscount;
+	
 	public String getId() {
 		return id;
 	}
@@ -157,4 +160,11 @@ public class Orders {
 		this.completedAt = completedAt;
 	}
 
+	public boolean isUseDiscount() {
+		return useDiscount;
+	}
+
+	public void setUseDiscount(boolean useDiscount) {
+		this.useDiscount = useDiscount;
+	}
 }

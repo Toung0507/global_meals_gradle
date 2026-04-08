@@ -35,7 +35,7 @@ public class CreateOrdersReq {
 	
 	private boolean isUseDiscount;   // 判斷有無使用優惠劵
 	
-	private int promotionsId;  // 判斷參加的活動id
+	private int promotionsId;  // 判斷參加的優惠活動id
 
 	public String getOrderCartId() {
 		return orderCartId;
