@@ -387,6 +387,19 @@ public class OrdersService {
 					throw new RuntimeException("庫存版本衝突，準備重試");
 				}
 			}
+			
+			// ====== 執行贈品配額扣除 ======
+			if (!giftProductIds.isEmpty()) {
+			    for (Integer giftId : giftProductIds) {
+			        // 執行原子扣除
+			        int affectedGiftRows = promotionsGiftsDao.reduceGiftQuota(giftId);
+			        
+			        if (affectedGiftRows == 0) {
+			            // 代表這秒鐘剛好被別人領完了
+			            throw new RuntimeException("很抱歉，贈品已全數兌換完畢");
+			        }
+			    }
+			}
 
 			// ====== 會員邏輯(點數處理) ======
 			// 判斷是會員(> 1)還是訪客(= 1)

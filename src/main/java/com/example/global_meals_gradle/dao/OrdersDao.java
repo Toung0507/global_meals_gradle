@@ -22,7 +22,8 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Modifying
 	@Transactional
 	@Query(value = "INSERT INTO orders (id, order_date_id, order_cart_id, global_area_id, member_id, phone, "
-			+ " subtotal_before_tax, tax_amount, total_amount) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", nativeQuery = true)
+			+ " subtotal_before_tax, tax_amount, total_amount) "
+			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", nativeQuery = true)
 	public void insert(String id, String orderDateId, String orderCartId, int globalAreaId, int memberId, String phone, //
 			BigDecimal subtotalBeforeTax, //
 			BigDecimal taxAmount, BigDecimal totalAmount);
@@ -32,11 +33,13 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	// 查詢到的這筆資料會被鎖住
 	// Optional: 如果當天還沒有人下單（第一筆），它會回傳 Optional.empty()，你的 Service 就可以判斷 isPresent()
 	// 來給出第一個號碼 0001。
-	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 ORDER BY id DESC LIMIT 1 FOR UPDATE", nativeQuery = true)
+	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 ORDER BY id DESC LIMIT 1 FOR UPDATE",
+			nativeQuery = true)
 	public Optional<Orders> getOrderByOrderDateId(String orderDateId);
 
 	/* 根據電話號碼查詢最新的一筆訂單 */
-	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND phone = ?2 ORDER BY id DESC LIMIT 1", nativeQuery = true)
+	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND phone = ?2 ORDER BY id DESC LIMIT 1", 
+			nativeQuery = true)
 	public GetOrdersVo getOrderByPhone(String orderDateId, String phone);
 
 	/* 依據訂單編號查詢該筆訂單 */

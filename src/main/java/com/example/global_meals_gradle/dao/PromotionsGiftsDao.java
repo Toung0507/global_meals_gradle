@@ -66,6 +66,7 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     /* 根據商品id取的門檻資料 */
     @Query(value = "SELECT full_amount FROM promotions_gifts WHERE gift_product_id = ?1 AND is_active = 1", nativeQuery = true)
     public BigDecimal findFullAmountByGiftProductId(int giftProductId);
+    
     /* 
      * 根據「贈品商品 ID」找到對應的上架規則 
      *  用途：在 selectGift() 裡驗證使用者選的贈品是否還有效
@@ -74,4 +75,10 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     @Query(value = "SELECT * FROM promotions_gifts WHERE gift_product_id = ?1 AND is_active = 1",
             nativeQuery = true)
      PromotionsGifts findActiveRuleByGiftProductId(int giftProductId);
+    
+    /* 更新贈品兌換次數 */
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE promotions_gifts SET quantity = quantity -1 WHERE id = ?1 AND is_active = 1 AND quantity > 0", nativeQuery = true)
+    public int reduceGiftQuota(int id);
 }

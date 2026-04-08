@@ -34,6 +34,8 @@ public class CreateOrdersReq {
 	private List<OrderCartDetails> OrderCartDetailsList;
 	
 	private boolean isUseDiscount;   // 判斷有無使用優惠劵
+	
+	private int promotionsId;  // 判斷參加的活動id
 
 	public String getOrderCartId() {
 		return orderCartId;
@@ -105,5 +107,13 @@ public class CreateOrdersReq {
 
 	public void setUseDiscount(boolean isUseDiscount) {
 		this.isUseDiscount = isUseDiscount;
+	}
+
+	public int getPromotionsId() {
+		return promotionsId;
+	}
+
+	public void setPromotionsId(int promotionsId) {
+		this.promotionsId = promotionsId;
 	}
 }
