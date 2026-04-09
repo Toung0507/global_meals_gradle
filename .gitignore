@@ -33,3 +33,6 @@ out/
 
 # 系統檔案
 HELP.md
+
+# Rate API Key 設定檔
+application-secrets.properties
