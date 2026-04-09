@@ -130,7 +130,7 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     List<PromotionsGifts> findAllActiveGiftsOrdered();
 
 	@Query("SELECT g.fullAmount FROM PromotionsGifts g WHERE g.giftProductId = :giftProductId AND g.active = true")
-    BigDecimal findFullAmountByGiftProductId(@Param("giftProductId") int giftProductId);
+	BigDecimal findFullAmountByGiftProductId(@Param("giftProductId") int giftProductId);
 	
 
 }
