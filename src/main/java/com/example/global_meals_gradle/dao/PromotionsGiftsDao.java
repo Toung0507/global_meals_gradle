@@ -55,4 +55,24 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 		    + "AND prom.start_time <= CURRENT_DATE "
 		    + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
 		PromotionsGifts findActiveRuleByGiftProductId(int giftProductId);
+
+// 根據「活動 ID」撈出這個活動底下所有上架的贈品規則
+// 使用時機：CartService 步驟4，確認了某個活動後，找這個活動底下有哪些贈品可以送
+	@Query(value = "SELECT * FROM promotions_gifts WHERE promotions_id = ?1 AND is_active = 1",
+	       nativeQuery = true)
+	List<PromotionsGifts> findGiftsByPromotionId(int promotionId);
+
+// 根據「贈品規則 ID（主鍵）」找到對應的上架有效規則
+// 使用時機：selectGift()，前端傳來 giftRuleId，後端用主鍵精準定位這條規則
+// 同時 JOIN promotions 確認這條規則對應的活動是否仍在有效期間內且啟用
+// 任一條件不符合就回傳 null
+	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
+	        + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
+	        + "WHERE gifts.id = ?1 "
+	        + "AND gifts.is_active = 1 "
+	        + "AND prom.is_active = 1 "
+	        + "AND prom.start_time <= CURRENT_DATE "
+	        + "AND prom.end_time >= CURRENT_DATE",
+	        nativeQuery = true)
+	PromotionsGifts findActiveRuleByGiftRuleId(int giftRuleId);
 }

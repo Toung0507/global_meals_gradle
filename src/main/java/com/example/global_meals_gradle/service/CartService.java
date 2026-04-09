@@ -38,6 +38,8 @@ public class CartService {
 	private GlobalAreaDao globalAreaDao;
 	@Autowired
 	private RegionsDao regionsDao;
+	@Autowired
+	private PromotionsDao promotionsDao; // 用來撈上架中且在有效期間內的活動清單
 
 //	核心 API 1:同步購物車，包括刪除單品
 //	 前端呼叫時機：使用者改了數量且「停手 1 秒後」（Debounce 防抖邏輯）
@@ -103,7 +105,7 @@ public class CartService {
 				newDetail.setOrderCartId(currentCartId);
 				newDetail.setProductId(req.getProductId());
 //				 🚨 【大腦呼叫倉庫】去 Products 表查一下這個商品到底多少錢？
-//				 思云有協助修改 -- 有問題問
+
 				Products product = productsDao.findById(req.getProductId());
 //				  商品不存在或已下架，拋例外讓前端知道
 				if (product == null || !product.isActive()) {
@@ -136,85 +138,83 @@ public class CartService {
 	}
 
 //     API 3：使用者選擇贈品
-//     selectedGiftProductId = null → 選「不要贈品」
-//     selectedGiftProductId > 0    → 選了某個贈品
-
+//     前端傳來 giftRuleId（promotions_gifts 主鍵），後端精準定位贈品規則
+//     若使用者直接點「確認下單」而未選贈品，前端不會呼叫此 API
 	@Transactional
 	public CartViewRes selectGift(CartSelectGiftReq req) {
-		/*
-		 * 步驟 1：先把舊贈品全部清掉（避免一個人有兩份贈品），因為這個方法後面用的是： 客人選「不要」？ 👉 砍掉舊的（完成），結束。 客人選「換一個」？ 👉
-		 * 砍掉舊的，建一個新的，結束。 OrderCartDetails giftDetail = new OrderCartDetails();
-		 * orderCartDetailsDao.save(giftDetail); 資料庫不知道「客人現在是要把剛剛的牛肉湯 換成 大盤雞」，
-		 * 資料庫只會覺得「老闆又叫我 加入 了一個大盤雞到購物車」，所以換一個贈品後是購物車列表顯示多個 贈品。這裡不用更換贈品而是直接刪除所有贈品的原因是：
-		 * 如果前一個客人因為某種 Bug 一次有兩個贈品卡在裡面，你只更新一筆， Bug 還是會殘留。如果要選「不要贈品」，還要寫另一套邏輯去刪除。
-		 */
 
+//		步驟1：先把購物車裡舊的贈品全部清掉（確保購物車只有一個贈品）
 		orderCartDetailsDao.deleteAllGiftsByCartId(req.getCartId());
-//		步驟2-0：客人到底有沒有選：因為是Null的話就你不用在if下繼續了，直接return viewres
-		Integer selectedId = req.getSelectedGiftProductId();
-		if (selectedId != null && selectedId > 0) {
-//	             使用者選了一個實際的贈品，進行一連串驗證
-//	             2-1. 這一塊的作用是在檢查2裡面用的：重算小計，確認消費金額真的達標，所以要去撈資料庫購物車的所有商品+贈品明細算錢
-			List<OrderCartDetails> allDetails = orderCartDetailsDao.findAllByCartId(req.getCartId());
-//			一個 for 迴圈，跳過贈品（isGift()），把每筆的單價 × 數量加起來
-			BigDecimal subtotal = BigDecimal.ZERO;
-			for (OrderCartDetails d : allDetails) {
-				if (!d.isGift()) {
-					/*
-					 * BigDecimal.valueOf(...)：這是 BigDecimal 類別提供的一個靜態工廠方法。 它的作用是將傳入的數值轉換成一個
-					 * BigDecimal 物件，以便進行精確的數學計算。
-					 */
 
-					subtotal = subtotal.add(d.getPrice().multiply(BigDecimal.valueOf(d.getQuantity())));
-				}
-			}
-//	             2-2. 檢查1： promotions_gifts 表查一查資料庫裡有沒有選中的贈品對應的贈品規則
-			PromotionsGifts giftRule = promotionsGiftsDao.findActiveRuleByGiftProductId(selectedId);
+//		步驟2-0：取得前端傳來的贈品規則 ID
+		int giftRuleId = req.getGiftRuleId();
+
+//		giftRuleId > 0 才代表使用者選了贈品（int 型別缺少時預設是 0）
+		if (giftRuleId > 0) {
+
+//			步驟2-1：用 giftRuleId 主鍵精準查詢這條贈品規則
+//			findActiveRuleByGiftRuleId 會同時 JOIN promotions 表
+//			確保：規則上架 + 對應活動上架且在有效期間內，否則回傳 null
+			PromotionsGifts giftRule = promotionsGiftsDao.findActiveRuleByGiftRuleId(giftRuleId);
+
+//			步驟2-2：確認這條規則存在且有效
 			if (giftRule == null) {
-//	                 此贈品規則不存在或已下架，要回傳錯誤：new 一個 CartViewRes，setCode，setMessage，return 它
 				CartViewRes err = new CartViewRes();
 				err.setCode(ReplyMessage.GIFT_NOT_AVAILABLE.getCode());
 				err.setMessage(ReplyMessage.GIFT_NOT_AVAILABLE.getMessage());
 				return err;
 			}
-//	             2-3. 檢查2：確認消費額有達到門檻
-//			用檢查1裡面的重新計算出來的小計subtotal去和fullamount比較
+
+//			步驟2-3：從規則物件直接取得贈品的商品 ID（不依賴前端傳值，從資料庫取更安全）
+			int giftProductId = giftRule.getGiftProductId();
+
+//			步驟2-4：重新計算購物車小計，確認消費額仍然達標
+			List<OrderCartDetails> allDetails = orderCartDetailsDao.findAllByCartId(req.getCartId());
+			BigDecimal subtotal = BigDecimal.ZERO;
+			for (OrderCartDetails d : allDetails) {
+				if (!d.isGift()) {
+					subtotal = subtotal.add(d.getPrice().multiply(BigDecimal.valueOf(d.getQuantity())));
+				}
+			}
+
+//			步驟2-5：確認消費額達到這條規則的門檻
 			if (subtotal.compareTo(giftRule.getFullAmount()) < 0) {
 				CartViewRes err = new CartViewRes();
 				err.setCode(ReplyMessage.NOT_REACH_FULLAMOUNT.getCode());
 				err.setMessage(ReplyMessage.NOT_REACH_FULLAMOUNT.getMessage());
 				return err;
 			}
-//	             2-4.檢查3： 確認贈品庫存（-1=無限量，0=已送完）
+
+//			步驟2-6：確認贈品行銷名額還夠（-1=無限量，0=已送完，>0=還有名額）
 			if (giftRule.getQuantity() == 0) {
 				CartViewRes err = new CartViewRes();
 				err.setCode(ReplyMessage.GIFT_SEND_LIGHT.getCode());
 				err.setMessage(ReplyMessage.GIFT_SEND_LIGHT.getMessage());
 				return err;
 			}
-			/*
-			 * 2-5. 檢查4：確認贈品作為商品本身上架並且存在在商品表中,因為贈品頁是商品，可能不選贈品，所以會是Null, 用內建的方法重寫了findById方法
-			 * orElse(null)它的意思就是「如果盒子裡有商品就拿出來， 如果沒查到任何東西（或你傳了 Null 給它）就回傳 null
-			 */
 
-			Products giftProduct = productsDao.findById(selectedId).orElse(null);
+//			步驟2-7：確認這個贈品商品在商品表裡還是上架的
+//			用 giftProductId（從規則物件取的），不是從前端取的
+			Products giftProduct = productsDao.findById(giftProductId);
 			if (giftProduct == null || !giftProduct.isActive()) {
 				CartViewRes err = new CartViewRes();
 				err.setCode(ReplyMessage.GIFT_NOT_AVAILABLE.getCode());
 				err.setMessage(ReplyMessage.GIFT_NOT_AVAILABLE.getMessage());
 				return err;
 			}
-//	             2-6. 全部通過！把贈品寫進購物車明細
+
+//			步驟2-8：全部驗證通過！把贈品寫進購物車明細
 			OrderCartDetails giftDetail = new OrderCartDetails();
 			giftDetail.setOrderCartId(req.getCartId()); // 關聯購物車
-			giftDetail.setProductId(selectedId); // 贈品的商品 ID
-			giftDetail.setPrice(BigDecimal.ZERO); // 贈品 0 元
-			giftDetail.setQuantity(1); // 固定送 1 份
-			giftDetail.setGift(true); // 標記為贈品
-			giftDetail.setDiscountNote("滿額贈"); // 說明來源
-			orderCartDetailsDao.save(giftDetail); // INSERT 進資料庫
+			giftDetail.setProductId(giftProductId);      // 贈品商品 ID（從規則取）
+			giftDetail.setPrice(BigDecimal.ZERO);         // 贈品 0 元
+			giftDetail.setQuantity(1);                    // 固定送 1 份
+			giftDetail.setGift(true);                     // 標記為贈品
+			giftDetail.setDiscountNote("滿額贈");          // 說明來源
+			orderCartDetailsDao.save(giftDetail);         // INSERT 進資料庫
 		}
-//顧客若是選擇不要贈品，先清空資料庫已選的贈品外後不會進入if，直接到這裡
+
+//		步驟3：重新結算整台購物車並回傳
 		return getCartView(req.getCartId(), req.getMemberId());
 	}
 
@@ -342,47 +342,131 @@ public class CartService {
 				warningMessages.add("贈品資格已失效（消費金額不足或贈品已下架），請重新選擇");
 			}
 		}
-//	         ── 步驟 4：如果不進入上面的if，就會到這裡也就是還沒有選贈品的時候：在步驟2裡我計算出了正確的小計，現在建立「可選贈品的清單」 ──
-		List<AvailableGiftVO> availableGifts = new ArrayList<>();
-//		把所有上架的贈品活動撈出來
-		List<PromotionsGifts> activeGiftRules = promotionsGiftsDao.findAllActiveGifts();
-//		逐一審查每條規則：-1.看消費達到了哪些規則門檻-2.遍歷每條達到門檻的規則的情況下，裡面的贈品是否在商品表存在並且還是上架
-		for (PromotionsGifts rule : activeGiftRules) {
-			if (subtotal.compareTo(rule.getFullAmount()) >= 0) {
-	    /*消費金額達到此規則的門檻，就將AvailableGiftVO加入可選清單，只不過如果規則對應的贈品1.如過在商品表裡是
-	     * 下架或者Null,2.贈品名額沒了3.贈品名額有，商品表裡的贈品存在並上架，這三種情況的
-	     * AvailableGiftVO的GiftProductName、Available、UnavailableReason設置不同
-	     * 最後就是依次判斷後加入贈品列表裡
-	     */
-				AvailableGiftVO option = new AvailableGiftVO();
-				option.setGiftRuleId(rule.getId());
-				option.setGiftProductId(rule.getGiftProductId());
-				option.setFullAmount(rule.getFullAmount());
+	//  ── 步驟 4：建立「以活動為單位」的兩層可選贈品清單 ──
 
-//				根據贈品表的gift_product_id去商品表查詢贈品在商品表的資訊
-				Products giftAsProd = productsDao.findById(rule.getGiftProductId());
-				if (giftAsProd == null || !giftAsProd.isActive()) {
-//	                     贈品商品已下架，前端顯示為灰色不可點
-					String gName = (giftAsProd != null) ? giftAsProd.getName() : "贈品 #" + rule.getGiftProductId();
-					option.setGiftProductName(gName);
-					option.setAvailable(false);
-					option.setUnavailableReason("「" + gName + "」已下架");
-				}
-				else if (rule.getQuantity() == 0) {
-//	                     贈品已送完，前端顯示為灰色不可點
-					option.setGiftProductName(giftAsProd.getName());
-					option.setAvailable(false);
-					option.setUnavailableReason("「" + giftAsProd.getName() + "」贈品已送完");
-				} 
-				else {
-//	                     可以選
-					option.setGiftProductName(giftAsProd.getName());
-					option.setAvailable(true);
-					option.setUnavailableReason(null);
-				}
-				availableGifts.add(option);
-			}
+		// 外層清單：裝「使用者有資格參加的活動」
+		// 最後這個清單會被設定進 res.setAvailablePromotions()
+		// 空清單代表消費未達任何活動門檻，前端不顯示「選擇活動」按鈕
+		List<AvailablePromotionVO> availablePromotions = new ArrayList<>();
+
+		// 去資料庫撈出所有目前上架且在有效時間範圍內的活動（完整物件，含 id 和 name）
+		List<Promotions> activePromotions = promotionsDao.findActivePromotions();
+
+		// 逐一審查每個活動，看使用者的消費有沒有資格進入
+		for (Promotions promotion : activePromotions) {
+
+		    // 撈出「這個活動」底下所有上架的贈品規則
+		    // promotions_id = promotion.getId() → 是後端自己迴圈取的，跟前端無關
+		    List<PromotionsGifts> giftsInThisPromotion =
+		            promotionsGiftsDao.findGiftsByPromotionId(promotion.getId());
+
+		    // 如果這個活動底下沒有任何贈品規則（活動建了但沒設贈品），直接跳過
+		    // 前端：這個活動完全不出現在下拉選單裡
+		    if (giftsInThisPromotion.isEmpty()) {
+		        continue; // 跳過，進入 for 迴圈下一輪
+		    }
+
+		    // 找出這個活動底下「門檻最低的那條規則的金額」
+		    // 目的：使用者消費只要達到最低門檻，就算「有資格進入這個活動」
+		    // 進入後，活動底下的每個贈品會再各自判斷使用者能不能選
+
+		    // 先設為 null，代表還沒找到任何值
+		    BigDecimal minFullAmount = null;
+
+		    // 逐一比較每條贈品規則的門檻金額，找最小值
+		    for (PromotionsGifts rule : giftsInThisPromotion) {
+		        BigDecimal thisAmount = rule.getFullAmount(); // 這條規則的門檻金額
+		        if (minFullAmount == null) {
+		            // 第一次進來，還沒有比較對象，先把第一條的金額當暫時最小值
+		            minFullAmount = thisAmount;
+		        } else if (thisAmount.compareTo(minFullAmount) < 0) {
+		            // compareTo 回傳負數 → thisAmount 比 minFullAmount 還要小
+		            // → 發現更小的門檻，更新 minFullAmount
+		            minFullAmount = thisAmount;
+		        }
+		    }
+
+		    // 保險機制：理論上走到這裡 minFullAmount 不會是 null
+		    // （因為上面 isEmpty() 已排除空清單）
+		    // 但萬一發生，給 0 作為預設，防止下面 compareTo(null) 噴 NullPointerException
+		    if (minFullAmount == null) {
+		        minFullAmount = BigDecimal.ZERO;
+		    }
+
+		    // 判斷使用者消費小計有沒有達到這個活動的最低門檻
+		    if (subtotal.compareTo(minFullAmount) < 0) {
+		        // subtotal < minFullAmount → 消費不達標 → 跳過整個活動
+		        // 前端：這個活動不出現在下拉選單（沒有「選擇活動」按鈕）
+		        continue;
+		    }
+
+		    // ── 使用者達到這個活動的最低門檻！開始組裝這個活動底下的贈品清單 ──
+
+		    // 內層清單：裝「這個活動底下每個贈品選項的狀況」
+		    List<AvailableGiftVO> giftsVoList = new ArrayList<>();
+
+		    // 逐一審查這個活動底下的每條贈品規則
+		    for (PromotionsGifts rule : giftsInThisPromotion) {
+
+		        // 確認使用者消費有沒有達到「這條贈品規則」自己的門檻
+		        // 同一個活動可能有不同門檻：滿300送可樂、滿500才能選大盤雞
+		        // 使用者消費400 → 能選可樂，但不能選大盤雞
+		        if (subtotal.compareTo(rule.getFullAmount()) < 0) {
+		            continue; // 這條規則的門檻消費者達不到，跳過這個贈品
+		        }
+
+		        // 消費達到這條規則！開始組裝這個贈品的 VO
+		        AvailableGiftVO option = new AvailableGiftVO();
+		        option.setGiftRuleId(rule.getId());                // promotions_gifts 主鍵
+		        option.setGiftProductId(rule.getGiftProductId());  // 贈品的商品 ID
+		        option.setFullAmount(rule.getFullAmount());         // 這條規則的消費門檻
+
+		        // 去商品表查這個贈品商品的狀態（是否存在、是否上架）
+		        // rule.getGiftProductId() 是 promotions_gifts.gift_product_id 的值
+		        // 後端用它去 products 表拿完整的商品資訊（名稱、上架狀態等）
+		        Products giftAsProd = productsDao.findById(rule.getGiftProductId());
+
+		        if (giftAsProd == null || !giftAsProd.isActive()) {
+		            // 情況1：贈品商品已下架或被刪除
+		            // 前端：這個贈品顯示為灰色不可點，旁邊顯示原因
+		            String gName = (giftAsProd != null)
+		                    ? giftAsProd.getName()
+		                    : "贈品 #" + rule.getGiftProductId(); // 被刪除了就用ID代替名字
+		            option.setGiftProductName(gName);
+		            option.setAvailable(false);                   // false → 前端灰色不可選
+		            option.setUnavailableReason("「" + gName + "」已下架");
+
+		        } else if (rule.getQuantity() == 0) {
+		            // 情況2：這條規則的贈品行銷名額已送完
+		            // quantity = 0 → 送完了（-1 = 無限量，> 0 = 還有名額）
+		            // 前端：這個贈品顯示為灰色不可點，旁邊顯示已送完
+		            option.setGiftProductName(giftAsProd.getName());
+		            option.setAvailable(false);
+		            option.setUnavailableReason("「" + giftAsProd.getName() + "」贈品已送完");
+
+		        } else {
+		            // 情況3：一切正常，這個贈品可以選
+		            // 前端：正常顯示，使用者可以點選
+		            option.setGiftProductName(giftAsProd.getName());
+		            option.setAvailable(true);
+		            option.setUnavailableReason(null); // null → 沒有問題
+		        }
+
+		        // 把這個贈品選項加入這個活動的贈品清單
+		        giftsVoList.add(option);
+		    }
+
+		    // 組裝這個活動的外層 VO
+		    AvailablePromotionVO promotionVO = new AvailablePromotionVO();
+		    promotionVO.setPromotionId(promotion.getId());        // 活動 ID
+		    promotionVO.setPromotionName(promotion.getName());    // 活動名稱（前端下拉顯示）
+		    promotionVO.setFullAmount(minFullAmount);             // 這個活動的最低消費門檻
+		    promotionVO.setGifts(giftsVoList);                   // 這個活動底下的所有贈品選項
+
+		    // 把這個活動加入外層清單
+		    availablePromotions.add(promotionVO);
 		}
+
 //	         ── 步驟 5：查稅務設定並計算稅額 ──
 		TaxInfoVO taxInfo = new TaxInfoVO();
 		BigDecimal totalAmount = subtotal; // 預設（無稅設定時/內含稅）：總計 = 小計
@@ -390,9 +474,9 @@ public class CartService {
 		if (area != null) {
 			Regions region = regionsDao.findByCountry(area.getCountry());
 			if (region != null) {
-				taxInfo.setTaxRate(region.getTaxRate()); 
+				taxInfo.setTaxRate(region.getTaxRate());
 //				如果它原本是 TaxType.EXCLUSIVE 的enum物件。加上 .name() 後，它身上的一層皮就被剝下來，變成純粹的英文字串 "EXCLUSIVE"。
-				taxInfo.setTaxType(region.getTaxType().name()); 
+				taxInfo.setTaxType(region.getTaxType().name());
 				BigDecimal taxAmount;
 				if (region.getTaxType() == TaxType.EXCLUSIVE) {
 //	                     外加稅：稅額 = 小計 × 稅率，總計 = 小計 + 稅額
@@ -408,17 +492,19 @@ public class CartService {
 			}
 		}
 //	         ── 步驟 6：打包所有結果回傳 ──
-		/*voList就是cartItem（包括贈品）的list
-		 * availableGifts是 可選贈品下拉清單
-		 * subtotal是小計，taxInfo是稅務資訊，totalAmount是最終總計，
+		/*
+		 * voList就是cartItem（包括贈品）的list
+		 * availablePromotions是 以活動為單位的兩層可選贈品清單
+		 * subtotal是小計，taxInfo是稅務資訊，totalAmount是最終總計
 		 * warningMessages警告訊息（空清單代表一切正常）
 		 */
+
 		res.setItems(voList);
 		res.setSubtotal(subtotal);
-		res.setAvailableGifts(availableGifts); 
-		res.setTaxInfo(taxInfo); 
-		res.setTotalAmount(totalAmount); 
-		res.setWarningMessages(warningMessages); 
+		res.setAvailablePromotions(availablePromotions);
+		res.setTaxInfo(taxInfo);
+		res.setTotalAmount(totalAmount);
+		res.setWarningMessages(warningMessages);
 		res.setCode(ReplyMessage.SUCCESS.getCode());
 		res.setMessage(ReplyMessage.SUCCESS.getMessage());
 		return res;

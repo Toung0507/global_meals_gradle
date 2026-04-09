@@ -83,15 +83,15 @@ public class CartController {
 	}
 
 	
-   /* API 4：使用者選擇贈品（或選「不要贈品」）
-	* HTTP Method：POST（有寫入操作）
-	* URL：POST /cart/gift
-	*前端呼叫時機：使用者從贈品下拉列表選擇了一個選項後點擊確認
-	* 前端 Body 範例 1（選了大盤雞）：{ "cartId": 7, "memberId": 3, "selectedGiftProductId":
-	* 101 }
-	* 前端 Body 範例 2（不要贈品）： { "cartId": 7, "memberId": 3, "selectedGiftProductId":
-	* null }
-	*/
+	   /* API 4：使用者選擇贈品
+		* HTTP Method：POST（有寫入操作）
+		* URL：POST /cart/gift
+		* 前端呼叫時機：使用者從贈品清單選擇了一個贈品後點擊確認
+		* 若使用者直接點「確認下單」而未選任何贈品，前端不呼叫此 API，
+		* 代表使用者選擇不領取贈品，後端不會寫入任何贈品明細。
+		* 前端 Body 範例（選了大盤雞）：{ "cartId": 7, "memberId": 3, "selectedGiftProductId": 101 }
+		*/
+
 	@PostMapping("cart/gift")
 	public CartViewRes selectGift(@Valid @RequestBody CartSelectGiftReq req) {
 		return cartService.selectGift(req);
