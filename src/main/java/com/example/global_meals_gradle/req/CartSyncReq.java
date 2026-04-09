@@ -1,5 +1,7 @@
 package com.example.global_meals_gradle.req;
 
+import com.example.global_meals_gradle.constants.ValidationMsg;
+
 import jakarta.validation.constraints.Min;
 
 /** 同步購物車商品（加入商品 / 更改數量（包括刪除單一商品） */
@@ -19,19 +21,19 @@ public class CartSyncReq {
 	private Integer globalAreaId;
 
 	// 商品ID必填（必須是正整數）；用 int 讓 Spring 無法偷塞 null，@Min(1) 擋掉 0 和負數
-	@Min(value = 1, message = "商品 ID 必須大於 0")
+	@Min(value = 1, message = ValidationMsg.PRODUCT_ID_MUST_BE_POSITIVE)
 	private int productId;
 
-	@Min(value = 0, message = "數量不能為負數")
+	@Min(value = 0, message = ValidationMsg.QUANTITY_CANT_BE_NEGATIVE)
 	private int quantity;
 
 	private String operationType;
 
 	// 只要這個欄位在某些情境下會是空的（沒有值），我們就必須用大寫的 Integer，如果用 int ，是用0去撈資料
 	private Integer staffId;
-	
-	// 訪客
-	private Integer memberId;
+
+	// 訪客也一定會傳過來，所以不可能是null
+	private int memberId;
 
 	public Integer getCartId() {
 		return cartId;
@@ -81,11 +83,11 @@ public class CartSyncReq {
 		this.staffId = staffId;
 	}
 
-	public Integer getMemberId() {
+	public int getMemberId() {
 		return memberId;
 	}
 
-	public void setMemberId(Integer memberId) {
+	public void setMemberId(int memberId) {
 		this.memberId = memberId;
 	}
 

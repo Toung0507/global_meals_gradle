@@ -24,4 +24,13 @@ public interface PromotionsDao extends JpaRepository<Promotions, Integer> {
                    "AND end_time >= CURRENT_DATE", nativeQuery = true)
     List<Integer> findActivePromotionIds();
 
+// 撈出所有目前有效（上架中且在時間範圍內）的活動，回傳完整 Promotions 物件（含 id 和 name）
+// 與 findActivePromotionIds() 的差別：這個回傳完整物件，可以取得活動名稱
+// 使用時機：CartService 步驟4，組裝活動下拉清單時需要活動名稱填入 AvailablePromotionVO
+    @Query(value = "SELECT * FROM promotions " +
+                   "WHERE is_active = 1 " +
+                   "AND start_time <= CURRENT_DATE " +
+                   "AND end_time >= CURRENT_DATE", nativeQuery = true)
+    List<Promotions> findActivePromotions();
+
 }
