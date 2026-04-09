@@ -21,8 +21,7 @@ public interface OrderCartDetailsDao extends JpaRepository<OrderCartDetails, Int
 	@Query(value = "SELECT * FROM order_cart_details WHERE order_cart_id = ?1", nativeQuery = true)
 	public List<OrderCartDetails> findAllByCartId(int orderCartId);
 
-	// 把 7 號車裡標記為『贈品(is_gift=true)』的東西全刪了,因為加點的情況下，滿 500 送紅茶，滿 1000
-	// 送酸辣湯，不把舊的贈品刪掉重新算滿額贈，就會兩個贈品都送
+	// 把 7 號車裡標記為『贈品(is_gift=true)』的東西全刪了
 	@Modifying
 	@Transactional
 	@Query(value = "DELETE FROM order_cart_details WHERE order_cart_id = ?1 AND is_gift = true", nativeQuery = true)

@@ -18,10 +18,10 @@ public class CartViewRes extends BasicRes {
 	/** 稅前應付總額（所有商品 LineTotal 的總和，必須排除贈品價格） */
 	private BigDecimal subtotal;
 
-	// 使用者「有資格可以選」的贈品清單（下拉列表的選項來源）
-	// 只有當 subtotal >= 某個門檻時，才會有資料
-	// 如果消費金額達不到任何門檻，這個清單是空的，前端不顯示下拉列表
-	private List<AvailableGiftVO> availableGifts;
+	// 使用者「有資格參加」的活動清單（兩層結構：第一層是活動，第二層是各活動的贈品選項）
+	// 空清單 [] → 消費金額達不到任何活動門檻 → 前端不顯示「選擇活動」按鈕
+	// 有資料   → 前端顯示「選擇活動」按鈕，按下後展開活動下拉選單
+	private List<AvailablePromotionVO> availablePromotions;
 
 	// 稅務資訊（稅率、稅的類型、稅額）
 	// 如果這台購物車的分店沒有稅務設定，這個欄位是 null
@@ -77,12 +77,13 @@ public class CartViewRes extends BasicRes {
 		this.subtotal = subtotal;
 	}
 
-	public List<AvailableGiftVO> getAvailableGifts() {
-		return availableGifts;
+	// 新版：回傳「以活動為單位」的兩層巢狀結構
+	public List<AvailablePromotionVO> getAvailablePromotions() {
+		return availablePromotions;
 	}
 
-	public void setAvailableGifts(List<AvailableGiftVO> availableGifts) {
-		this.availableGifts = availableGifts;
+	public void setAvailablePromotions(List<AvailablePromotionVO> availablePromotions) {
+		this.availablePromotions = availablePromotions;
 	}
 
 	public TaxInfoVO getTaxInfo() {
