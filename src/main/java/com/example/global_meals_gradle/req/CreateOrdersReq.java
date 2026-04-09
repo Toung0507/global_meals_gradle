@@ -33,7 +33,7 @@ public class CreateOrdersReq {
 	@Valid // 這樣才會去檢查 OrderCartDetails 類別裡面的標註
 	private List<OrderCartDetails> OrderCartDetailsList;
 	
-	private boolean isUseDiscount;   // 判斷有無使用優惠劵
+	private boolean useDiscount;   // 判斷有無使用優惠劵
 	
 	private int promotionsId;  // 判斷參加的優惠活動id
 
@@ -102,11 +102,11 @@ public class CreateOrdersReq {
 	}
 
 	public boolean isUseDiscount() {
-		return isUseDiscount;
+		return useDiscount;
 	}
 
-	public void setUseDiscount(boolean isUseDiscount) {
-		this.isUseDiscount = isUseDiscount;
+	public void setUseDiscount(boolean useDiscount) {
+		this.useDiscount = useDiscount;
 	}
 
 	public int getPromotionsId() {

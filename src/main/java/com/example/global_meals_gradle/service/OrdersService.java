@@ -154,8 +154,8 @@ public class OrdersService {
 
 			// 建立明細並塞入該訂單的 List
 			GetOrdersDetailVo detail = new GetOrdersDetailVo();
-			detail.setQuantity(((Number) row[3]).intValue()); // 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴
-																// ClassCastException
+			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
+			detail.setQuantity(((Number) row[3]).intValue());
 			detail.setPrice((BigDecimal) row[4]);
 			detail.setGift((Boolean) row[5]);
 			detail.setDiscountNote((String) row[6]);
@@ -166,7 +166,8 @@ public class OrdersService {
 		// 把 Map 的值轉換成 List
 		List<GetOrdersVo> result = new ArrayList<>(orderMap.values());
 
-		return new GetAllOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), result);
+		return new GetAllOrdersRes(ReplyMessage.SUCCESS.getCode(), //
+				ReplyMessage.SUCCESS.getMessage(), result);
 	}
 
 	/* 成立訂單: 外部呼叫的主入口：負責「高併發重試流程」 */
@@ -312,7 +313,8 @@ public class OrdersService {
 			// 處理稅額: 總額 - 小計
 			finalSubtotal = subtotal;
 			if (req.isUseDiscount()) {
-				finalSubtotal = finalSubtotal.multiply(new BigDecimal("0.8")).setScale(0, RoundingMode.UP); // 小計
+				finalSubtotal = finalSubtotal //
+						.multiply(new BigDecimal("0.8")).setScale(0, RoundingMode.UP); // 小計
 			}
 			taxAmount = afterTax.subtract(finalSubtotal);
 		} else { // 內含稅：總金額 = 小計，稅額 = 小計 - (小計 / (1 + 稅率))
@@ -331,7 +333,8 @@ public class OrdersService {
 		if (!giftProductIds.isEmpty()) { // 判斷贈品清單有沒有資料
 			for (Integer giftId : giftProductIds) {
 				// promotionGiftsDao 可以根據贈品 ID 查門檻
-				BigDecimal giftRule = promotionsGiftsDao.findFullAmountByGiftProductId(giftId);
+				BigDecimal giftRule = promotionsGiftsDao //
+						.findFullAmountByGiftProductId(req.getPromotionsId(), giftId);
 
 				if (giftRule != null) { // 如果有取得金額
 					// 2. 直接拿 total 跟這個金額比
@@ -381,24 +384,25 @@ public class OrdersService {
 				// 取得舊的版本號 (這就是你要帶入 SQL 的 ?3)
 				int oldVersion = product.getVersion();
 				// 執行「手動樂觀鎖」更新
-				int affectedRows = productsDao.updateStockWithOptimisticLock(productId, quantityToBuy, oldVersion);
+				int affectedRows = productsDao //
+						.updateStockWithOptimisticLock(productId, quantityToBuy, oldVersion);
 				// 如果回傳 0，代表這期間 version 被動過，拋出異常觸發外層重試
 				if (affectedRows == 0) {
 					throw new RuntimeException("庫存版本衝突，準備重試");
 				}
 			}
-			
+
 			// ====== 執行贈品配額扣除 ======
 			if (!giftProductIds.isEmpty()) {
-			    for (Integer giftId : giftProductIds) {
-			        // 執行原子扣除
-			        int affectedGiftRows = promotionsGiftsDao.reduceGiftQuota(req.getPromotionsId(),giftId);
-			        
-			        if (affectedGiftRows == 0) {
-			            // 代表這秒鐘剛好被別人領完了
-			            throw new RuntimeException("很抱歉，贈品已全數兌換完畢");
-			        }
-			    }
+				for (Integer giftId : giftProductIds) {
+					// 執行原子扣除
+					int affectedGiftRows = promotionsGiftsDao.reduceGiftQuota(req.getPromotionsId(), giftId);
+
+					if (affectedGiftRows == 0) {
+						// 代表這秒鐘剛好被別人領完了
+						throw new RuntimeException("很抱歉，贈品已全數兌換完畢");
+					}
+				}
 			}
 
 			// ====== 會員邏輯(點數處理) ======
@@ -410,14 +414,14 @@ public class OrdersService {
 				if (member == null) {
 					throw new RuntimeException(req.getMemberId() + "錯誤，查無會員資料");
 				}
-				int addResult = membersDao.addPoint(member.getId());  // 加次數(如果次數 < 9或 > 9 )
-				if (addResult == 0) {  // 加點失敗，可能次數剛好是 9
-		            // 次數剛好是9，加完變10 開券
-		            int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId());
-		            if (couponResult == 0) {
-		                throw new RuntimeException("會員次數更新失敗");
-		            }
-		        }
+				int addResult = membersDao.addPoint(member.getId()); // 加次數(如果次數 < 9或 > 9 )
+				if (addResult == 0) { // 加點失敗，可能次數剛好是 9
+					// 次數剛好是9，加完變10 開券
+					int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId());
+					if (couponResult == 0) {
+						throw new RuntimeException("會員次數更新失敗");
+					}
+				}
 				if (req.isUseDiscount()) { // 如果有使用優惠劵，須把它關閉、點數變1
 					int updated = membersDao.useDiscount(member.getId());
 					if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
@@ -450,14 +454,14 @@ public class OrdersService {
 					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 		}
 		// 檢查訂單狀態：只有「未付款」的訂單可以執行付款
-	    // 如果訂單已經是 COMPLETED, 則不需要重複付款
-	    if (OrdersStatus.COMPLETED.equals(order.getStatus())) {
-	        return new BasicRes(ReplyMessage.SUCCESS.getCode(), "訂單已支付完成，無需重複操作");
-	    }
-	    // 如果訂單是其他狀態（如 REFUNDED, CANCELLED），則不允許付款
-	    if (!OrdersStatus.UNPAID.equals(order.getStatus())) {
-	        return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "訂單狀態錯誤，無法付款");
-	    }
+		// 如果訂單已經是 COMPLETED, 則不需要重複付款
+		if (OrdersStatus.COMPLETED.equals(order.getStatus())) {
+			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "訂單已支付完成，無需重複操作");
+		}
+		// 如果訂單是其他狀態（如 REFUNDED, CANCELLED），則不允許付款
+		if (!OrdersStatus.UNPAID.equals(order.getStatus())) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "訂單狀態錯誤，無法付款");
+		}
 		// 新增(更新)的資料(付款方式、交易號碼、狀態)
 		ordersDao.updatePay(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), //
 				req.getTransactionId(), "COMPLETED");
@@ -492,13 +496,13 @@ public class OrdersService {
 						throw new RuntimeException("退款失敗：查無會員資料");
 					}
 					// 這裡利用你新加的欄位來判斷
-	                if (order.isUseDiscount()) {
-	                    // 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
-	                    membersDao.restoreCouponAndPoints(order.getMemberId());
-	                } else {
-	                    // 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
-	                    membersDao.smartReducePoint(order.getMemberId());
-	                }
+					if (order.isUseDiscount()) {
+						// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
+						membersDao.restoreCouponAndPoints(order.getMemberId());
+					} else {
+						// 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
+						membersDao.smartReducePoint(order.getMemberId());
+					}
 				}
 				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			} else {

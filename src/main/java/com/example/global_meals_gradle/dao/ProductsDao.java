@@ -41,13 +41,17 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	// 		+ "WHERE id = ?1 AND version = ?3", nativeQuery = true)
 	// public int updateStockWithOptimisticLock(int productsId, int newStock, int currentVersion);
 
-  // 邵穎用在雙層迴圈，改成用 JOIN 先註解不使用
+	// 邵穎用在雙層迴圈，改成用 JOIN 先註解不使用
 	// @Query(value = "select name from products where id = ?1", nativeQuery = true)
 	// public String getProductsNameById(int id);
 	
 	/*  用於訂單成立 */
 	@Query(value = "select * from products where id = ?1", nativeQuery = true)
 	public Products findById(int id);
+	
+	/*  用於訂單成立中各分店庫存查詢 */
+	@Query(value = "select * from products where id = ?1 AND　region_country　＝　？２", nativeQuery = true)
+	public Products findByIdAndRegionCountry(int id, String regionCountry);
 
 	/* 庫存減少 */
 	// stock_quantity >= ?2: 防止「沒鎖好」的意外
