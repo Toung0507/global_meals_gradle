@@ -24,6 +24,11 @@ public class ValidationMsg {
 	public static final String GLOBAL_AREA_ID_LIST_ERROR = "Global Area Id List Error!!";
 	// Req ExchangeRatesReq
 	public static final String DATE_TIME_ERROR = "Date Time Error!!";
+	// Req MembersReq
+	public static final String NAME_ERROR = "Name Error!!";
+	public static final String PASSWORD_ERROR = "Password Error!!";
+	// Req UpdatePasswordReq
+	public static final String MEMBERS_ID_ERROR = "Members Id Error!!";
 	
 	// 劭穎
 	/* 訂單 */
