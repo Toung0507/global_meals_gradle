@@ -34,12 +34,12 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	@Query(value = "UPDATE products SET deleted_at = NOW() , is_active = 0 WHERE id = ?1 ", nativeQuery = true)
 	public int softDeleteProduct(int productsId);
 
-	// 6. 扣庫存的方法 (手動實作樂觀鎖) -- > 到時候合併邵穎的寫法
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE products SET stock_quantity = ?2, version = version + 1 "
-			+ "WHERE id = ?1 AND version = ?3", nativeQuery = true)
-	public int updateStockWithOptimisticLock(int productsId, int newStock, int currentVersion);
+	//	// 6. 扣庫存的方法 (手動實作樂觀鎖) -- > 到時候合併邵穎的寫法
+	//	@Modifying
+	//	@Transactional
+	//	@Query(value = "UPDATE products SET stock_quantity = ?2, version = version + 1 "
+	//			+ "WHERE id = ?1 AND version = ?3", nativeQuery = true)
+	//	public int updateStockWithOptimisticLock(int productsId, int newStock, int currentVersion);
 
   	//邵穎用在雙層迴圈，改成用 JOIN 先註解不使用
 	@Query(value = "select name from products where id = ?1", nativeQuery = true)
