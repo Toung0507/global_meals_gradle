@@ -1,24 +1,26 @@
 package com.example.global_meals_gradle.constants;
 
 public enum ReplyMessage {
-	
+
 	// 昱文
 	// Service RegionsService
-	REGIONS_ID_ERROR(400, "Regions Id Error!!"),//
+	REGIONS_ID_ERROR(400, "Regions Id Error!!"), //
 	// Service GlobalAreaService
-	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"),//
-	
-	
-	// 劭穎
-	SUCCESS(200, "Success!!"),
-	ORDER_NOT_FOUND(400, "Order Not Found!!"),
-	STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"),
-	PRODUCT_NOT_FOUND(400, "Product Not Found!!"),
-	MEMBER_NOT_FOUND(400, "Member Not Found!!"),
-	ORDER_NUMBER_NOT_FOUND(400, "Order Number Not Found!!"),
+	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
 
-	ORDERS_STATUS_ERROR(400, "Orders Status Error!!"),
-	
+	 /* 劭頴 */
+	 SUCCESS(200, "Success!!"), 
+	 ORDER_NOT_FOUND(400, "Order Not Found!!"), 
+	 STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"),
+	 PRODUCT_NOT_FOUND(400, "Product Not Found!!"), 
+	 MEMBER_NOT_FOUND(400, "Member Not Found!!"),
+	 ORDER_NUMBER_NOT_FOUND(400, "Order Number Not Found!!"), 
+	 ORDERS_STATUS_ERROR(400, "Orders Status Error!!"),
+	 DISCOUNT_ERROR(400, "Disscount Error!!"), 
+	 MEMBER_ERROR(400, "Member ERROR!!"),
+	 TOTAL_AMOUNT_ERROR(400, "Total Amount ERROR!!"),
+	 NOT_DISCOUNT_ERROR(400, "Not Discount ERROR!!"),
+
 	// 促銷活動相關錯誤-致遠//////////
 	PROMOTION_NOT_FOUND(404, "Promotion Not Found!!"),           // 找不到符合條件的促銷活動
 	PROMOTION_GIFTS_NOT_FOUND(404, "Promotion Gift Not Found!!"), // 找不到符合條件的贈品
@@ -29,7 +31,7 @@ public enum ReplyMessage {
 	
 
 	private int code;
-	
+
 	private String message;
 
 	private ReplyMessage(int code, String message) {
@@ -52,7 +54,5 @@ public enum ReplyMessage {
 	public void setMessage(String message) {
 		this.message = message;
 	}
-	
-	
 
 }

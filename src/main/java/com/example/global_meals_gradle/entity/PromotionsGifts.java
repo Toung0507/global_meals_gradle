@@ -36,6 +36,7 @@ public class PromotionsGifts {
 	@Column(name = "is_active")
 	private boolean active = true;
 
+	
 	public int getId() {
 		return id;
 	}

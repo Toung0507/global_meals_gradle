@@ -67,7 +67,14 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	/* 訂單狀態更新 */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND date_id = :orderDateId", nativeQuery = true)
+	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND date_id = :orderDateId AND status = 'COMPLETED'", nativeQuery = true)
 	public int updateOrderStatus(@Param("status") OrdersStatus status, // AI 是說要字串型態，我有說資料庫是設ENUM
 			@Param("id") String id, @Param("order_date_id") String orderDateId);
+	
+	/* 更改總金額 */
+	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
+	public void upDateTotalAmount(String id, String orderDateId, BigDecimal totalAmount);
 }
