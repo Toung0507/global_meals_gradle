@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 public class PromotionsGifts {
 
 	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY) // 對應 DB 的 AUTO_INCREMENT，新增時由資料庫自動產生 id，不需手動設定
 	@Column(name = "id")
 	private int id;
 

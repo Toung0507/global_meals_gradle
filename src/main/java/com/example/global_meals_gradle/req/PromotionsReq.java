@@ -1,10 +1,13 @@
 package com.example.global_meals_gradle.req;
 
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 
 /**
  * 促銷活動結帳請求參數
  * 由 CartService 呼叫時傳入，包含購物車資訊、會員資訊、折扣選擇、贈品選擇
+ * 新增 POST /promotions/calculate 端點後，originalAmount 改由前端直接傳入
  */
 public class PromotionsReq {
 
@@ -32,6 +35,12 @@ public class PromotionsReq {
 	//   > 0 → 使用者有選，Service 會驗證這筆贈品是否合法後才扣減配額
 	//   = 0 → 使用者放棄選贈品，Service 跳過贈品處理
 	private int selectedGiftId;
+
+	// 購物車原始總金額：由前端計算好後傳入
+	// POST /promotions/calculate 端點使用，取代原本由 CartService 內部傳入的方式
+	// @NotNull 確保前端一定要傳這個欄位，不能為空
+	@NotNull(message = "Original amount is required")
+	private BigDecimal originalAmount;
 
 	public int getCartId() {
 		return cartId;
@@ -63,6 +72,14 @@ public class PromotionsReq {
 
 	public void setSelectedGiftId(int selectedGiftId) {
 		this.selectedGiftId = selectedGiftId;
+	}
+
+	public BigDecimal getOriginalAmount() {
+		return originalAmount;
+	}
+
+	public void setOriginalAmount(BigDecimal originalAmount) {
+		this.originalAmount = originalAmount;
 	}
 
 }

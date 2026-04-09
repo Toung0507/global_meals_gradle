@@ -112,4 +112,25 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 		   nativeQuery = true)
 	void deleteByPromotionsId(@Param("promotionsId") int promotionsId);
 
+	/**
+	 * 依促銷活動 ID 查出該活動底下的所有贈品（不論啟用/停用）
+	 *
+	 * 這是 Spring Data JPA 的「衍生查詢（Derived Query）」方法：
+	 *   JPA 根據方法名稱自動解析並產生對應 SQL
+	 *   等效 SQL：SELECT * FROM promotions_gifts WHERE promotions_id = ?
+	 *
+	 * 使用場景：GET /promotions/list 時，查詢每個促銷活動底下的所有贈品清單
+	 */
+	List<PromotionsGifts> findByPromotionsId(int promotionsId);
+
+    @Query("SELECT g FROM PromotionsGifts g JOIN Promotions p ON g.promotionsId = p.id " +
+       "WHERE g.active = true AND p.active = true " +
+       "AND p.startTime <= CURRENT_DATE AND p.endTime >= CURRENT_DATE " +
+       "ORDER BY g.fullAmount DESC")
+    List<PromotionsGifts> findAllActiveGiftsOrdered();
+
+	@Query("SELECT g.fullAmount FROM PromotionsGifts g WHERE g.giftProductId = :giftProductId AND g.active = true")
+    BigDecimal findFullAmountByGiftProductId(@Param("giftProductId") int giftProductId);
+	
+
 }
