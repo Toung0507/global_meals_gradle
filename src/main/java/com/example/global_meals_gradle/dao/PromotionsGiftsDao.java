@@ -177,7 +177,7 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     		+ "And gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
     public int reduceGiftQuota(int promotionsId, int giftProductId);
 
-	/* 根據商品id取的門檻資料(用於orders) */
+	/* 根據 活動id 商品id 取的門檻資料(用於orders) */
     @Query(value = "SELECT full_amount FROM promotions_gifts"
     		+ "WHERE promotions_id = ?1 And gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
     public BigDecimal findFullAmountByGiftProductId(int promotionsId, int giftProductId);

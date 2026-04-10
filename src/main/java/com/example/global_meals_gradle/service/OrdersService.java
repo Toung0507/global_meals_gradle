@@ -65,6 +65,9 @@ public class OrdersService {
 
 	@Autowired
 	private RegionsDao regionsDao;
+	
+	@Autowired
+	private BranchInventoryDao branchInventoryDao;
 
 	// 這樣在呼叫 self.executeInsert 時，Spring 才會啟動 @Transactional 的代理機制。
 	@Autowired
@@ -285,11 +288,13 @@ public class OrdersService {
 			if (!detail.isGift()) {
 				// 這裡還是需要查一次價格來算總帳
 				Products p = productsDao.findById(detail.getProductId());
-				if (p != null) {
+				BranchInventory inv = branchInventoryDao
+						.findByAreaAndProduct(detail.getProductId(), req.getGlobalAreaId())
+		                .orElseThrow(() -> new RuntimeException("該分店未上架商品 ID: " + detail.getProductId()));
 					BigDecimal qty = BigDecimal.valueOf(detail.getQuantity()); // 取的商品購買數量
 					if ("INCLUSIVE".equals(taxType)) {
 						// --- 內含稅：單價先乘稅率並無條件進位 (產生標價) ---
-						BigDecimal priceWithTax = p.getBasePrice() // priceWithTax = 商品含稅價格
+						BigDecimal priceWithTax = inv.getBasePrice() // priceWithTax = 商品含稅價格
 								.multiply(BigDecimal.ONE.add(taxRate)) // 1 * 稅率
 								.setScale(0, RoundingMode.UP); // 無條件進位
 						// 累加含稅總額
@@ -298,7 +303,7 @@ public class OrdersService {
 						// --- 外加稅：直接用未稅單價累加 ---
 						subtotal = subtotal.add(p.getBasePrice().multiply(qty));
 					}
-				}
+				
 			} else {
 				giftProductIds.add(detail.getProductId());
 			}
@@ -363,29 +368,23 @@ public class OrdersService {
 			for (int productId : sortedProductIds) {
 				// 根據key(productId)，取得 使用者想買的數量(含贈品)
 				int quantityToBuy = stockToReduceMap.get(productId);
-				// 根據商品 id 去商品表搜尋庫存並鎖定該資料，避免超賣
+				// 根據商品 id 分店 id 去商品表搜尋庫存
 				Products product = productsDao.findById(productId);
-				// 安全檢查：萬一資料庫找不到這個商品 ID
-				if (product == null) {
-					// return 不會觸發回滾，要用 throw
-					// 假設購物車有 A、B 兩個商品。先扣了 A 的庫存，接著檢查 B 時發現庫存不足，你用了 return。這時，A
-					// 的庫存已經被扣掉了，且不會還原，但訂單卻沒成立。這就是所謂的「資料不一致」。
-					// return new CreateOrdersRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(),
-					// ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
-					throw new RuntimeException("商品編號 " + productId + " 不存在");
-				}
+				// 1. 查詢該分店的庫存快照
+	            BranchInventory inv = branchInventoryDao.findByAreaAndProduct(req.getGlobalAreaId(), productId)
+	                .orElseThrow(() -> new RuntimeException("找不到分店庫存資料"));
 				// 庫存檢查：如果庫存 比要買的數量還少
-				if (product.getStockQuantity() < quantityToBuy) {
+				if (inv.getStockQuantity() < quantityToBuy) {
 					// 拋出例外後，事務會自動回滾，前面扣掉的其他商品庫存也會還回去
 					// return new CreateOrdersRes(ReplyMessage.STOCK_NOT_ENOUGH.getCode(),
 					// ReplyMessage.STOCK_NOT_ENOUGH.getMessage());
 					throw new RuntimeException("商品「" + product.getName() + "」庫存不足");
 				}
 				// 取得舊的版本號 (這就是你要帶入 SQL 的 ?3)
-				int oldVersion = product.getVersion();
+				int oldVersion = inv.getVersion();
 				// 執行「手動樂觀鎖」更新
-				int affectedRows = productsDao //
-						.updateStockWithOptimisticLock(productId, quantityToBuy, oldVersion);
+				int affectedRows = branchInventoryDao //
+						.updateBranchStock(productId, req.getGlobalAreaId(), quantityToBuy, oldVersion);
 				// 如果回傳 0，代表這期間 version 被動過，拋出異常觸發外層重試
 				if (affectedRows == 0) {
 					throw new RuntimeException("庫存版本衝突，準備重試");
