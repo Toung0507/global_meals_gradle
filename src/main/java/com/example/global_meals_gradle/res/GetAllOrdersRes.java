@@ -2,6 +2,8 @@ package com.example.global_meals_gradle.res;
 
 import java.util.List;
 
+import com.example.global_meals_gradle.vo.GetOrdersVo;
+
 public class GetAllOrdersRes extends BasicRes {
 
 	private List<GetOrdersVo> getOrderVoList;

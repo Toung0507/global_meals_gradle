@@ -2,7 +2,7 @@ package com.example.global_meals_gradle.constants;
 
 public enum ReplyMessage {
 
-	// 昱文
+	/* 昱文 */
 	// Service RegionsService
 	REGIONS_ID_ERROR(400, "Regions Id Error!!"), //
 	// Service GlobalAreaService
@@ -21,7 +21,8 @@ public enum ReplyMessage {
 	TOTAL_AMOUNT_ERROR(400, "Total Amount ERROR!!"), //
 	NOT_DISCOUNT_ERROR(400, "Not Discount ERROR!!"), //
 
-	// 促銷活動相關錯誤-致遠
+	/* 致遠 */
+	// 促銷活動相關錯誤
 	PROMOTION_NOT_FOUND(404, "Promotion Not Found!!"), // 找不到符合條件的促銷活動
 	PROMOTION_GIFTS_NOT_FOUND(404, "Promotion Gift Not Found!!"), // 找不到符合條件的贈品
 	MEMBER_COUPON_NOT_AVAILABLE(400, "Member Coupon Not Available!!"), // 會員沒有折扣券但傳入 useCoupon=true

@@ -41,12 +41,12 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 			+ "WHERE id = ?1 AND version = ?3", nativeQuery = true)
 	public int updateStockWithOptimisticLock(int productsId, int newStock, int currentVersion);
 
-  	//邵穎用在雙層迴圈，改成用 JOIN 先註解不使用
+	// 邵穎用在雙層迴圈，改成用 JOIN 先註解不使用
 	@Query(value = "select name from products where id = ?1", nativeQuery = true)
 	public String getProductsNameById(int id);
-	
-	/*  用於訂單成立 */
-	@Query(value = "select * from products where id = ?1", nativeQuery = true)
+
+	/* 用於訂單成立 */
+	@Query(value = "SELECT * FROM products WHERE id = ?1", nativeQuery = true)
 	public Products findById(int id);
 
 	/* 庫存減少 */
@@ -55,7 +55,7 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	@Transactional
 	@Query(value = "update products set stock_quantity = stock_quantity - ?2 where id = ?1 and stock_quantity >= ?2", nativeQuery = true)
 	public int upDateStock(int id, int stockQuantity);
-	
+
 	// 7. 前台實時確認庫存 (只抓數字，不抓整張表，效能最快)
 	@Query(value = "SELECT stock_quantity FROM products WHERE id = ?1 AND deleted_at IS NULL", nativeQuery = true)
 	public Integer getStockById(int productsId);

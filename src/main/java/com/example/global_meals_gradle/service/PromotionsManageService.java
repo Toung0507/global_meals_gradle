@@ -15,9 +15,9 @@ import com.example.global_meals_gradle.dao.ProductsTempDao;
 import com.example.global_meals_gradle.entity.Promotions;
 import com.example.global_meals_gradle.entity.PromotionsGifts;
 import com.example.global_meals_gradle.req.PromotionsManageReq;
-import com.example.global_meals_gradle.res.GiftDetailVo;
-import com.example.global_meals_gradle.res.PromotionDetailVo;
 import com.example.global_meals_gradle.res.PromotionsListRes;
+import com.example.global_meals_gradle.vo.GiftDetailVo;
+import com.example.global_meals_gradle.vo.PromotionDetailVo;
 
 @Service
 public class PromotionsManageService {
