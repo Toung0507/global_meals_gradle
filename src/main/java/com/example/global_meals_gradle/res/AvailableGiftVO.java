@@ -1,7 +1,7 @@
 package com.example.global_meals_gradle.res;
 
 import java.math.BigDecimal;
-
+//可選的贈品列表的單一贈品的VO
 public class AvailableGiftVO {
 
 //	 這條贈品規則的 ID（對應 promotions_gifts.id）
@@ -16,7 +16,8 @@ public class AvailableGiftVO {
 	private String giftProductName;
 
 	private BigDecimal fullAmount;
-
+//	   available=true  → 前端正常顯示，使用者可以點選
+//     available=false → 前端灰色顯示，旁邊標注 unavailableReason
 	private boolean available;
 
 	private String unavailableReason;

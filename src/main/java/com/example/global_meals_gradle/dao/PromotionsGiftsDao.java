@@ -31,21 +31,28 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 	PromotionsGifts findTopQualifiedGift(@Param("total") BigDecimal total);
 
 	/* 核心邏輯：取得所有目前上架的有效期內的活動的上架中的贈品門檻 /規則*/
-	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
-		    + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
-		    + "WHERE gifts.is_active = 1 "
-		    + "AND prom.is_active = 1 "
-		    + "AND prom.start_time <= CURRENT_DATE "
-		    + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
-		public List<PromotionsGifts> findAllActiveGifts();
+//	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
+//		    + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
+//		    + "WHERE gifts.is_active = 1 "
+//		    + "AND prom.is_active = 1 "
+//		    + "AND prom.start_time <= CURRENT_DATE "
+//		    + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
+//		public List<PromotionsGifts> findAllActiveGifts();
 
 	/* 根據商品id取的門檻資料 */
 	@Query(value = "SELECT full_amount FROM promotions_gifts WHERE gift_product_id = ?1 AND is_active = 1", nativeQuery = true)
 	public BigDecimal findFullAmountByGiftProductId(int giftProductId);
 
 	/*
-	 * 根據「贈品商品 ID」找到對應的目前 上架的規則 用途：在 selectGift() 裡驗證使用者選的贈品是否還有效
-	 * 例如：使用者選了大盤雞（giftProductId = 101），後端查這條規則是否還 is_active = 1
+	 * 根據「贈品商品 ID」找到對應的目前上架的規則。用途：在 getCartView() 步驟3 驗證已選贈品是否還有效。
+	 * 例如：使用者選了大盤雞（giftProductId = 101），後端確認這條規則是否仍在有效期間內且啟用。
+	 *
+	 * ⚠️ 加上 ORDER BY full_amount ASC LIMIT 1 的原因：
+	 *    若同一個贈品商品（例如大盤雞）被設定在「夏日祭典」和「週年慶」兩個活動裡，
+	 *    SQL 會回傳兩筆資料，JPA 把多筆資料塞進單一物件時會拋出
+	 *    IncorrectResultSizeDataAccessException（預期 1 筆，實際 N 筆），導致程式崩潰。
+	 *    加上 LIMIT 1 後只取一筆；ORDER BY full_amount ASC 優先取門檻最低的那條，
+	 *    確保消費者只要達到最低門檻的活動就算有效，不會因為取到高門檻的規則而被誤判失效。
 	 */
 	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
 		    + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
@@ -53,7 +60,9 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 		    + "AND gifts.is_active = 1 "
 		    + "AND prom.is_active = 1 "
 		    + "AND prom.start_time <= CURRENT_DATE "
-		    + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
+		    + "AND prom.end_time >= CURRENT_DATE "
+		    + "ORDER BY gifts.full_amount ASC "
+		    + "LIMIT 1", nativeQuery = true)
 		PromotionsGifts findActiveRuleByGiftProductId(int giftProductId);
 
 // 根據「活動 ID」撈出這個活動底下所有上架的贈品規則
