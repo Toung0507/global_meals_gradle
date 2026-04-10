@@ -33,5 +33,15 @@ public class ValidationMsg {
 	public static final String PHONE_ERROR = "Phone Error";
 	
 	public static final String ORDER_CART_DETAILS_NOT_EMPTY = "Order Cart Details Not Empty";
+	
+	/* 景翔 */
+	/* 職員 */
+	public static final String NAME_CANNOT_BE_BLANK = "Name Cannot Be Blank";
+	
+	public static final String ACCOUNT_CANNOT_BE_BLANK = "Account Cannot Be Blank";
+	
+	public static final String PASSWORD_CANNOT_BE_BLANK = "Password Cannot Be Blank";
+
+	public static final String ROLE_ERROR = "Role Error";
 
 }
