@@ -9,8 +9,10 @@ import jakarta.persistence.*;
 public class OrderCartDetails {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY) // 當資料庫的id欄位設為AI時，Entity 也必須告訴 JPA：「這個欄位的值由資料庫自己產生」。如果不加，JPA
-														// 就會認為你要手動塞一個 ID 給它，導致新增資料時出錯。
+	// 當資料庫的 id 欄位設為 AI 時
+	// Entity 也必須告訴 JPA：「這個欄位的值由資料庫自己產生」
+	// 如果不加，JPA 就會認為你要手動塞一個 ID 給它，導致新增資料時出錯
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "id")
 	private int id;
 

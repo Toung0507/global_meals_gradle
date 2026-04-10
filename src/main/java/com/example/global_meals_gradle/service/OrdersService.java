@@ -36,8 +36,8 @@ import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
-import com.example.global_meals_gradle.res.GetOrdersDetailVo;
-import com.example.global_meals_gradle.res.GetOrdersVo;
+import com.example.global_meals_gradle.vo.GetOrdersDetailVo;
+import com.example.global_meals_gradle.vo.GetOrdersVo;
 
 /*	待做:
  * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額

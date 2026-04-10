@@ -2,7 +2,7 @@ package com.example.global_meals_gradle.constants;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
-//讓 Jackson 反序列化時忽略大小寫
+// 讓 Jackson 反序列化時忽略大小寫
 @JsonFormat(with = JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_PROPERTIES)
 public enum OrdersStatus {
 

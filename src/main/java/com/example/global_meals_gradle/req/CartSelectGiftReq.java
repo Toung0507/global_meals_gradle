@@ -12,6 +12,7 @@ public class CartSelectGiftReq {
     private int cartId;
 
     // 是哪個會員在操作
+    @Min(value = 1, message = ValidationMsg.MEMBER_ID_MUST_BE_POSITIVE)
     private int memberId;
 
     // 使用者選的是哪條贈品規則，對應 promotions_gifts.id 的主鍵

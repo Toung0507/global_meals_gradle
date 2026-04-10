@@ -6,7 +6,7 @@ import org.springframework.web.client.RestClient;
 
 @Configuration
 public class RestClientConfig {
-	
+
 	@Bean
 	public RestClient restClient() {
 		// 使用 builder 可以進行更多自定義設定

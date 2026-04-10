@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.entity.OrdersId;
-import com.example.global_meals_gradle.res.GetOrdersVo;
+import com.example.global_meals_gradle.vo.GetOrdersVo;
 
 @Repository
 public interface OrdersDao extends JpaRepository<Orders, OrdersId> {

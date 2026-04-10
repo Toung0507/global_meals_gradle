@@ -3,7 +3,11 @@ package com.example.global_meals_gradle.res;
 import java.math.BigDecimal;
 import java.util.List;
 
-/** 整個購物車的最終結果 (回傳給前端專用) */
+import com.example.global_meals_gradle.vo.AvailablePromotionVO;
+import com.example.global_meals_gradle.vo.CartItemVO;
+import com.example.global_meals_gradle.vo.TaxInfoVO;
+
+/* 整個購物車的最終結果 (回傳給前端專用) */
 public class CartViewRes extends BasicRes {
 
 	private int cartId;
@@ -12,15 +16,15 @@ public class CartViewRes extends BasicRes {
 
 	private String operationType;
 
-	/** 裝填這台車所有的商品與贈品！ */
+	/* 裝填這台車所有的商品與贈品！ */
 	private List<CartItemVO> items;
 
-	/** 稅前應付總額（所有商品 LineTotal 的總和，必須排除贈品價格） */
+	/* 稅前應付總額（所有商品 LineTotal 的總和，必須排除贈品價格） */
 	private BigDecimal subtotal;
 
 	// 使用者「有資格參加」的活動清單（兩層結構：第一層是活動，第二層是各活動的贈品選項）
 	// 空清單 [] → 消費金額達不到任何活動門檻 → 前端不顯示「選擇活動」按鈕
-	// 有資料   → 前端顯示「選擇活動」按鈕，按下後展開活動下拉選單
+	// 有資料 → 前端顯示「選擇活動」按鈕，按下後展開活動下拉選單
 	private List<AvailablePromotionVO> availablePromotions;
 
 	// 稅務資訊（稅率、稅的類型、稅額）
@@ -114,11 +118,11 @@ public class CartViewRes extends BasicRes {
 	 * 套用折價券後的實際應付金額 - null = 尚未使用折價券（前端顯示 subtotal 即可）<br>
 	 * - 有值 = 已套用折價券（前端顯示這個打折後的金額）
 	 */
-//	private BigDecimal discountedTotal;
+	//	private BigDecimal discountedTotal;
 
 	/**
 	 * 告訴前端：這個會員是否有折價券可用？ true → 前端顯示「是否使用折價券？」的選擇按鈕
 	 */
-//	private boolean hasCoupon;
+	//	private boolean hasCoupon;
 
 }
