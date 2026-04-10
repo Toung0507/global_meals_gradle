@@ -29,23 +29,8 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 			+ "is_discount = true "
 			+ "WHERE id = ?1 AND order_count = 9 AND is_discount = false", nativeQuery = true)
 	public int reachFullPointsAndGiveCoupon(int id);
-
-	/* 減少該會員次數 */
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE members SET order_count = order_count - 1 "
-			+ "WHERE id = ?1 AND order_count > 0", nativeQuery = true)
-	public int reducePoint(int id);
-
-	/* 撤銷訂單時次數 = 10 時，減少該會員點數並關閉優惠劵 */
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE members SET order_count = order_count - 1,"
-			+ "is_discount = false "
-			+ "WHERE id = ?1 AND order_count = 10 AND is_discount = true", nativeQuery = true)
-	public int reducePointClose(int id);
 	
-	/* 還原優惠券與點數邏輯(該訂單有使用優惠劵) */
+	/* 還原優惠券與點數邏輯(該訂單有使用優惠劵)給一張優惠劵跟點數變10 */
 	@Modifying
 	@Transactional
 	@Query(value = "UPDATE members " +
@@ -56,6 +41,7 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 	/* 撤銷訂單時回扣次數(會自己判斷，類似switch 或 if-else if)(該訂單未使用優惠劵) */
 	/*
 	 * CASE WHEN 條件1 THEN 結果1 WHEN 條件2 THEN 結果2 ELSE 預設結果 END
+	 * 只有再次數 = 10 的情況下，再減少1次次數，才會動到 is_discount，其他情況就不會動到
 	 */
 	@Modifying
 	@Transactional

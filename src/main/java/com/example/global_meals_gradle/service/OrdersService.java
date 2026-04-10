@@ -26,6 +26,7 @@ import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
 import com.example.global_meals_gradle.dao.RegionsDao;
+import com.example.global_meals_gradle.entity.BranchInventory;
 import com.example.global_meals_gradle.entity.Members;
 import com.example.global_meals_gradle.entity.OrderCartDetails;
 import com.example.global_meals_gradle.entity.Orders;
