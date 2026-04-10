@@ -65,7 +65,7 @@ public class OrdersService {
 
 	@Autowired
 	private RegionsDao regionsDao;
-	
+
 	@Autowired
 	private BranchInventoryDao branchInventoryDao;
 
@@ -251,7 +251,7 @@ public class OrdersService {
 		 * 這是一般的 if-else 寫法 for (OrderCartDetails detail : cartDetailsList) { int pid =
 		 * detail.getProductId(); int qty = detail.getQuantity();
 		 * 
-		 * // 檢查 Map 裡是不是已經有這個商品 ID 了 if (stockToReduceMap.containsKey(pid)) { //
+		 * 檢查 Map 裡是不是已經有這個商品 ID 了 if (stockToReduceMap.containsKey(pid)) { //
 		 * 【情況A】：已經有了（例如之前跑過商品，現在跑贈品） int oldQty = stockToReduceMap.get(pid); // 取出舊的數量
 		 * stockToReduceMap.put(pid, oldQty + qty); // 加完後更新進去 } else { // 【情況 B】：還沒出現過
 		 * stockToReduceMap.put(pid, qty); // 直接放進去 } }
@@ -290,20 +290,20 @@ public class OrdersService {
 				Products p = productsDao.findById(detail.getProductId());
 				BranchInventory inv = branchInventoryDao
 						.findByAreaAndProduct(detail.getProductId(), req.getGlobalAreaId())
-		                .orElseThrow(() -> new RuntimeException("該分店未上架商品 ID: " + detail.getProductId()));
-					BigDecimal qty = BigDecimal.valueOf(detail.getQuantity()); // 取的商品購買數量
-					if ("INCLUSIVE".equals(taxType)) {
-						// --- 內含稅：單價先乘稅率並無條件進位 (產生標價) ---
-						BigDecimal priceWithTax = inv.getBasePrice() // priceWithTax = 商品含稅價格
-								.multiply(BigDecimal.ONE.add(taxRate)) // 1 * 稅率
-								.setScale(0, RoundingMode.UP); // 無條件進位
-						// 累加含稅總額
-						subtotal = subtotal.add(priceWithTax.multiply(qty));
-					} else {
-						// --- 外加稅：直接用未稅單價累加 ---
-						subtotal = subtotal.add(p.getBasePrice().multiply(qty));
-					}
-				
+						.orElseThrow(() -> new RuntimeException("該分店未上架商品 ID: " + detail.getProductId()));
+				BigDecimal qty = BigDecimal.valueOf(detail.getQuantity()); // 取的商品購買數量
+				if ("INCLUSIVE".equals(taxType)) {
+					// --- 內含稅：單價先乘稅率並無條件進位 (產生標價) ---
+					BigDecimal priceWithTax = inv.getBasePrice() // priceWithTax = 商品含稅價格
+							.multiply(BigDecimal.ONE.add(taxRate)) // 1 * 稅率
+							.setScale(0, RoundingMode.UP); // 無條件進位
+					// 累加含稅總額
+					subtotal = subtotal.add(priceWithTax.multiply(qty));
+				} else {
+					// --- 外加稅：直接用未稅單價累加 ---
+					subtotal = subtotal.add(p.getBasePrice().multiply(qty));
+				}
+
 			} else {
 				giftProductIds.add(detail.getProductId());
 			}
@@ -371,8 +371,9 @@ public class OrdersService {
 				// 根據商品 id 分店 id 去商品表搜尋庫存
 				Products product = productsDao.findById(productId);
 				// 1. 查詢該分店的庫存快照
-	            BranchInventory inv = branchInventoryDao.findByAreaAndProduct(req.getGlobalAreaId(), productId)
-	                .orElseThrow(() -> new RuntimeException("找不到分店庫存資料"));
+				BranchInventory inv = branchInventoryDao //
+						.findByAreaAndProduct(req.getGlobalAreaId(), productId) //
+						.orElseThrow(() -> new RuntimeException("找不到分店庫存資料"));
 				// 庫存檢查：如果庫存 比要買的數量還少
 				if (inv.getStockQuantity() < quantityToBuy) {
 					// 拋出例外後，事務會自動回滾，前面扣掉的其他商品庫存也會還回去
