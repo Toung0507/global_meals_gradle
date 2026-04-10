@@ -32,7 +32,11 @@ public interface StaffDao extends JpaRepository<Staff, Integer>{
 	@Query(value = "SELECT * FROM staff WHERE role = 'REGION_MANAGER' ORDER BY global_area_id", nativeQuery = true)
 	public List<Staff> getAllRM();
 	
+<<<<<<< HEAD
 	// ADMIN 查詢全部員工(STAFF -> ST)-->目前先不用老闆茶分店長就好
+=======
+	// ADMIN 查詢全部員工(STAFF -> ST)
+>>>>>>> 2c9303928af1bb89631321091403cf4526e73ee3
 	@Query(value = "SELECT * FROM staff WHERE role = 'STAFF' ORDER BY global_area_id", nativeQuery = true)
 	public List<Staff> getAllST();
 	
@@ -46,6 +50,7 @@ public interface StaffDao extends JpaRepository<Staff, Integer>{
 	@Query(value = "UPDATE staff SET is_status = ?2 WHERE id = ?1", nativeQuery = true)
 	public void updateStatus(int id, boolean status);
 
+<<<<<<< HEAD
 	// 檢查帳號用
 	@Query(value = "SELECT * FROM staff WHERE account = ?1", nativeQuery = true)
 	public Staff findByAccount(String account);
@@ -53,4 +58,8 @@ public interface StaffDao extends JpaRepository<Staff, Integer>{
 	// 註冊用的格式化編碼:固定前綴 + 自動遞增四位數
 	@Query(value = "SELECT account FROM staff WHERE role = ?1 ORDER BY account DESC LIMIT 1", nativeQuery = true)
 	String findLastAccountByRole(String role);//用角色找最大的數字因為權限=角色
+=======
+	@Query(value = "SELECT * FROM staff WHERE account = ?1", nativeQuery = true)
+	public Staff findByAccount(String account);
+>>>>>>> 2c9303928af1bb89631321091403cf4526e73ee3
 }
