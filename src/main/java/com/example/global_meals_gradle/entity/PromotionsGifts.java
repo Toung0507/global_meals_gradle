@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 public class PromotionsGifts {
 
 	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY) // 對應 DB 的 AUTO_INCREMENT，新增時由資料庫自動產生 id，不需手動設定
 	@Column(name = "id")
 	private int id;
 
@@ -17,6 +18,17 @@ public class PromotionsGifts {
 
 	@Column(name = "full_amount", precision = 12, scale = 4) // DECIMAL(12,4)
 	private BigDecimal fullAmount;
+	
+	@Column(name = "quantity")
+	private int quantity;
+
+	public int getQuantity() {
+		return quantity;
+	}
+
+	public void setQuantity(int quantity) {
+		this.quantity = quantity;
+	}
 
 	@Column(name = "gift_product_id")
 	private int giftProductId;
@@ -24,6 +36,7 @@ public class PromotionsGifts {
 	@Column(name = "is_active")
 	private boolean active = true;
 
+	
 	public int getId() {
 		return id;
 	}
