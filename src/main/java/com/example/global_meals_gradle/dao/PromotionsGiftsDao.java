@@ -11,6 +11,8 @@ import com.example.global_meals_gradle.entity.PromotionsGifts;
 
 import jakarta.transaction.Transactional;
 
+import jakarta.transaction.Transactional;
+
 public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integer> {
 
 	/**
@@ -118,36 +120,53 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 	/**
 	 * 依促銷活動 ID 查出該活動底下的所有贈品（不論啟用/停用）
 	 *
-	 * 這是 Spring Data JPA 的「衍生查詢（Derived Query）」方法：
-	 *   JPA 根據方法名稱自動解析並產生對應 SQL
-	 *   等效 SQL：SELECT * FROM promotions_gifts WHERE promotions_id = ?
+	 * 條件說明：
+	 *   promotions_id = :promotionsId → 只撈這個活動底下的贈品
+	 *   不篩 is_active                → 包含停用的，讓管理端看到完整狀態
 	 *
-	 * 使用場景：GET /promotions/list 時，查詢每個促銷活動底下的所有贈品清單
+	 * 使用場景：GET /promotions/list，管理端顯示每個活動底下的所有贈品
 	 */
-	List<PromotionsGifts> findByPromotionsId(int promotionsId);
+	@Query(value = "SELECT * FROM promotions_gifts WHERE promotions_id = :promotionsId",
+		   nativeQuery = true)
+	List<PromotionsGifts> findByPromotionsId(@Param("promotionsId") int promotionsId);
 
-    @Query("SELECT g FROM PromotionsGifts g JOIN Promotions p ON g.promotionsId = p.id " +
-       "WHERE g.active = true AND p.active = true " +
-       "AND p.startTime <= CURRENT_DATE AND p.endTime >= CURRENT_DATE " +
-       "ORDER BY g.fullAmount DESC")
-    List<PromotionsGifts> findAllActiveGiftsOrdered();
 
-	@Query("SELECT g.fullAmount FROM PromotionsGifts g WHERE g.giftProductId = :giftProductId AND g.active = true")
+
+	/**
+	 * 根據贈品商品 ID 查出對應的消費門檻金額（OrdersService 結帳驗證用）
+	 *
+	 * 條件說明：
+	 *   gift_product_id = :giftProductId → 指定商品
+	 *   is_active = 1                    → 只查啟用中的規則
+	 *
+	 * 使用場景：OrdersService 在建立訂單時，驗證購物車內的贈品是否符合門檻
+	 * 回傳 null 表示找不到對應的有效規則
+	 */
+	@Query(value = "SELECT full_amount FROM promotions_gifts " +
+				   "WHERE gift_product_id = :giftProductId AND is_active = 1",
+		   nativeQuery = true)
 	BigDecimal findFullAmountByGiftProductId(@Param("giftProductId") int giftProductId);
 	
-	// 以下 CartService 有用到
-    /*
-     * 根據「贈品商品 ID」找到對應的目前 上架的規則 用途：在 selectGift() 裡驗證使用者選的贈品是否還有效
-     * 例如：使用者選了大盤雞（giftProductId = 101），後端查這條規則是否還 is_active = 1
-     */
-    @Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
-            + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
-            + "WHERE gifts.gift_product_id = ?1 "
-            + "AND gifts.is_active = 1 "
-            + "AND prom.is_active = 1 "
-            + "AND prom.start_time <= CURRENT_DATE "
-            + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
-        PromotionsGifts findActiveRuleByGiftProductId(int giftProductId);
+	/*
+    
+	根據「贈品商品 ID」找到對應的目前上架的規則。用途：在 getCartView() 步驟3 驗證已選贈品是否還有效。
+	例如：使用者選了大盤雞（giftProductId = 101），後端確認這條規則是否仍在有效期間內且啟用。*
+	⚠️ 加上 ORDER BY full_amount ASC LIMIT 1 的原因：
+	若同一個贈品商品（例如大盤雞）被設定在「夏日祭典」和「週年慶」兩個活動裡，
+	SQL 會回傳兩筆資料，JPA 把多筆資料塞進單一物件時會拋出
+	IncorrectResultSizeDataAccessException（預期 1 筆，實際 N 筆），導致程式崩潰。
+	加上 LIMIT 1 後只取一筆；ORDER BY full_amount ASC 優先取門檻最低的那條，
+	確保消費者只要達到最低門檻的活動就算有效，不會因為取到高門檻的規則而被誤判失效。*/
+	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
+	+ "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
+	+ "WHERE gifts.gift_product_id = ?1 "
+	+ "AND gifts.is_active = 1 "
+	+ "AND prom.is_active = 1 "
+	+ "AND prom.start_time <= CURRENT_DATE "
+	+ "AND prom.end_time >= CURRENT_DATE "
+	+ "ORDER BY gifts.full_amount ASC "
+	+ "LIMIT 1", nativeQuery = true)
+	    PromotionsGifts findActiveRuleByGiftProductId(int giftProductId);
 
 	// 根據「活動 ID」撈出這個活動底下所有上架的贈品規則
 	// 使用時機：CartService 步驟4，確認了某個活動後，找這個活動底下有哪些贈品可以送

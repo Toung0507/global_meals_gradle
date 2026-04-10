@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,24 +36,10 @@ public class PromotionsManageController {
 	@Autowired
 	private PromotionsService promotionsService;
 
-	/* 新增促銷活動 */
-	@PostMapping("Promotions/addPromotion")
-	public BasicRes addPromotion(@Valid @RequestBody PromotionsManageReq req) {
-		promotionsManageService.addPromotion(req);
-		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-	}
-
-	/* 新增贈品至促銷活動 */
+	/* 新增贈品至促銷活動（對已存在的活動補加贈品） */
 	@PostMapping("Promotions/addPromotionGift")
 	public BasicRes addPromotionGift(@Valid @RequestBody PromotionsManageReq req) {
 		promotionsManageService.addPromotionGift(req);
-		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-	}
-
-	/* 開關促銷活動：active=true 開啟、active=false 關閉（同步關閉底下所有贈品） */
-	@PutMapping("Promotions/togglePromotion")
-	public BasicRes togglePromotion(@Valid @RequestBody PromotionsManageReq req) {
-		promotionsManageService.togglePromotion(req);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 

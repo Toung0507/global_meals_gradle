@@ -107,48 +107,7 @@ public class PromotionsManageService {
 	}
 
 	// =============================================
-	// 方法一：新增促銷活動（寫入 promotions 表）
-	// =============================================
-
-	/**
-	 * 新增一筆促銷活動
-	 *
-	 * 驗證規則（在 Service 裡做，annotation 做不到的邏輯）：
-	 *   1. startTime 不能早於今天
-	 *   2. endTime 必須晚於 startTime
-	 *
-	 * is_active 新增時固定為 true（1），不由呼叫方決定
-	 *
-	 * @param req 包含 name、startTime、endTime
-	 */
-	@Transactional
-	public void addPromotion(PromotionsManageReq req) {
-
-		// 驗證 startTime 不能早於今天
-		if (req.getStartTime().isBefore(LocalDate.now())) {
-			throw new RuntimeException(ReplyMessage.PROMOTION_NOT_FOUND.getMessage());
-		}
-
-		// 驗證 endTime 必須晚於 startTime
-		if (!req.getEndTime().isAfter(req.getStartTime())) {
-			throw new RuntimeException(ReplyMessage.PROMOTION_NOT_FOUND.getMessage());
-		}
-
-		// 組成 Promotions entity 準備寫入
-		Promotions promotion = new Promotions();
-		promotion.setName(req.getName());
-		promotion.setStartTime(req.getStartTime());
-		promotion.setEndTime(req.getEndTime());
-
-		// 新增時固定啟用，前端之後可透過 togglePromotion 切換 is_active
-		promotion.setActive(true);
-
-		// JPA save() 會因為 @GeneratedValue 自動帶入 AUTO_INCREMENT 產生的 id
-		promotionsDao.save(promotion);
-	}
-
-	// =============================================
-	// 方法二：新增贈品至活動（寫入 promotions_gifts 表）
+	// 方法一：新增贈品至活動（寫入 promotions_gifts 表）
 	// =============================================
 
 	/**
@@ -208,7 +167,7 @@ public class PromotionsManageService {
 	}
 
 	// =============================================
-	// 方法三：開關促銷活動
+	// 方法二：開關促銷活動
 	// =============================================
 
 	/**
@@ -240,7 +199,7 @@ public class PromotionsManageService {
 	}
 
 	// =============================================
-	// 方法四：刪除促銷活動（真刪除）
+	// 方法三：刪除促銷活動（真刪除）
 	// =============================================
 
 	/**
@@ -272,7 +231,7 @@ public class PromotionsManageService {
 	}
 
 	// =============================================
-	// 方法五：一次建立促銷活動 + 贈品規則（POST /promotions/create 使用）
+	// 方法四：一次建立促銷活動 + 贈品規則（POST /promotions/create 使用）
 	// =============================================
 
 	/**
