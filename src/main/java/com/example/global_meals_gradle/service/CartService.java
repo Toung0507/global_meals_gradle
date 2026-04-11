@@ -40,6 +40,8 @@ public class CartService {
 	private RegionsDao regionsDao;
 	@Autowired
 	private PromotionsDao promotionsDao; // 用來撈上架中且在有效期間內的活動清單
+	@Autowired
+	private BranchInventoryDao branchInventoryDao;
 
 //	核心 API 1:同步購物車，包括刪除單品
 //	 前端呼叫時機：使用者改了數量且「停手 1 秒後」（Debounce 防抖邏輯）
@@ -93,31 +95,67 @@ public class CartService {
 					req.getProductId());
 
 			if (existingDetail != null) {
-//				 情況 A：購物車裡已經有了，單純把數量「覆蓋」成前端傳來的新數量
-				existingDetail.setQuantity(req.getQuantity());
-
-//				 再次呼叫 save()！在此它是 UPDATE 的意思 (因為 existingDetail 已經有流水號 id 了)
-				orderCartDetailsDao.save(existingDetail);
-
+			//  情況 A：購物車裡已經有了，要把數量「覆蓋」成前端傳來的新數量
+			    int oldQuantity = existingDetail.getQuantity();
+			    int newQuantity = req.getQuantity();
+			//  只有「增加數量」才需要做庫存驗證（減少數量不影響庫存）
+			    if (newQuantity > oldQuantity) {
+//			      查這個商品在本分店的庫存設定
+			        OrderCart cart = orderCartDao.findById(currentCartId);
+			        BranchInventory inv = branchInventoryDao.findByProductIdAndAreaId(
+			                req.getProductId(), cart.getGlobalAreaId());
+			        if (inv == null) {
+//			          查無庫存設定 → 不能更新
+			            throw new RuntimeException("商品 ID " + req.getProductId()
+			                    + " 在此分店未設定庫存，無法調整數量");
+			        }
+//			          確認庫存數量足夠（至少要有 newQuantity 份）
+			        if (newQuantity > inv.getStockQuantity()) {
+			            throw new RuntimeException("庫存不足，目前剩餘 "
+			                    + inv.getStockQuantity() + " 份，無法調整為 " + newQuantity + " 份");
+			        }
+//			          確認沒有超過單次最大購買量
+			        if (newQuantity > inv.getMaxOrderQuantity()) {
+			            throw new RuntimeException("單次最多只能購買 "
+			                    + inv.getMaxOrderQuantity() + " 份");
+			        }
+			    }
+//			 驗證通過（或是減少數量，不需驗證），覆蓋數量並存入 DB
+			    existingDetail.setQuantity(newQuantity);
+			    orderCartDetailsDao.save(existingDetail);
 			} else {
 //				 情況 B：購物車裡還沒有，這是一筆全新的購物車明細，我們要建一筆新的 OrderCartDetails！
 				OrderCartDetails newDetail = new OrderCartDetails();
-				newDetail.setOrderCartId(currentCartId);
-				newDetail.setProductId(req.getProductId());
-//				 🚨 【大腦呼叫倉庫】去 Products 表查一下這個商品到底多少錢？
-
-				Products product = productsDao.findById(req.getProductId());
-//				  商品不存在或已下架，拋例外讓前端知道
-				if (product == null || !product.isActive()) {
-					throw new RuntimeException("商品 ID " + req.getProductId() + " 不存在或已下架");
-				}
-
-				newDetail.setPrice(product.getBasePrice());
-				newDetail.setQuantity(req.getQuantity());
-				newDetail.setGift(false); // 客人選的，絕對不是贈品
-
-//				 存進資料庫做 INSERT
-				orderCartDetailsDao.save(newDetail);
+			    newDetail.setOrderCartId(currentCartId);
+			    newDetail.setProductId(req.getProductId());
+//			  第1層防線：確認商品本身存在且上架（Products 表）
+			    Products product = productsDao.findById(req.getProductId());
+			    if (product == null || !product.isActive()) {
+			        throw new RuntimeException("商品 ID " + req.getProductId() + " 不存在或已下架");
+			    }
+//			  第2層防線：確認這個商品在本分店有設定庫存（branch_inventory 表）
+//			  從購物車取 globalAreaId，因為 syncItem 劇本分支A建新車時已把 globalAreaId 存進 DB
+			    OrderCart cart = orderCartDao.findById(currentCartId);
+			    BranchInventory inv = branchInventoryDao.findByProductIdAndAreaId(
+			            req.getProductId(), cart.getGlobalAreaId());
+			    if (inv == null) {
+			        throw new RuntimeException("商品 ID " + req.getProductId() + " 在此分店未設定庫存");
+			    }
+//			  第3層防線：確認庫存數量足夠
+			    if (inv.getStockQuantity() < req.getQuantity()) {
+			        throw new RuntimeException("商品「" + product.getName() + "」庫存不足，目前剩餘 "
+			                + inv.getStockQuantity() + " 份");
+			    }
+//			  第4層防線：確認沒有超過單次最大購買量
+			    if (req.getQuantity() > inv.getMaxOrderQuantity()) {
+			        throw new RuntimeException("商品「" + product.getName() + "」單次最多只能購買 "
+			                + inv.getMaxOrderQuantity() + " 份");
+			    }
+//			  全部驗證通過！從 branch_inventory 取定價快照存進購物車明細
+			    newDetail.setPrice(inv.getBasePrice());      // ← 改這裡，從庫存表取定價
+			    newDetail.setQuantity(req.getQuantity());
+			    newDetail.setGift(false);
+			    orderCartDetailsDao.save(newDetail);
 			}
 		}
 
@@ -289,27 +327,48 @@ public class CartService {
 				vo.setGift(false);
 				warningMessages.add("「" + name + "」已下架或不存在，請將其移除");
 			} else {
-//				-1：
-				vo.setProductName(product.getName());
-//	              (B)檢查金額： 比對定價： 偵測到調價：警告 + 更新orderCartDetails資料庫快照
-				if (detail.getPrice().compareTo(product.getBasePrice()) != 0) {
-					warningMessages.add("「" + product.getName() + "」的價格已從 $" + detail.getPrice() + " 調整為 $"
-							+ product.getBasePrice());
-					detail.setPrice(product.getBasePrice()); // 更新快照
-					orderCartDetailsDao.save(detail); // 更新orderCartDetails資料庫快照
+		
+//			  -1：商品存在且上架
+				 vo.setProductName(product.getName());
+//				  (B) 查詢這個商品在本分店的庫存記錄，取得當前定價
+				    BranchInventory inv = branchInventoryDao.findByProductIdAndAreaId(
+				            detail.getProductId(), cart.getGlobalAreaId());
+				    if (inv == null) {
+//				      庫存設定不存在（branch_inventory 被刪）：視同無法販售
+//				      警告前端；lineTotal 不納入小計；後端 log 方便排查
+				        System.err.println("[WARN] product_id=" + detail.getProductId()
+				                + " 在 global_area_id=" + cart.getGlobalAreaId()
+				                + " 查無 branch_inventory 設定，請檢查資料完整性");
+				        vo.setDetailId(detail.getId());
+				        vo.setProductId(detail.getProductId());
+				        vo.setQuantity(detail.getQuantity());
+				        vo.setPrice(detail.getPrice());           // 顯示快照價供參考
+				        vo.setLineTotal(BigDecimal.ZERO);         // 不納入小計
+				        vo.setGift(false);
+				        warningMessages.add("「" + product.getName() + "」在此分店查無庫存設定，請聯絡店員");
+				    } else {
+//				      (B) 正常情況：比對定價，偵測到調價 → 警告 + 更新快照
+				        BigDecimal currentPrice = inv.getBasePrice();
+				        if (detail.getPrice().compareTo(currentPrice) != 0) {
+				            warningMessages.add("「" + product.getName() + "」的價格已從 $" + detail.getPrice()
+				                    + " 調整為 $" + currentPrice);
+				            detail.setPrice(currentPrice);        // 更新快照
+				            orderCartDetailsDao.save(detail);     // 更新 DB 快照
+				        }
+//				      (C) 組裝商品 VO
+				        vo.setDetailId(detail.getId());
+				        vo.setProductId(detail.getProductId());
+				        vo.setQuantity(detail.getQuantity());
+				        vo.setGift(false);
+				        vo.setDiscountNote(detail.getDiscountNote());
+				        BigDecimal lineTotal = detail.getPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
+				        vo.setPrice(detail.getPrice());
+				        vo.setLineTotal(lineTotal);
+//				      (D) 累加小計
+				        subtotal = subtotal.add(lineTotal);
+				    }
 				}
-//				 ③(C) ：組裝一個 商品VO（給前端看的商品卡片）
-				vo.setDetailId(detail.getId());
-				vo.setProductId(detail.getProductId());
-				vo.setQuantity(detail.getQuantity());
-				vo.setGift(false);
-				vo.setDiscountNote(detail.getDiscountNote());
-				BigDecimal lineTotal = detail.getPrice().multiply(BigDecimal.valueOf(detail.getQuantity())); // 單價 × 數量
-				vo.setPrice(detail.getPrice());
-				vo.setLineTotal(lineTotal);
-//				④（D）累加小計
-				subtotal = subtotal.add(lineTotal);
-			}
+
 //			每個cartItemVO都進入cartItemVO的list裡,每個商品顯示不顯示由前端決定什麼值顯示什麼值不顯示，比如null的時候就不顯示，非Null就顯示
 //			CartItemVO的清單voList商品部分：商品的cartitemvoList處理好了，代碼的最後我們在一起res.set
 			voList.add(vo);
