@@ -406,31 +406,6 @@ public class OrdersService {
 				}
 			}
 
-			// ====== 會員邏輯(點數處理) ======
-			// 判斷是會員(> 1)還是訪客(= 1)
-			if (req.getMemberId() > 1) {
-				// 利用會員id 撈取並鎖定會員資料(點數、9折卷)
-				Members member = membersDao.findById(req.getMemberId());
-				// 如果是 null 則代表沒有這筆會員資料
-				if (member == null) {
-					throw new RuntimeException(req.getMemberId() + "錯誤，查無會員資料");
-				}
-				int addResult = membersDao.addPoint(member.getId()); // 加次數(如果次數 < 9或 > 9 )
-				if (addResult == 0) { // 加點失敗，可能次數剛好是 9
-					// 次數剛好是9，加完變10 開券
-					int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId());
-					if (couponResult == 0) {
-						throw new RuntimeException("會員次數更新失敗");
-					}
-				}
-				if (req.isUseDiscount()) { // 如果有使用優惠劵，須把它關閉、點數變1
-					int updated = membersDao.useDiscount(member.getId());
-					if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
-						throw new RuntimeException("優惠券已被使用或不存在");
-					}
-				}
-			}
-
 			// ====== 執行新增主訂單 ======
 			ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
 					req.getPhone(), finalSubtotal, taxAmount, afterTax, "UNPAID", req.isUseDiscount());
@@ -439,7 +414,7 @@ public class OrdersService {
 			return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
 					newId, todayStr, afterTax);
 		} catch (Exception e) {
-			// --- 第三部分：錯誤紀錄 ---
+			// --- 錯誤紀錄 ---
 			// logger.error(e.getMessage());
 			System.out.println("executeInsert 執行失敗，準備回滾並交由外層判斷: " + e.getMessage());
 			throw e;
@@ -447,12 +422,17 @@ public class OrdersService {
 	}
 
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
+	@Transactional(rollbackFor = Exception.class)
 	public BasicRes pay(PayReq req) {
 		// 參數檢查(有在Req那裏自動檢查)
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
 		if (order == null) {
 			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+		}
+		// 金額檢查: 使用 compareTo == 0 來比對 BigDecimal，避免 100.0 跟 100 判定不一致的問題
+		if (order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
+			throw new RuntimeException("支付金額與訂單金額不符！");
 		}
 		// 檢查訂單狀態：只有「未付款」的訂單可以執行付款
 		// 如果訂單已經是 COMPLETED, 則不需要重複付款
@@ -463,10 +443,41 @@ public class OrdersService {
 		if (!OrdersStatus.UNPAID.equals(order.getStatus())) {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "訂單狀態錯誤，無法付款");
 		}
-		// 新增(更新)的資料(付款方式、交易號碼、狀態)
-		ordersDao.updatePay(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), //
-				req.getTransactionId(), "COMPLETED");
-		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+		try {
+			// 新增(更新)的資料(付款方式、交易號碼、狀態)
+			int result = ordersDao.updatePay(req.getId(), req.getOrderDateId(), //
+					req.getPaymentMethod(), req.getTransactionId(), "COMPLETED");
+			if (result > 0) {
+				// ====== 會員邏輯(點數處理) ======
+				// 判斷是會員(> 1)還是訪客(= 1)
+				if (order.getMemberId() > 1) {
+					// 利用會員id 撈取並鎖定會員資料(點數、9折卷)
+					Members member = membersDao.findById(order.getMemberId());
+					// 如果是 null 則代表沒有這筆會員資料
+					if (member == null) {
+						throw new RuntimeException(order.getMemberId() + "錯誤，查無會員資料");
+					}
+					int addResult = membersDao.addPoint(member.getId()); // 加次數(如果次數 < 9或 > 9 )
+					if (addResult == 0) { // 加點失敗，可能次數剛好是 9
+						// 次數剛好是9，加完變10 開券
+						int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId());
+						if (couponResult == 0) {
+							throw new RuntimeException("會員次數更新失敗");
+						}
+					}
+					if (order.isUseDiscount()) { // 如果有使用優惠劵，須把它關閉、點數變1
+						int updated = membersDao.useDiscount(member.getId());
+						if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
+							throw new RuntimeException("優惠券已被使用或不存在");
+						}
+					}
+				}
+				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			}
+			throw new RuntimeException("付款更新失敗");
+		} catch (Exception e) {
+			throw new RuntimeException("付款失敗");
+		}
 	}
 
 	/* 訂單狀態: 退款或取消 */
@@ -480,32 +491,47 @@ public class OrdersService {
 				return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 						ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 			}
-			// 訂單狀態錯誤
-			if (!order.getStatus().equals(OrdersStatus.COMPLETED) //
-					&& !order.getStatus().equals(OrdersStatus.UNPAID)) {
-				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+			String oldStatus = order.getStatus().toString();  // 目前狀態
+			String targetStatus = req.getStatus().toString();  // 目標狀態
+			// 防呆：只有 COMPLETED 才能退款；只有 UNPAID 才能取消
+			if (targetStatus.equalsIgnoreCase("REFUNDED") && !oldStatus.equals("COMPLETED")) {
+			    return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+			    		ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
+			if (targetStatus.equalsIgnoreCase("CANCELLED") && !oldStatus.equals("UNPAID")) {
+			    return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+			    		ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+			}
+			
 			// 執行訂單狀態更新
 			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
 			// 判斷是否成功
 			if (result > 0) {
-				// 如果是會員，次數扣回
-				if (order.getMemberId() > 1) {
-					Members member = membersDao.findById(order.getMemberId());
-					if (member == null) {
-						throw new RuntimeException("退款失敗：查無會員資料");
+				// 如果是退款要把次數退回(取消不用走這裡)
+				if (targetStatus.equalsIgnoreCase("REFUNDED")) {
+					// 如果是會員，次數扣回
+					if (order.getMemberId() > 1) {
+						Members member = membersDao.findById(order.getMemberId());
+						if (member == null) {
+							throw new RuntimeException("退款失敗：查無會員資料");
+						}
+						if (order.isUseDiscount()) {
+							// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
+							membersDao.restoreCouponAndPoints(order.getMemberId());
+						} else {
+							// 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
+							membersDao.smartReducePoint(order.getMemberId());
+						}
 					}
-					// 這裡利用你新加的欄位來判斷
-					if (order.isUseDiscount()) {
-						// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
-						membersDao.restoreCouponAndPoints(order.getMemberId());
-					} else {
-						// 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
-						membersDao.smartReducePoint(order.getMemberId());
+					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+				} else if (targetStatus.equalsIgnoreCase("CANCELLED")) {
+					// 如果是會員且有使用優惠劵
+					if (order.getMemberId() >1 && order.isUseDiscount()) {
+						// 這裡可以共用 restoreCouponAndPoints，把券設回 true 並點數設回 10
+			            membersDao.restoreCouponAndPoints(order.getMemberId());
 					}
+					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 				}
-				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			} else {
 				throw new RuntimeException("更新訂單狀態失敗");
 			}

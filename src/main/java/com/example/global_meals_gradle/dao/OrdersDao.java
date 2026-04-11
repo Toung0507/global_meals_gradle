@@ -51,7 +51,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Transactional
 	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1 "
 			+ " AND order_date_id = ?2 AND status = 'UNPAID'", nativeQuery = true)
-	public void updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
+	public int updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
 			String status);
 	
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態，如果有使用優惠劵，則總金額需更改) */

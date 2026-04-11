@@ -1,10 +1,12 @@
 package com.example.global_meals_gradle.req;
 
+import java.math.BigDecimal;
+
 import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.validation.constraints.NotBlank;
 
-/* 付款完成: 會傳訂單編號、付款方法、序號、有無使用折價劵、總金額(可能有打折) */
+/* 付款完成: 會傳訂單編號、付款方法、序號、總金額 */
 public class PayReq {
 
 	@NotBlank(message = ValidationMsg.ID_ERROR)
@@ -18,6 +20,8 @@ public class PayReq {
 
 	@NotBlank(message = ValidationMsg.TRANSACTION_ID_ERROR)
 	private String transactionId;
+	
+	private BigDecimal totalAmount;
 
 	public String getId() {
 		return id;
@@ -49,5 +53,13 @@ public class PayReq {
 
 	public void setTransactionId(String transactionId) {
 		this.transactionId = transactionId;
+	}
+
+	public BigDecimal getTotalAmount() {
+		return totalAmount;
+	}
+
+	public void setTotalAmount(BigDecimal totalAmount) {
+		this.totalAmount = totalAmount;
 	}
 }
