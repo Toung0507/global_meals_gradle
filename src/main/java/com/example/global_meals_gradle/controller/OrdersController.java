@@ -17,6 +17,8 @@ import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
+import com.example.global_meals_gradle.service.EcpayService;
+import com.example.global_meals_gradle.service.LinePayService;
 import com.example.global_meals_gradle.service.OrdersService;
 
 import jakarta.validation.Valid;
@@ -27,6 +29,12 @@ public class OrdersController {
 
 	@Autowired
 	private OrdersService ordersService;
+	
+	@Autowired
+	private EcpayService ecpayService;
+	
+	@Autowired
+	private LinePayService linePayService;
 
 	/* 取的該會員的歷史訂單 */
 	@PostMapping("orders/get_all_orders_list")
@@ -58,23 +66,21 @@ public class OrdersController {
 		return ordersService.getOrderByPhone(phone);
 	}
 	
-	// 發起支付（產生刷卡頁面)
-	public String goPay(String orderId, BigDecimal totalAmount) {
-	    // 這裡模擬串接綠界或類似金流的 SDK
-	    // 實際開發時，你會帶入 MerchantID, HashKey, HashIV
-	    
-	    StringBuilder html = new StringBuilder();
-	    html.append("<form id='payForm' action='https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5' method='post'>");
-	    html.append("<input type='hidden' name='MerchantID' value='2000132'>");
-	    html.append("<input type='hidden' name='MerchantTradeNo' value='" + orderId + "'>"); // 你的訂單編號
-	    html.append("<input type='hidden' name='TotalAmount' value='" + totalAmount.intValue() + "'>");
-	    html.append("<input type='hidden' name='ReturnURL' value='https://你的外網網址/api/payment/callback'>"); // 付款成功通知這台 Server
-	    html.append("<input type='hidden' name='CheckMacValue' value='加密後的字串'>"); // 這是最難的部分，SDK會幫你算
-	    html.append("</form>");
-	    html.append("<script>document.getElementById('payForm').submit();</script>");
-	    
-	    return html.toString();
-	}
+	// 前端點擊「前往付款」時請求的 API
+	@GetMapping("/goPay")
+	public String goPay(@RequestParam String orderDateId, @RequestParam String id, @RequestParam String way) {
+		// 判斷付款方式是否為綠界 (ECPAY) 還是LINE Pay
+		if ("ECPAY".equalsIgnoreCase(way)) {
+            // 執行綠界刷卡
+            return ecpayService.getEcpayForm(orderDateId, id);
+        } else if ("LINEPAY".equalsIgnoreCase(way)) {
+        	// LINE Pay 回傳的是一個網址 (例如: https://pay-store.line.me/...)
+            String payUrl = linePayService.getLinePayLink(orderDateId, id);
+            // 這邊要注意：Controller 若要跳轉，不能只傳回字串，通常要用 redirect 或讓前端處理
+            return "redirect:" + payUrl;
+        }
+        return "Unsupported payment method";
+    }
 
 	/* 接收金流公司傳的付款成功通知 */
 	@PostMapping("/api/payment/callback")
@@ -122,5 +128,27 @@ public class OrdersController {
 	        }
 	    }
 	    return "0|Fail"; // 告訴金流公司處理失敗
+	}
+	
+	/**
+	 * LINE Pay 支付完成後跳轉回來的網址 (ConfirmUrl)
+	 */
+	@GetMapping("/linepay/confirm")
+	public String linePayConfirm(
+	    @RequestParam String transactionId, // LINE Pay 給的交易序號
+	    @RequestParam String orderDateId,   // 我們自己傳過去的參數 (透傳)
+	    @RequestParam String id,
+	    @RequestParam int amount
+	) {
+	    try {
+	        // 執行確認扣款
+	        linePayService.confirmPayment(transactionId, amount, orderDateId, id);
+	        
+	        // 扣款成功後，將客人導向前端的成功頁面
+	        return "redirect:https://your-frontend.com/payment-success";
+	    } catch (Exception e) {
+	        // 失敗則導向錯誤頁面
+	        return "redirect:https://your-frontend.com/payment-fail";
+	    }
 	}
 }

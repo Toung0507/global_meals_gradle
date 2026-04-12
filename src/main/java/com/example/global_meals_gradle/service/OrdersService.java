@@ -20,8 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.dao.BranchInventoryDao;
 import com.example.global_meals_gradle.dao.MembersDao;
-import com.example.global_meals_gradle.dao.OrderCartDetailsDao;
 import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
@@ -51,9 +51,6 @@ public class OrdersService {
 
 	@Autowired
 	private OrdersDao ordersDao;
-
-	@Autowired
-	private OrderCartDetailsDao orderCartDetailsDao;
 
 	@Autowired
 	private ProductsDao productsDao;
@@ -290,7 +287,7 @@ public class OrdersService {
 				// 這裡還是需要查一次價格來算總帳
 				Products p = productsDao.findById(detail.getProductId());
 				BranchInventory inv = branchInventoryDao
-						.findByAreaAndProduct(detail.getProductId(), req.getGlobalAreaId())
+						.findByProductIdAndGlobalAreaId(detail.getProductId(), req.getGlobalAreaId())
 						.orElseThrow(() -> new RuntimeException("該分店未上架商品 ID: " + detail.getProductId()));
 				BigDecimal qty = BigDecimal.valueOf(detail.getQuantity()); // 取的商品購買數量
 				if ("INCLUSIVE".equals(taxType)) {
@@ -373,7 +370,7 @@ public class OrdersService {
 				Products product = productsDao.findById(productId);
 				// 1. 查詢該分店的庫存快照
 				BranchInventory inv = branchInventoryDao //
-						.findByAreaAndProduct(req.getGlobalAreaId(), productId) //
+						.findByProductIdAndGlobalAreaId(productId, req.getGlobalAreaId()) //
 						.orElseThrow(() -> new RuntimeException("找不到分店庫存資料"));
 				// 庫存檢查：如果庫存 比要買的數量還少
 				if (inv.getStockQuantity() < quantityToBuy) {
@@ -491,18 +488,18 @@ public class OrdersService {
 				return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 						ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 			}
-			String oldStatus = order.getStatus().toString();  // 目前狀態
-			String targetStatus = req.getStatus().toString();  // 目標狀態
+			String oldStatus = order.getStatus().toString(); // 目前狀態
+			String targetStatus = req.getStatus().toString(); // 目標狀態
 			// 防呆：只有 COMPLETED 才能退款；只有 UNPAID 才能取消
 			if (targetStatus.equalsIgnoreCase("REFUNDED") && !oldStatus.equals("COMPLETED")) {
-			    return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-			    		ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
 			if (targetStatus.equalsIgnoreCase("CANCELLED") && !oldStatus.equals("UNPAID")) {
-			    return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-			    		ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
-			
+
 			// 執行訂單狀態更新
 			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
 			// 判斷是否成功
@@ -526,16 +523,14 @@ public class OrdersService {
 					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 				} else if (targetStatus.equalsIgnoreCase("CANCELLED")) {
 					// 如果是會員且有使用優惠劵
-					if (order.getMemberId() >1 && order.isUseDiscount()) {
+					if (order.getMemberId() > 1 && order.isUseDiscount()) {
 						// 這裡可以共用 restoreCouponAndPoints，把券設回 true 並點數設回 10
-			            membersDao.restoreCouponAndPoints(order.getMemberId());
+						membersDao.restoreCouponAndPoints(order.getMemberId());
 					}
 					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 				}
-			} else {
-				throw new RuntimeException("更新訂單狀態失敗");
 			}
-
+			throw new RuntimeException("更新訂單狀態失敗");
 		} catch (Exception e) {
 			throw new RuntimeException("退款流程發生錯誤: " + e.getMessage());
 		}
