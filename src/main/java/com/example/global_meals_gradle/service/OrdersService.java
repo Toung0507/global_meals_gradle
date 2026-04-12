@@ -184,6 +184,7 @@ public class OrdersService {
 			} catch (Exception e) {
 				// 發生衝突了！(例如主鍵重複)
 				// 如果還沒超過重試次數，就繼續跑下一輪 for 迴圈。
+
 				if (i == maxRetries - 1) {
 					// 如果重試了 5 次都還是失敗，才拋出錯誤。
 					throw new RuntimeException("系統繁忙，請重新結帳");
@@ -326,9 +327,30 @@ public class OrdersService {
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
 	public BasicRes pay(PayReq req) {
 		// 參數檢查(有在Req那裏自動檢查)
-		// 新增(更新)的資料(付款方式、交易號碼、狀態) (status 在 req 是設 ENUM，在 DAO 是設 String，所以要加 name() )
+
+		// ╔══════════════════════════════════════════════════════════════════╗
+		// ║  【Bug 修正】pay() 傳入 Enum 物件，但 DAO 的 updatePay 需要 String ║
+		// ╚══════════════════════════════════════════════════════════════════╝
+		// ❌ 原本錯誤寫法：
+		//    ordersDao.updatePay(..., OrdersStatus.COMPLETED);
+		//    直接傳 Enum 物件進去
+		//
+		// 🔴 錯誤現象：DAO 的 updatePay 最後一個參數是 String，
+		//             直接傳 Enum 物件會編譯期報型別不符。
+		//             （若當時 DAO 也是 Enum，則執行期 SQL 存不進資料庫）
+		//
+		// 📖 為什麼要用 .name()？
+		//    Java 的 Enum 是一個「物件型別」，不是字串。
+		//    例如：OrdersStatus.COMPLETED 是一個物件，你沒辦法直接把它當字串塞進 SQL。
+		//    Enum 有一個內建方法叫 .name()，它的功能是：「把這個 Enum 常數的名稱回傳成字串」。
+		//    所以 OrdersStatus.COMPLETED.name() 的回傳值就是字串 "COMPLETED"。
+		//
+		//    類比：就像你拿著一張「COMPLETED 卡牌（物件）」，
+		//          .name() 就是把卡牌上的文字「COMPLETED」讀出來給你（字串）。
+		//
+		// ✅ 修正方式：傳入 OrdersStatus.COMPLETED.name()，得到字串 "COMPLETED"
 		ordersDao.updatePay(req.getId(), req.getOrderDateId(), req.getPaymentMethod(), req.getTransactionId(),
-				OrdersStatus.COMPLETED);
+				OrdersStatus.COMPLETED.name());
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
