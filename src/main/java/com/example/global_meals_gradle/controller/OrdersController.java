@@ -50,7 +50,7 @@ public class OrdersController {
 
 	/* 成立訂單(未結帳) */
 	@PostMapping("orders/create_orders")
-	public CreateOrdersRes createOrdersRes(@RequestBody CreateOrdersReq req) {
+	public CreateOrdersRes createOrdersRes(@Valid @RequestBody CreateOrdersReq req) {
 		return ordersService.createOrders(req);
 	}
 
