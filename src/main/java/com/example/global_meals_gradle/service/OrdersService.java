@@ -286,6 +286,7 @@ public class OrdersService {
 			if (!detail.isGift()) {
 				// 這裡還是需要查一次價格來算總帳
 				Products p = productsDao.findById(detail.getProductId());
+				// 取的該商品在該分店的價格(未稅)
 				BranchInventory inv = branchInventoryDao
 						.findByProductIdAndGlobalAreaId(detail.getProductId(), req.getGlobalAreaId())
 						.orElseThrow(() -> new RuntimeException("該分店未上架商品 ID: " + detail.getProductId()));
@@ -321,7 +322,7 @@ public class OrdersService {
 			}
 			taxAmount = afterTax.subtract(finalSubtotal);
 		} else { // 內含稅：總金額 = 小計，稅額 = 小計 - (小計 / (1 + 稅率))
-			afterTax = subtotal;
+			afterTax = subtotal;   // 含稅額
 			if (req.isUseDiscount()) {
 				afterTax = afterTax.multiply(new BigDecimal("0.8")).setScale(0, RoundingMode.UP);
 			}
@@ -536,7 +537,7 @@ public class OrdersService {
 		}
 	}
 
-	/* 報電話號碼查詢最新一單 */
+	/* 報電話號碼查詢今天的訂單 */
 	public CreateOrdersRes getOrderByPhone(String phone) {
 		// 取的今天的日期字串，參考成立訂單
 		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));

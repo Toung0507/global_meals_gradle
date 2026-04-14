@@ -60,7 +60,7 @@ public class OrdersController {
 		return ordersService.pay(req);
 	}
 
-	/* 報電話號碼取餐 */
+	/* 報電話號碼取餐(今天) */
 	@GetMapping("orders/get_order_by_phone")
 	public CreateOrdersRes getOrderByPhone(@RequestParam("phone") String phone) {
 		return ordersService.getOrderByPhone(phone);
