@@ -7,7 +7,16 @@ public enum ReplyMessage {
 	REGIONS_ID_ERROR(400, "Regions Id Error!!"), //
 	// Service GlobalAreaService
 	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
-
+	// Service MembersService
+	PHONE_ERROR(400, "Phone Error!!"), //
+	PHONE_HAS_EXISTED(400, "Phone Has Existed!!"), // 電話號碼已存在
+	PASSWORD_ERROR(400, "Password Error!!"), //
+	PASSWORD_NOT_ENTERED(400, "Password Not Entered!!"), // 密碼未填寫
+	OLDPASSWORD_ERROR(400, "OldPassword Error!!"), //
+	PHONE_OR_PASSWORD_ERROR(400, "Phone Or Password Error!!"), //
+	UPDATE_FAILED(400, "Update Failed!!"), //
+	GUEST_CANT_UPDATE(400, "Guest Cant Update!!"), // 訪客無法更新
+	
 	/* 劭頴 */
 	SUCCESS(200, "Success!!"), //
 	ORDER_NOT_FOUND(400, "Order Not Found!!"), //

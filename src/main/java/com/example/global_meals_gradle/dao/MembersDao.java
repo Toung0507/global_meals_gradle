@@ -46,4 +46,38 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 	@Transactional
 	@Query(value = "UPDATE members SET order_count = 1, is_discount = false WHERE id = ?1 AND is_discount = true", nativeQuery = true)
 	public void useDiscount(int id);
+	
+	//=============================================================================================================
+	// 昱文
+	
+	// 訪客註冊：強制 id = 1，若衝突則更新(覆蓋)
+	@Modifying
+	@Transactional
+	@Query(value = "INSERT INTO members (id, name, phone, password, order_count, is_discount, created_at) "
+			+ " values (1, ?1, ?2, NULL, 0, false, CURDATE()) ON DUPLICATE KEY "
+			+ " UPDATE name = ?1, phone = ?2, password = NULL, "
+			+ " order_count = 0, is_discount = false, created_at = CURDATE()", nativeQuery = true)
+	public void registerGuest(String name, String phone);
+	
+	// 會員註冊
+	@Modifying
+	@Transactional
+	@Query(value = "INSERT INTO members (name, phone, password, order_count, is_discount, created_at) "
+			+ " values (?1, ?2, ?3, 0, false, CURDATE())", nativeQuery = true)
+	public void registerMember(String name, String phone, String password);
+	
+	// 查詢(根據手機號碼)
+	@Query(value = "SELECT * FROM members WHERE phone = ?1", nativeQuery = true)
+	public Members getByPhone(String phone);
+	
+	// 檢查除了 id=1 以外，是否有其他會員使用此手機 (防止訪客覆蓋到正式會員的手機號碼)
+    @Query(value = "SELECT * FROM members WHERE phone = ?1 AND id != 1", nativeQuery = true)
+    public Members getByPhoneExcludeGuest(String phone);
+	
+	// 會員修改密碼
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE members SET password = ?2 WHERE id = ?1", nativeQuery = true)	
+	public int updatePassword(int id, String newPassword);
+	
 }

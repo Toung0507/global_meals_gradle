@@ -41,7 +41,7 @@ public interface StaffDao extends JpaRepository<Staff, Integer>{
 	public List<Staff> getSTListById(int globalAreaId);
 	
 	// 停權/復權
-	@Query(value = "UPDATE staff SET is_stasus = ?2 WHERE id = ?1", nativeQuery = true)
+	@Query(value = "UPDATE staff SET is_status = ?2 WHERE id = ?1", nativeQuery = true)
 	public void updateStatus(int id, boolean status);
 
 }
