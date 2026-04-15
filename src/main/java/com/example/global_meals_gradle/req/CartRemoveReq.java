@@ -13,7 +13,7 @@ public class CartRemoveReq {
 
 	@Min(value = 1, message = ValidationMsg.PRODUCT_ID_MUST_BE_POSITIVE)
 	private int productId;
-
+	@Min(value = 1, message = ValidationMsg.MEMBER_ID_MUST_BE_POSITIVE)
 	private int memberId;
 
 	public int getCartId() {

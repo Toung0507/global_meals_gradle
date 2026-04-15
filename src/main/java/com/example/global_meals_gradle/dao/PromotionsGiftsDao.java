@@ -4,9 +4,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import com.example.global_meals_gradle.entity.PromotionsGifts;
+
+import jakarta.transaction.Transactional;
 
 import jakarta.transaction.Transactional;
 
@@ -190,11 +193,11 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     @Modifying
     @Transactional
     @Query(value = "UPDATE promotions_gifts SET quantity = quantity -1 WHERE promotions_id = ?1 "
-      + "And gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
+    		+ "And gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
     public int reduceGiftQuota(int promotionsId, int giftProductId);
 
- /* 根據 活動id 商品id 取的門檻資料(用於orders) */
+	/* 根據 活動id 商品id 取的門檻資料(用於orders) */
     @Query(value = "SELECT full_amount FROM promotions_gifts"
-      + "WHERE promotions_id = ?1 And gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
+    		+ "WHERE promotions_id = ?1 And gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
     public BigDecimal findFullAmountByGiftProductId(int promotionsId, int giftProductId);
 }
