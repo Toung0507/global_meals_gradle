@@ -29,6 +29,10 @@ public class PromotionsService {
 	@Autowired
 	private ProductsTempDao productTempDao;
 
+	// 查詢 regions 表，用來取得各國折扣上限（usage_cap）
+	@Autowired
+	private RegionsDao regionsDao;
+
 
 	/**
 	 * 促銷活動結帳計算
@@ -140,23 +144,21 @@ public class PromotionsService {
 			//   2. 前端 useCoupon = true（使用者有勾選使用折扣券）
 			if (member.isDiscount() && req.isUseCoupon()) {
 
-				// 依前端傳入的國家決定折扣上限（各國貨幣單位不同，上限金額也不同）
-				//   台灣 → 最多折 200
-				//   日本 → 最多折 1000
-				//   韓國 → 最多折 10000
-				//   其他國家 → 不設上限（折扣上限設為原始金額，等同直接打九折）
-				double discountCap;
-				String country = req.getCountry();
-				if ("台灣".equals(country)) {
-					discountCap = 200;
-				} else if ("日本".equals(country)) {
-					discountCap = 1000;
-				} else if ("韓國".equals(country)) {
-					discountCap = 10000;
-				} else {
-					// 其他國家不設上限，折扣上限設為原始金額（等同無上限）
-					discountCap = currentTotal;
+				// 使用折扣券時 country 必須有值，沒有傳就無法查折扣上限
+				if (req.getCountry() == null || req.getCountry().isBlank()) {
+					throw new RuntimeException(ReplyMessage.COUNTRY_ERROR.getMessage());
 				}
+
+				// 從 regions 表查出這個國家的折扣上限（usage_cap）
+				// 前端下拉選單內容來自 regions 表，理論上一定查得到
+				// 若查不到表示傳入了不存在的 country，屬於異常，直接擋下
+				Integer usageCap = regionsDao.findUsageCapByCountry(req.getCountry());
+				if (usageCap == null) {
+					throw new RuntimeException(ReplyMessage.COUNTRY_ERROR.getMessage());
+				}
+
+				// 折扣上限從 regions.usage_cap 取得，不再寫死
+				double discountCap = usageCap.doubleValue();
 
 				// 計算九折實際折扣金額：currentTotal * 0.1
 				// 例如 1000 → 折 100；5000 → 折 500
