@@ -30,10 +30,16 @@ public enum ReplyMessage {
 	TOTAL_AMOUNT_ERROR(400, "Total Amount ERROR!!"), //
 	NOT_DISCOUNT_ERROR(400, "Not Discount ERROR!!"), //
 
-	// 促銷活動相關錯誤-致遠
-	PROMOTION_NOT_FOUND(404, "Promotion Not Found!!"), // 找不到符合條件的促銷活動
-	PROMOTION_GIFTS_NOT_FOUND(404, "Promotion Gift Not Found!!"), // 找不到符合條件的贈品
+	// 促銷活動相關錯誤-致遠//////////
+	PROMOTION_NOT_FOUND(404, "Promotion Not Found!!"),              // 找不到符合條件的促銷活動
+	PROMOTION_GIFTS_NOT_FOUND(404, "Promotion Gift Not Found!!"),   // 找不到符合條件的贈品（結帳驗證失敗）
 	MEMBER_COUPON_NOT_AVAILABLE(400, "Member Coupon Not Available!!"), // 會員沒有折扣券但傳入 useCoupon=true
+	GLOBAL_AREA_NOT_FOUND(404, "Global Area Not Found!!"),          // 找不到對應的分店
+	PROMOTION_DATE_ERROR(400, "Promotion Date Error!!"),             // 活動日期不合法（開始日期已過期或結束日期早於開始日期）
+	PROMOTION_GIFT_PARAM_ERROR(400, "Promotion Gift Param Error!!"), // 贈品參數不合法（門檻金額 <= 0 或數量 = 0）
+	PROMOTION_NAME_ERROR(400, "Promotion Name Error!!"),             // 活動名稱為空或空白
+	COUNTRY_ERROR(400, "Country Error!!"),                           // 使用折扣券時國家欄位為空
+	//////////////////////////////////////
 
 	/* 艷羽 */
 	// 贈品已下架（也是滿XX送XX這個規則下架了）或不存在
