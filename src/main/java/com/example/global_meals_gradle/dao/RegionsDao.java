@@ -38,4 +38,9 @@ public interface RegionsDao extends JpaRepository<Regions, Integer>{
 	    Regions findByCountry(String country);  
 	
 
+
+
+	/* 查找該分店所在國家的稅制與稅率(成立訂單使用) */ 
+	@Query("SELECT r FROM Regions r JOIN GlobalArea g ON r.country = g.country WHERE g.id = ?1")
+	public Regions findTaxByAreaId(int areaId);
 }

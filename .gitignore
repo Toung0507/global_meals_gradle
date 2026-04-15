@@ -35,4 +35,4 @@ out/
 HELP.md
 
 # Rate API Key 設定檔
-application-secrets.properties
+src/main/resources/application-secrets.properties

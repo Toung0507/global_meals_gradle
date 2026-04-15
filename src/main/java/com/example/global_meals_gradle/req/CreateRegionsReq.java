@@ -2,12 +2,9 @@ package com.example.global_meals_gradle.req;
 
 import java.math.BigDecimal;
 
-import com.example.global_meals_gradle.constants.TaxType;
 import com.example.global_meals_gradle.constants.ValidationMsg;
 import com.fasterxml.jackson.annotation.JsonAlias;
 
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
