@@ -6,6 +6,7 @@ import java.util.List;
 // 代表「一個使用者有資格參加的贈品活動」
 // 是 CartViewRes.availablePromotions 清單裡的每一個元素
 // 前端用它來渲染「選擇活動」的下拉選單
+//可選的活動列表的單一活動的VO
 public class AvailablePromotionVO {
 
 // 活動的 ID，對應資料庫 promotions.id
