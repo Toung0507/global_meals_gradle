@@ -3,7 +3,7 @@ package com.example.global_meals_gradle.vo;
 import java.math.BigDecimal;
 
 /* 購物車內單一商品的展示物件 (View Object) */
-public class CartItemVO {
+public class CartItemVo {
 
 	private int detailId;
 

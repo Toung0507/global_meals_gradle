@@ -40,4 +40,9 @@ public interface GlobalAreaDao extends JpaRepository<GlobalArea, Integer>{
 	@Query(value = "SELECT * FROM global_area WHERE id = ?1", nativeQuery = true)
     GlobalArea findById(int id); 
 	
+	// 取得最後新增的一筆 ID - 思云新增，確保新增分店時，也會同步幫分店新增全部的商品庫存初始為0
+	@Query(value = "SELECT LAST_INSERT_ID()", nativeQuery = true)
+	public int findLastId();
+	
+	
 }

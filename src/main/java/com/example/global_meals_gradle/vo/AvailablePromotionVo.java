@@ -6,7 +6,7 @@ import java.util.List;
 // 代表「一個使用者有資格參加的贈品活動」
 // 是 CartViewRes.availablePromotions 清單裡的每一個元素
 // 前端用它來渲染「選擇活動」的下拉選單
-public class AvailablePromotionVO {
+public class AvailablePromotionVo {
 
 	// 活動的 ID，對應資料庫 promotions.id
 	// 前端用它來區分每個活動（React/Vue 的 key 用）
@@ -24,7 +24,7 @@ public class AvailablePromotionVO {
 	// 這個活動底下所有的贈品選項清單
 	// available=true → 前端正常顯示，使用者可以點選
 	// available=false → 前端灰色顯示，旁邊標注 unavailableReason
-	private List<AvailableGiftVO> gifts;
+	private List<AvailableGiftVo> gifts;
 
 	public int getPromotionId() {
 		return promotionId;
@@ -50,11 +50,11 @@ public class AvailablePromotionVO {
 		this.fullAmount = fullAmount;
 	}
 
-	public List<AvailableGiftVO> getGifts() {
+	public List<AvailableGiftVo> getGifts() {
 		return gifts;
 	}
 
-	public void setGifts(List<AvailableGiftVO> gifts) {
+	public void setGifts(List<AvailableGiftVo> gifts) {
 		this.gifts = gifts;
 	}
 }

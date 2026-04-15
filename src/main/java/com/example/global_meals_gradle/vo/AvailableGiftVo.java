@@ -2,7 +2,7 @@ package com.example.global_meals_gradle.vo;
 
 import java.math.BigDecimal;
 
-public class AvailableGiftVO {
+public class AvailableGiftVo {
 
 	// 這條贈品規則的 ID（對應 promotions_gifts.id）
 	// 若無，前端警告：清單裡的每一個小孩，都應該要有一個獨一無二的 key！

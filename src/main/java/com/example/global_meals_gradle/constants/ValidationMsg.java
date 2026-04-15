@@ -42,4 +42,13 @@ public class ValidationMsg {
 	public static final String PRODUCT_ID_MUST_BE_POSITIVE = "ProductId Must Be Positive ";
 	public static final String MEMBER_ID_MUST_BE_POSITIVE = "MemberId Must Be Positive";
 
+	/* 思云 */
+	// 商品
+	public static final String PRODUCT_NAME_EMPTY = "Product Name cannot be empty";
+	public static final String PRODUCT_CATEGORY_EMPTY = "Product Category cannot be empty";
+	public static final String PRODUCT_AREA_ID_INVALID = "Global Area Id must be at least 1";
+	public static final String PRODUCT_PRICE_INVALID = "Price must be greater than 0";
+	public static final String PRODUCT_DESCRIPTION_EMPTY = "Description cannot be empty";
+	public static final String PRODUCT_ID_EMPTY = "Product ID cannot be empty";
+
 }

@@ -41,6 +41,7 @@ import com.example.global_meals_gradle.vo.GetOrdersVo;
 
 /*	待做:
  * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額
+ * 邵穎有更改過了，可以用她的
  */
 
 @Service

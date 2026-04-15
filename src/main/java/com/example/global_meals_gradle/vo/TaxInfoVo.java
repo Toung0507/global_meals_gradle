@@ -2,7 +2,7 @@ package com.example.global_meals_gradle.vo;
 
 import java.math.BigDecimal;
 
-public class TaxInfoVO {
+public class TaxInfoVo {
 
 	private BigDecimal taxRate;
 

@@ -32,7 +32,19 @@ public enum ReplyMessage {
 	GIFT_NOT_AVAILABLE(400, "Gift Not Available!!"), //
 	NOT_REACH_FULLAMOUNT(400, "Not Reach fullamount!"), //
 	GIFT_SEND_LIGHT(400, "Gift Send light!!"), //
-	CART_NOT_FOUND(404, "Cart Not Found!!");
+	CART_NOT_FOUND(404, "Cart Not Found!!"),
+
+	/* 思云 */
+	// 商品表
+	PRODUCT_EXISTS(400, "Product name already exists!"), //
+	IMAGE_TOO_LARGE(400, "Image size exceeds 5MB!"), //
+	INVALID_PRICE(400, "Price must be between 1 and 5000!"), //
+	BRANCH_NOT_FOUND(500, "No branches found to initialize inventory!"), //
+	IMAGE_ERROR(500, "Image processing error!"), //
+	SYSTEM_ERROR(500, "System error occurred: "), // 後面會動態接訊息
+	PRODUCT_CREATE_SUCCESS(200, "Product created and inventory synced successfully!"), //
+	PRODUCT_UPDATE_SUCCESS(200, "Product Update successfully!"),//
+	PRODUCT_DELETE_SUCCESS(200,"Product delete successfully!");
 
 	private int code;
 

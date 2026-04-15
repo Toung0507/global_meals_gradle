@@ -3,9 +3,9 @@ package com.example.global_meals_gradle.res;
 import java.math.BigDecimal;
 import java.util.List;
 
-import com.example.global_meals_gradle.vo.AvailablePromotionVO;
-import com.example.global_meals_gradle.vo.CartItemVO;
-import com.example.global_meals_gradle.vo.TaxInfoVO;
+import com.example.global_meals_gradle.vo.AvailablePromotionVo;
+import com.example.global_meals_gradle.vo.CartItemVo;
+import com.example.global_meals_gradle.vo.TaxInfoVo;
 
 /* 整個購物車的最終結果 (回傳給前端專用) */
 public class CartViewRes extends BasicRes {
@@ -17,7 +17,7 @@ public class CartViewRes extends BasicRes {
 	private String operationType;
 
 	/* 裝填這台車所有的商品與贈品！ */
-	private List<CartItemVO> items;
+	private List<CartItemVo> items;
 
 	/* 稅前應付總額（所有商品 LineTotal 的總和，必須排除贈品價格） */
 	private BigDecimal subtotal;
@@ -25,11 +25,11 @@ public class CartViewRes extends BasicRes {
 	// 使用者「有資格參加」的活動清單（兩層結構：第一層是活動，第二層是各活動的贈品選項）
 	// 空清單 [] → 消費金額達不到任何活動門檻 → 前端不顯示「選擇活動」按鈕
 	// 有資料 → 前端顯示「選擇活動」按鈕，按下後展開活動下拉選單
-	private List<AvailablePromotionVO> availablePromotions;
+	private List<AvailablePromotionVo> availablePromotions;
 
 	// 稅務資訊（稅率、稅的類型、稅額）
 	// 如果這台購物車的分店沒有稅務設定，這個欄位是 null
-	private TaxInfoVO taxInfo;
+	private TaxInfoVo taxInfo;
 
 	// 最終總計金額 = subtotal + taxAmount（EXCLUSIVE）或 = subtotal（INCLUSIVE）
 	// 後端算好直接給前端顯示，前端不需要自己做加總
@@ -65,11 +65,11 @@ public class CartViewRes extends BasicRes {
 		this.operationType = operationType;
 	}
 
-	public List<CartItemVO> getItems() {
+	public List<CartItemVo> getItems() {
 		return items;
 	}
 
-	public void setItems(List<CartItemVO> items) {
+	public void setItems(List<CartItemVo> items) {
 		this.items = items;
 	}
 
@@ -82,19 +82,19 @@ public class CartViewRes extends BasicRes {
 	}
 
 	// 新版：回傳「以活動為單位」的兩層巢狀結構
-	public List<AvailablePromotionVO> getAvailablePromotions() {
+	public List<AvailablePromotionVo> getAvailablePromotions() {
 		return availablePromotions;
 	}
 
-	public void setAvailablePromotions(List<AvailablePromotionVO> availablePromotions) {
+	public void setAvailablePromotions(List<AvailablePromotionVo> availablePromotions) {
 		this.availablePromotions = availablePromotions;
 	}
 
-	public TaxInfoVO getTaxInfo() {
+	public TaxInfoVo getTaxInfo() {
 		return taxInfo;
 	}
 
-	public void setTaxInfo(TaxInfoVO taxInfo) {
+	public void setTaxInfo(TaxInfoVo taxInfo) {
 		this.taxInfo = taxInfo;
 	}
 

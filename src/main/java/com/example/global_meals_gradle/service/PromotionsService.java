@@ -1,18 +1,22 @@
 package com.example.global_meals_gradle.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.dao.MemberTempDao;
+import com.example.global_meals_gradle.dao.ProductsDao;
+import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
+import com.example.global_meals_gradle.entity.Members;
+import com.example.global_meals_gradle.entity.PromotionsGifts;
 import com.example.global_meals_gradle.req.PromotionsReq;
-import com.example.global_meals_gradle.res.PromotionsRes;
 import com.example.global_meals_gradle.res.GiftItem;
-import com.example.global_meals_gradle.dao.*;
-import com.example.global_meals_gradle.entity.*;
+import com.example.global_meals_gradle.res.PromotionsRes;
 
 @Service
 public class PromotionsService {
@@ -27,7 +31,7 @@ public class PromotionsService {
 
 	// 查詢 products 表，用來抓贈品的商品名稱（避免拉到 MEDIUMBLOB 圖片欄位）
 	@Autowired
-	private ProductsTempDao productTempDao;
+	private ProductsDao productsDao;
 
 	/**
 	 * 促銷活動結帳計算
@@ -87,7 +91,7 @@ public class PromotionsService {
 
 			// 用 gift_product_id 去 products 表查商品名稱
 			// 使用 ProductsTempDao 是為了避免把 MEDIUMBLOB（圖片）也一起撈出來
-			String productName = productTempDao.findNameById(selectedGift.getGiftProductId());
+			String productName = productsDao.findNameById(selectedGift.getGiftProductId());
 
 			// 組成 GiftItem 放進回傳清單
 			GiftItem item = new GiftItem();
@@ -179,7 +183,7 @@ public class PromotionsService {
 			PromotionsGifts gift = qualifiedGifts.get(i);
 
 			// 查商品名稱，避免拉到 MEDIUMBLOB
-			String productName = productTempDao.findNameById(gift.getGiftProductId());
+			String productName = productsDao.findNameById(gift.getGiftProductId());
 
 			GiftItem item = new GiftItem();
 			item.setPromotionsGiftsId(gift.getId()); // 前端選完後要帶這個 id 回來
