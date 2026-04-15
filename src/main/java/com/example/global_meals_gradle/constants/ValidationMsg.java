@@ -54,12 +54,8 @@ public class ValidationMsg {
 	
 	/* 景翔 */
 	/* 職員 */
-	public static final String NAME_ERROR = "Name Error";
-	
 	public static final String ACCOUNT_ERROR = "Account Error";
 	
-	public static final String PASSWORD_ERROR = "Password Error";
-
 	public static final String ROLE_ERROR = "Role Error";
 	
 	public static final String OLD_PASSWORD_ERROR = "Old Password Error";

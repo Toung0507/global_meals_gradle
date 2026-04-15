@@ -46,7 +46,6 @@ public enum ReplyMessage {
 	// 基本欄位錯誤
 	NAME_ERROR(400, "Name Error"), //名字錯誤
 	ACCOUNT_ERROR(400, "Account Error"), //帳號錯誤
-	PASSWORD_ERROR(400, "Password Error"), //密碼錯誤
 	NEW_PASSWORD_ERROR(400, "New Password Error"), //新密碼錯誤
 	ROLE_ERROR(400, "Role Error"), //角色錯誤
 	// 員工查詢 / 操作錯誤

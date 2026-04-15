@@ -31,6 +31,7 @@ import jakarta.validation.Valid;
 public class StaffController {
 
 	// Session 的 key 名稱，統一用常數，避免到處打字串打錯
+	//宣告一個「不可變的常數」。把 Session 的鑰匙名稱統一寫在這裡
 	private static final String SESSION_KEY = "loginStaff";
 
 	@Autowired
@@ -56,7 +57,7 @@ public class StaffController {
 	 *           欄位不合格直接回傳 400，不會進到 Service
 	 *  HttpSession session：Spring 自動注入 Session 物件
 	 * ================================================================= */
-	@PostMapping("/api/auth/login")
+	@PostMapping("/api/auth/login")//ATM
 	public StaffSearchRes login(@Valid @RequestBody LoginStaffReq req, HttpSession session) {
 
 		StaffSearchRes res = staffService.login(req);
@@ -73,11 +74,11 @@ public class StaffController {
 
 	/* =================================================================
 	 *  POST /api/auth/logout — 登出
-	 *
+	 *	沒有 request_body ， 所以用 GetMapping
 	 *  session.invalidate()：把這個 Session 整個清掉
 	 *  下次要操作就要重新登入
 	 * ================================================================= */
-	@PostMapping("/api/auth/logout")
+	@GetMapping("/api/auth/logout")
 	public BasicRes logout(HttpSession session) {
 		session.invalidate();
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), //
@@ -116,6 +117,11 @@ public class StaffController {
 	}
 
 
+	/*	 *  {id} 與 @PathVariable int id：這兩個是配套的。
+	 *  {id} 是網址上的佔位符（例如 /staff/5/status），@PathVariable 會精準地把網址上的那個 5 抓下來，變成 Java 的變數 id。
+	 *  體現「對誰動手」在網址上 (id)，「動什麼手腳」在 Body 裡 (req)，「誰在動手」在 Session 裡 (operator)。
+	 */
+	
 	/* =================================================================
 	 *  PATCH /api/admin/staff/{id}/status — 停權 / 復權
 	 *
