@@ -29,6 +29,7 @@ public class PromotionsService {
 	@Autowired
 	private ProductsTempDao productTempDao;
 
+
 	/**
 	 * 促銷活動結帳計算
 	 *
@@ -138,10 +139,38 @@ public class PromotionsService {
 			//   1. members.is_discount = 1（會員有折扣券，代表累積訂單已達 10 次）
 			//   2. 前端 useCoupon = true（使用者有勾選使用折扣券）
 			if (member.isDiscount() && req.isUseCoupon()) {
-				// 打八折
-				currentTotal = currentTotal * 0.8;
+
+				// 依前端傳入的國家決定折扣上限（各國貨幣單位不同，上限金額也不同）
+				//   台灣 → 最多折 200
+				//   日本 → 最多折 1000
+				//   韓國 → 最多折 10000
+				//   其他國家 → 不設上限（折扣上限設為原始金額，等同直接打九折）
+				double discountCap;
+				String country = req.getCountry();
+				if ("台灣".equals(country)) {
+					discountCap = 200;
+				} else if ("日本".equals(country)) {
+					discountCap = 1000;
+				} else if ("韓國".equals(country)) {
+					discountCap = 10000;
+				} else {
+					// 其他國家不設上限，折扣上限設為原始金額（等同無上限）
+					discountCap = currentTotal;
+				}
+
+				// 計算九折實際折扣金額：currentTotal * 0.1
+				// 例如 1000 → 折 100；5000 → 折 500
+				double discountAmount = currentTotal * 0.1;
+
+				// 實際折扣 = min(計算折扣, 上限)
+				// 例如台灣：5000 打九折折 500，但上限 200，所以只折 200，實付 4800
+				double actualDiscount = Math.min(discountAmount, discountCap);
+
+				// 套用折扣
+				currentTotal = currentTotal - actualDiscount;
+
 				// 告訴前端這次有套用折扣，名稱固定為此字串
-				res.setAppliedDiscountName("會員 8 折優惠");
+				res.setAppliedDiscountName("會員 9 折優惠");
 			}
 		}
 
