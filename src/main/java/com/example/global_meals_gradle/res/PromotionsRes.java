@@ -18,7 +18,7 @@ public class PromotionsRes {
 	private List<Integer> appliedPromotionIds;
 
 	// 折扣名稱：
-	//   有使用 8 折券 → "會員 8 折優惠"
+	//   有使用 9 折券 → "會員 9 折優惠"
 	//   沒有使用     → 空字串 ""
 	private String appliedDiscountName;
 
@@ -27,7 +27,7 @@ public class PromotionsRes {
 	private BigDecimal originalAmount;
 
 	// 最終金額：折扣後無條件進位的整數
-	//   有折扣 → originalAmount * 0.8，無條件進位
+	//   有折扣 → 扣除 min(originalAmount * 0.1, 國家上限) 後，無條件進位
 	//   無折扣 → originalAmount 無條件進位
 	private int finalAmount;
 
