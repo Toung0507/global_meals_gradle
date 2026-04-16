@@ -147,5 +147,14 @@ public class StaffController {
 	
 		return staffService.changePassword(id, req, operator);
 	}
+	/* =================================================================
+	 *  PATCH /api/admin/staff/{id}/promote — 晉升
+	 * ================================================================= */
+	@PatchMapping("/api/admin/staff/{id}/promote")
+	public StaffSearchRes promoteToMA(@PathVariable int id, HttpSession session) {
+		Staff operator = getLoginStaff(session);
+        // 此處攔截器會處理登入檢查，不需再寫 if(operator == null)
+		return staffService.promoteToManagerAgent(id, operator);
+	}
 
 }
