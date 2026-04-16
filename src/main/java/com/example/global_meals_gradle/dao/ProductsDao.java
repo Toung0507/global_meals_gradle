@@ -48,6 +48,10 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	/*  用於訂單成立 */
 	@Query(value = "select * from products where id = ?1", nativeQuery = true)
 	public Products findById(int id);
+	
+	/*  用於訂單成立中各分店庫存查詢 */
+	@Query(value = "select * from products where id = ?1 AND　region_country　＝　？２", nativeQuery = true)
+	public Products findByIdAndRegionCountry(int id, String regionCountry);
 
 	/* 庫存減少 */
 	// stock_quantity >= ?2: 防止「沒鎖好」的意外
@@ -55,7 +59,7 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	@Transactional
 	@Query(value = "update products set stock_quantity = stock_quantity - ?2 where id = ?1 and stock_quantity >= ?2", nativeQuery = true)
 	public int upDateStock(int id, int stockQuantity);
-	
+
 	// 7. 前台實時確認庫存 (只抓數字，不抓整張表，效能最快)
 	@Query(value = "SELECT stock_quantity FROM products WHERE id = ?1 AND deleted_at IS NULL", nativeQuery = true)
 	public Integer getStockById(int productsId);
