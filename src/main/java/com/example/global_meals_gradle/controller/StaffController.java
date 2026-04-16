@@ -57,7 +57,7 @@ public class StaffController {
 	 *           欄位不合格直接回傳 400，不會進到 Service
 	 *  HttpSession session：Spring 自動注入 Session 物件
 	 * ================================================================= */
-	@PostMapping("/api/auth/login")//ATM
+	@PostMapping("/api/auth/login")//看ATM
 	public StaffSearchRes login(@Valid @RequestBody LoginStaffReq req, HttpSession session) {
 
 		StaffSearchRes res = staffService.login(req);
@@ -93,10 +93,7 @@ public class StaffController {
 	public StaffSearchRes register(@Valid @RequestBody RegisterStaffReq req, HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
-		if (operator == null) {
-			return notLoginRes();
-		}
-
+		
 		return staffService.register(req, operator);
 	}
 
@@ -109,9 +106,6 @@ public class StaffController {
 	public StaffSearchRes getStaffList(HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
-		if (operator == null) {
-			return notLoginRes();
-		}
 
 		return staffService.getStaffList(operator);
 	}
@@ -135,10 +129,7 @@ public class StaffController {
 			HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
-		if (operator == null) {
-			return notLoginRes();
-		}
-
+		
 		return staffService.updateStatus(id, req, operator);
 	}
 
@@ -153,10 +144,7 @@ public class StaffController {
 			HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
-		if (operator == null) {
-			return notLoginRes();
-		}
-
+	
 		return staffService.changePassword(id, req, operator);
 	}
 
