@@ -155,9 +155,7 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 		    + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
 	public List<PromotionsGifts> findAllActiveGifts();
 
-	/* 根據商品id取的門檻資料 */
-	@Query(value = "SELECT full_amount FROM promotions_gifts WHERE gift_product_id = ?1 AND is_active = 1", nativeQuery = true)
-	public BigDecimal findFullAmountByGiftProductId(int giftProductId);
+	
 
 	/*
     
