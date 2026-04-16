@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Min;
 public class CartClearReq {
 	@Min(value = 1, message = ValidationMsg.CART_ID_MUST_BE_POSITIVE)
 	private int cartId;
+	@Min(value = 1, message = ValidationMsg.MEMBER_ID_MUST_BE_POSITIVE)
 	private int memberId;
 
 	public int getCartId() {
