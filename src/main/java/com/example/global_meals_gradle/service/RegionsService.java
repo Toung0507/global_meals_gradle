@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.constants.TaxType;
 import com.example.global_meals_gradle.dao.RegionsDao;
 import com.example.global_meals_gradle.req.CreateRegionsReq;
 import com.example.global_meals_gradle.req.UpdateRegionsReq;
@@ -21,9 +22,15 @@ public class RegionsService {
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes create(CreateRegionsReq req) {
 		/* 參數檢查:使用@Valid */
+		// 檢查傳進來的是否為 INCLUSIVE / EXCLUSIVE
+		if (!TaxType.check(req.getTaxType())) {
+			return new BasicRes(ReplyMessage.TAX_TYPE_ERROR.getCode(), //
+					ReplyMessage.TAX_TYPE_ERROR.getMessage());
+		}
+		
 		// 新增國家稅值
 		try {
-			regionsDao.insert(req.getCountry(), req.getCurrencyCode(), req.getTaxRate(), req.getTaxType());
+			regionsDao.insert(req.getCountry(), req.getCurrencyCode(), req.getTaxRate(), req.getTaxType().toUpperCase());
 		} catch (Exception e) {
 			throw e;
 		}
@@ -41,8 +48,13 @@ public class RegionsService {
 //			return new BasicRes(ReplyMessage.REGIONS_ID_ERROR.getCode(), //
 //					ReplyMessage.REGIONS_ID_ERROR.getMessage());
 //		}
+		if (!TaxType.check(req.getTaxType())) {
+			return new BasicRes(ReplyMessage.TAX_TYPE_ERROR.getCode(), //
+					ReplyMessage.TAX_TYPE_ERROR.getMessage());
+		}
+		
 		try {
-			regionsDao.update(req.getId(), req.getTaxRate(), req.getTaxType());
+			regionsDao.update(req.getId(), req.getTaxRate(), req.getTaxType().toUpperCase());
 		} catch (Exception e) {
 			throw e;
 		}
