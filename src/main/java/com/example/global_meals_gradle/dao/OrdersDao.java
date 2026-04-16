@@ -77,8 +77,8 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	/* 訂單狀態更新(用於退款或取消訂單) */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND order_date_id = :orderDateId AND status = 'COMPLETED'", nativeQuery = true)
-	public int updateOrderStatus(@Param("status") String status, // AI 是說要字串型態，我有說資料庫是設ENUM
+	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND order_date_id = :orderDateId", nativeQuery = true)
+	public int updateOrderStatus(@Param("status") String status, //
 			@Param("id") String id, @Param("orderDateId") String orderDateId);
 	
 	/* 更改總金額 */
@@ -87,4 +87,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Transactional
 	@Query(value = "UPDATE total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
 	public void upDateTotalAmount(String id, String orderDateId, BigDecimal totalAmount);
+	
+	/* 判斷訂單表有無該購物車 id */
+	public boolean existsByOrderCartId(String orderCartId);
 }

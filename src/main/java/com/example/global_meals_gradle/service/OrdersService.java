@@ -174,13 +174,16 @@ public class OrdersService {
 	/* 成立訂單: 外部呼叫的主入口：負責「高併發重試流程」 */
 	// 這個方法「不加」@Transactional，這樣裡面的 try-catch 才能重複執行。
 	public CreateOrdersRes createOrders(CreateOrdersReq req) {
-		// 參數檢查(庫存檢查、金額檢查)
 		if (req.isUseDiscount()) {
 			Members member = membersDao.findById(req.getMemberId());
 			if (!member.isDiscount()) {
 				throw new RuntimeException("無優惠可使用");
 			}
 		}
+		if (ordersDao.existsByOrderCartId(req.getOrderCartId())) {
+		    throw new RuntimeException("該購物車已轉換為訂單，請勿重複提交");
+		}
+		
 		// 取得今天的日期字串，例如 "20260328"
 		// DateTimeFormatter.ofPattern("yyyyMMdd"): 定義日期格式 .format(...):
 		// 把得到的日期轉換成前面定義的格式
@@ -266,8 +269,6 @@ public class OrdersService {
 		// 將 Map 的 Key 轉成 List 並排序，防止不同執行緒因鎖定順序不同而死結 (Deadlock)
 		List<Integer> sortedProductIds = new ArrayList<>(stockToReduceMap.keySet());
 		Collections.sort(sortedProductIds);
-		// 初始化未稅總金額 (使用 BigDecimal.ZERO 確保精準度)
-		BigDecimal subtotal = BigDecimal.ZERO;
 		// 迴圈計算總額時，順便把「所有的贈品 ID」存進這個清單
 		List<Integer> giftProductIds = new ArrayList<>();
 		// 取得該分店所屬國家的稅務設定
@@ -277,9 +278,15 @@ public class OrdersService {
 		}
 		BigDecimal taxRate = region.getTaxRate(); // 稅率
 		String taxType = region.getTaxType().name(); // 稅制
+		// 初始化未稅金額 (使用 BigDecimal.ZERO 確保精準度)
+		BigDecimal subtotal = BigDecimal.ZERO;
+		BigDecimal finalSubtotal = BigDecimal.ZERO; // 最終未稅金額
 		BigDecimal taxAmount = BigDecimal.ZERO; // 稅額
 		BigDecimal afterTax = BigDecimal.ZERO; // 含稅
-
+		// 取的該分店的所在國家的折扣金額上限
+		BigDecimal highestDiscountAmount = BigDecimal.valueOf(region.getUsageCap());
+		BigDecimal discountOff = BigDecimal.ZERO; // 最終實際折掉的金額
+		
 		// ====== 金額計算/贈品id儲存 ======
 		// 不是贈品的才要計算金額 / 贈品的Id要存進贈品清單
 		for (OrderCartDetails detail : cartDetailsList) {
@@ -300,39 +307,45 @@ public class OrdersService {
 					subtotal = subtotal.add(priceWithTax.multiply(qty));
 				} else {
 					// --- 外加稅：直接用未稅單價累加 ---
-					subtotal = subtotal.add(p.getBasePrice().multiply(qty));
+					subtotal = subtotal.add(inv.getBasePrice().multiply(qty));
 				}
 
 			} else {
 				giftProductIds.add(detail.getProductId());
 			}
 		}
-		BigDecimal finalSubtotal; // 未稅小計
-		if (taxType.equals("EXCLUSIVE")) { // 外加稅：總金額 = 小計 * (1 * 稅率)
-			afterTax = subtotal.multiply(BigDecimal.ONE.add(taxRate));
-			if (req.isUseDiscount()) {
-				afterTax = afterTax.multiply(new BigDecimal("0.8"));
-			}
-			afterTax = afterTax.setScale(0, RoundingMode.UP); // 稅後實收總金額(無條件進位)
-			// 處理稅額: 總額 - 小計
-			finalSubtotal = subtotal;
-			if (req.isUseDiscount()) {
-				finalSubtotal = finalSubtotal //
-						.multiply(new BigDecimal("0.8")).setScale(0, RoundingMode.UP); // 小計
-			}
-			taxAmount = afterTax.subtract(finalSubtotal);
-		} else { // 內含稅：總金額 = 小計，稅額 = 小計 - (小計 / (1 + 稅率))
-			afterTax = subtotal;   // 含稅額
-			if (req.isUseDiscount()) {
-				afterTax = afterTax.multiply(new BigDecimal("0.8")).setScale(0, RoundingMode.UP);
-			}
-			// 稅額: 總計 - (總計 / (1 + 稅率))
-			// 總計 / (1 + 稅率)
-			BigDecimal beforeTax = afterTax.divide(BigDecimal.ONE.add(taxRate), 4, RoundingMode.HALF_UP);
-			taxAmount = afterTax.subtract(beforeTax).setScale(0, RoundingMode.UP);
-			finalSubtotal = afterTax.subtract(taxAmount);
+		
+		// 計算初始含稅總金額
+		BigDecimal initialTotal; // 初始含稅總金額
+		if("INCLUSIVE".equals(taxType)) { // 內含稅本身就是含稅金額
+			initialTotal = subtotal;
+		}else {  // 外加稅須把未稅總金額*(1+稅率)
+			initialTotal = subtotal.multiply(BigDecimal.ONE.add(taxRate));
 		}
+		
+		// --- 統一計算折扣 (以含稅總額為基準，最公平) ---
+		if (req.isUseDiscount()) {
+		    BigDecimal discountMultiplier = new BigDecimal("0.1"); // 折扣掉 10%
+		    BigDecimal potentialDiscount = initialTotal.multiply(discountMultiplier); // 取的折扣金額
+		    
+		    // 檢查折扣是否超過上限(最高折扣金額/折扣金額) // BigDecimal 需使用 compareTo 來比較
+		    discountOff = potentialDiscount.compareTo(highestDiscountAmount) > 0 
+		                  ? highestDiscountAmount : potentialDiscount;
+		}
+		
+		// --- 算出最終實收金額 ---
+		afterTax = initialTotal.subtract(discountOff).setScale(0, RoundingMode.UP);
 
+		// --- 反推稅額與未稅小計 ---
+		// 公式：稅額 = 總額 - (總額 / (1 + 稅率))
+		// 反推「未稅金額」(總額 / (1 + 稅率))
+		BigDecimal beforeTax = afterTax
+				.divide(BigDecimal.ONE.add(taxRate), 4, RoundingMode.HALF_UP);
+		// 稅額 = 總共付的錢 - 原始餐點的錢
+		taxAmount = afterTax.subtract(beforeTax).setScale(0, RoundingMode.UP);
+		// 定義「最終未稅小計」
+		finalSubtotal = afterTax.subtract(taxAmount);
+		
 		// ====== 贈品門檻檢查 ======
 		if (!giftProductIds.isEmpty()) { // 判斷贈品清單有沒有資料
 			for (Integer giftId : giftProductIds) {
