@@ -25,6 +25,10 @@ public class Promotions {
 	@Column(name = "is_active")
 	private boolean active;
 
+	@Lob
+	@Column(name = "promotion_img")
+	private byte[] promotionImg;
+
 	public int getId() {
 		return id;
 	}
@@ -64,6 +68,13 @@ public class Promotions {
 	public void setActive(boolean active) {
 		this.active = active;
 	}
-	
+
+	public byte[] getPromotionImg() {
+		return promotionImg;
+	}
+
+	public void setPromotionImg(byte[] promotionImg) {
+		this.promotionImg = promotionImg;
+	}
 
 }
