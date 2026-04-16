@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,10 +34,11 @@ public interface RegionsDao extends JpaRepository<Regions, Integer>{
 	// 查詢各國稅率
 	@Query(value = "SELECT * FROM regions", nativeQuery = true)
 	public List<Regions> getAll();
-	// 根據「國家名稱」查詢該國的稅務設定（tax_rate、tax_type）
-	 @Query(value = "SELECT * FROM regions WHERE country = ?1", nativeQuery = true)
-	    Regions findByCountry(String country);  
-	
+
+	// 依國家名稱查出對應的折扣上限（promotions 折扣計算用）
+	// 查不到表示前端傳入的 country 不存在於 regions 表，屬於異常
+	@Query(value = "SELECT usage_cap FROM regions WHERE country = :country", nativeQuery = true)
+	Integer findUsageCapByCountry(@Param("country") String country);
 
 
 

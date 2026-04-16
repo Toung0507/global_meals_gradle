@@ -70,7 +70,7 @@ public class PromotionsManageService {
 			vo.setActive(p.isActive());        // 是否啟用
 
 			// 查此活動底下所有贈品規則（包含停用的，讓管理端看到完整狀態）
-			// findByPromotionsId 是 JPA 衍生查詢，等效 SELECT * WHERE promotions_id = ?
+			// findByPromotionsId 使用 native SQL：SELECT * FROM promotions_gifts WHERE promotions_id = ?
 			List<PromotionsGifts> gifts = promotionsGiftsDao.findByPromotionsId(p.getId());
 
 			// 把每筆 PromotionsGifts entity 轉換成 GiftDetailVo
@@ -132,9 +132,9 @@ public class PromotionsManageService {
 			throw new RuntimeException(ReplyMessage.PROMOTION_NOT_FOUND.getMessage());
 		}
 
-		// 驗證 fullAmount 必須大於 0
-		if (req.getFullAmount() == null || req.getFullAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-			throw new RuntimeException(ReplyMessage.PROMOTION_GIFTS_NOT_FOUND.getMessage());
+		// 驗證 fullAmount 必須大於 0（null 或 <= 0 都不合法）
+		if (req.getFullAmount() == null || req.getFullAmount().compareTo(BigDecimal.ZERO) <= 0) {
+			throw new RuntimeException(ReplyMessage.PROMOTION_GIFT_PARAM_ERROR.getMessage());
 		}
 
 		// 驗證 quantity 不能為 0
@@ -142,7 +142,12 @@ public class PromotionsManageService {
 		//   >= 1 → 有限，合法
 		//   0   → 不合法
 		if (req.getQuantity() == 0) {
-			throw new RuntimeException(ReplyMessage.PROMOTION_GIFTS_NOT_FOUND.getMessage());
+			throw new RuntimeException(ReplyMessage.PROMOTION_GIFT_PARAM_ERROR.getMessage());
+		}
+
+		// 驗證 giftProductId 必須 >= 1（0 或負數無意義）
+		if (req.getGiftProductId() < 1) {
+			throw new RuntimeException(ReplyMessage.PROMOTION_GIFT_PARAM_ERROR.getMessage());
 		}
 
 		// 驗證 giftProductId 在 products 表中有對應的商品名稱
@@ -259,14 +264,24 @@ public class PromotionsManageService {
 
 		// ── 步驟一：驗證並建立促銷活動 ──
 
+		// 活動名稱不能為空或空白
+		if (req.getName() == null || req.getName().isBlank()) {
+			throw new RuntimeException(ReplyMessage.PROMOTION_NAME_ERROR.getMessage());
+		}
+
+		// startTime / endTime 不能為 null（前端必須傳入）
+		if (req.getStartTime() == null || req.getEndTime() == null) {
+			throw new RuntimeException(ReplyMessage.PROMOTION_DATE_ERROR.getMessage());
+		}
+
 		// 開始日期不能早於今天（業務規則：不允許建立已過期的活動）
 		if (req.getStartTime().isBefore(LocalDate.now())) {
-			throw new RuntimeException(ReplyMessage.PROMOTION_NOT_FOUND.getMessage());
+			throw new RuntimeException(ReplyMessage.PROMOTION_DATE_ERROR.getMessage());
 		}
 
 		// 結束日期必須晚於開始日期（防止建立無效時間區間）
 		if (!req.getEndTime().isAfter(req.getStartTime())) {
-			throw new RuntimeException(ReplyMessage.PROMOTION_NOT_FOUND.getMessage());
+			throw new RuntimeException(ReplyMessage.PROMOTION_DATE_ERROR.getMessage());
 		}
 
 		// 組裝 Promotions entity 準備寫入
@@ -287,12 +302,12 @@ public class PromotionsManageService {
 
 			// 消費門檻必須大於 0（0 或負數沒有意義）
 			if (req.getFullAmount() == null || req.getFullAmount().compareTo(BigDecimal.ZERO) <= 0) {
-				throw new RuntimeException(ReplyMessage.PROMOTION_GIFTS_NOT_FOUND.getMessage());
+				throw new RuntimeException(ReplyMessage.PROMOTION_GIFT_PARAM_ERROR.getMessage());
 			}
 
 			// quantity = 0 不合法（-1 = 無限，>= 1 = 有限，0 = 無效）
 			if (req.getQuantity() == 0) {
-				throw new RuntimeException(ReplyMessage.PROMOTION_GIFTS_NOT_FOUND.getMessage());
+				throw new RuntimeException(ReplyMessage.PROMOTION_GIFT_PARAM_ERROR.getMessage());
 			}
 
 			// 確認 giftProductId 在 products 表中有對應的商品名稱

@@ -24,9 +24,10 @@ public class PromotionsReq {
 	@Min(value = 1, message = "Member ID must be at least 1")
 	private int memberId;
 
-	// 前端勾選「是否使用 8 折券」：
+	// 前端勾選「是否使用 9 折券」：
 	//   true  = 使用者有勾選，但還要在 Service 確認 members.is_discount = 1 才會實際打折
 	//           若 is_discount = 0 卻傳 true，Service 會擋下並回傳 MEMBER_COUPON_NOT_AVAILABLE
+	//           折扣金額有上限：台灣最多折 200、日本最多折 1000、韓國最多折 10000
 	//   false = 使用者沒勾選，即使有券也不打折
 	//   boolean 只有 true/false，不需要 annotation 驗證
 	private boolean useCoupon;
@@ -41,6 +42,11 @@ public class PromotionsReq {
 	// @NotNull 確保前端一定要傳這個欄位，不能為空
 	@NotNull(message = "Original amount is required")
 	private BigDecimal originalAmount;
+
+	// 結帳分店所在國家（由前端帶入，例如 "台灣"、"日本"、"韓國"）
+	// 用來決定會員 9 折優惠的折扣上限：台灣 200、日本 1000、韓國 10000
+	// 其他國家不設上限
+	private String country;
 
 	public int getCartId() {
 		return cartId;
@@ -80,6 +86,14 @@ public class PromotionsReq {
 
 	public void setOriginalAmount(BigDecimal originalAmount) {
 		this.originalAmount = originalAmount;
+	}
+
+	public String getCountry() {
+		return country;
+	}
+
+	public void setCountry(String country) {
+		this.country = country;
 	}
 
 }

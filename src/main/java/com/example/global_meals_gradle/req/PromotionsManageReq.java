@@ -1,8 +1,5 @@
 package com.example.global_meals_gradle.req;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -12,6 +9,9 @@ import java.time.LocalDate;
  *   - 新增贈品至活動（promotions_gifts 表）
  *   - 開關促銷活動（promotions.is_active）
  *   - 刪除促銷活動（入參只用 promotionsId）
+ *
+ * 此 Req 被多個端點共用，各端點需要的欄位不同
+ * 所有欄位驗證統一在 Service 層手動做，避免 annotation 跨端點互相干擾
  */
 public class PromotionsManageReq {
 
@@ -19,16 +19,13 @@ public class PromotionsManageReq {
 	// 新增促銷活動（promotions 表）用的欄位
 	// =============================================
 
-	// 活動名稱：必填，不能空白
-	@NotBlank(message = "Promotion name is required")
+	// 活動名稱：create 端點必填，不能空白，在 Service 裡驗證
 	private String name;
 
-	// 活動開始日期：必填，不能早於今天（在 Service 裡驗證）
-	@NotNull(message = "Start time is required")
+	// 活動開始日期：create 端點必填，不能早於今天，在 Service 裡驗證
 	private LocalDate startTime;
 
-	// 活動結束日期：必填，必須晚於 startTime（在 Service 裡驗證）
-	@NotNull(message = "End time is required")
+	// 活動結束日期：create 端點必填，必須晚於 startTime，在 Service 裡驗證
 	private LocalDate endTime;
 
 	// =============================================
@@ -36,14 +33,11 @@ public class PromotionsManageReq {
 	// =============================================
 
 	// 對應的促銷活動 ID（promotions.id）：
-	// 新增贈品和開關活動時都需要這個欄位
-	// 在 Service 裡驗證這個 ID 是否真的存在於 promotions 表
-	@Min(value = 1, message = "Promotions ID must be at least 1")
+	// addPromotionGift、toggle 端點需要此欄位
+	// 在 Service 裡驗證此 ID 是否真的存在於 promotions 表
 	private int promotionsId;
 
-	// 消費門檻金額：必填，必須大於 0
-	// 例如：滿 300 才送贈品，這裡填 300
-	@NotNull(message = "Full amount is required")
+	// 消費門檻金額：addPromotionGift 端點必填，必須大於 0，在 Service 裡驗證
 	private BigDecimal fullAmount;
 
 	// 贈品配額數量：
@@ -52,9 +46,9 @@ public class PromotionsManageReq {
 	//   0   → 不合法，在 Service 裡擋掉
 	private int quantity = -1;
 
-	// 贈品對應的商品 ID（products.id）：必填，最小為 1
-	// 在 Service 裡查 products 表確認此 ID 有對應的商品名稱
-	@Min(value = 1, message = "Gift product ID must be at least 1")
+	// 贈品對應的商品 ID（products.id）：
+	// addPromotionGift 端點必填（需 >= 1），在 Service 裡查 products 表確認商品存在
+	// create 端點選填（= 0 表示不加贈品，> 0 才建贈品，< 0 不合法）
 	private int giftProductId;
 
 	// =============================================
