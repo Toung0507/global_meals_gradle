@@ -310,7 +310,7 @@ public class CartService {
 //	     第二步：建一台新的空購物車，綁定新分店
 	    OrderCart newCart = new OrderCart();
 	    newCart.setGlobalAreaId(newGlobalAreaId); // ← 關鍵：綁定新分店
-	    newCart.setOperationType(OperationType.MEMBER); // 預設顧客類型
+	    newCart.setOperationType(OperationType.CUSTOMER); // 預設操作者類型
 	    newCart.setOperation(memberId);           // 記錄誰在操作
 	    orderCartDao.save(newCart);               // 存進資料庫，取得新的 CartId
 
