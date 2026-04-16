@@ -131,20 +131,7 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 
 
 
-	/**
-	 * 根據贈品商品 ID 查出對應的消費門檻金額（OrdersService 結帳驗證用）
-	 *
-	 * 條件說明：
-	 *   gift_product_id = :giftProductId → 指定商品
-	 *   is_active = 1                    → 只查啟用中的規則
-	 *
-	 * 使用場景：OrdersService 在建立訂單時，驗證購物車內的贈品是否符合門檻
-	 * 回傳 null 表示找不到對應的有效規則
-	 */
-	@Query(value = "SELECT full_amount FROM promotions_gifts " +
-				   "WHERE gift_product_id = :giftProductId AND is_active = 1",
-		   nativeQuery = true)
-	BigDecimal findFullAmountByGiftProductId(@Param("giftProductId") int giftProductId);
+	
 	
 	/* 核心邏輯：取得所有目前上架的有效期內的活動的上架中的贈品門檻 /規則*/
 	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
