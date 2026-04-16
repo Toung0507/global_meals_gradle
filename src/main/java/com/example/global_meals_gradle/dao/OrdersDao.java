@@ -11,7 +11,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.entity.OrdersId;
 import com.example.global_meals_gradle.res.GetOrdersVo;
@@ -23,21 +22,24 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Modifying
 	@Transactional
 	@Query(value = "INSERT INTO orders (id, order_date_id, order_cart_id, global_area_id, member_id, phone, "
-			+ " subtotal_before_tax, tax_amount, total_amount) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", nativeQuery = true)
+			+ " subtotal_before_tax, tax_amount, total_amount, status, is_use_discount) "
+			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)", nativeQuery = true)
 	public void insert(String id, String orderDateId, String orderCartId, int globalAreaId, int memberId, String phone, //
 			BigDecimal subtotalBeforeTax, //
-			BigDecimal taxAmount, BigDecimal totalAmount);
+			BigDecimal taxAmount, BigDecimal totalAmount, String status, boolean useDiscount);
 
 	/* 根據 orderDateId 查詢特定訂單 */
 	// ORDER BY id (排序)(字串排序需長度樣(補零)) DESC (倒序) LIMIT 1 (限制筆數) FOR UPDATE:
 	// 查詢到的這筆資料會被鎖住
 	// Optional: 如果當天還沒有人下單（第一筆），它會回傳 Optional.empty()，你的 Service 就可以判斷 isPresent()
 	// 來給出第一個號碼 0001。
-	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 ORDER BY id DESC LIMIT 1 FOR UPDATE", nativeQuery = true)
+	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 ORDER BY id DESC LIMIT 1 FOR UPDATE",
+			nativeQuery = true)
 	public Optional<Orders> getOrderByOrderDateId(String orderDateId);
 
 	/* 根據電話號碼查詢最新的一筆訂單 */
-	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND phone = ?2 ORDER BY id DESC LIMIT 1", nativeQuery = true)
+	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND phone = ?2 ORDER BY id DESC LIMIT 1", 
+			nativeQuery = true)
 	public GetOrdersVo getOrderByPhone(String orderDateId, String phone);
 
 	/* 依據訂單編號查詢該筆訂單 */
@@ -48,9 +50,17 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Modifying
 	@Transactional
 	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1 "
-			+ " AND order_date_id = ?2", nativeQuery = true)
-	public void updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
-			OrdersStatus status);
+			+ " AND order_date_id = ?2 AND status = 'UNPAID'", nativeQuery = true)
+	public int updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
+			String status);
+	
+	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態，如果有使用優惠劵，則總金額需更改) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1,"
+			+ "total_amount = ?6 AND order_date_id = ?2", nativeQuery = true)
+	public void updatePayUseDiscount(String id, String orderDateId, String paymentMethod, String transactionId,
+			String status, BigDecimal totalAmount);
 
 	/* 查詢該會員的訂單紀錄 */
 	@Query(value = "SELECT * FROM orders WHERE member_id = ?1", nativeQuery = true)
@@ -64,12 +74,12 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
 	public List<Object[]> getFullOrderHistory(int memberId);
 
-	/* 訂單狀態更新 */
+	/* 訂單狀態更新(用於退款或取消訂單) */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND date_id = :orderDateId AND status = 'COMPLETED'", nativeQuery = true)
-	public int updateOrderStatus(@Param("status") OrdersStatus status, // AI 是說要字串型態，我有說資料庫是設ENUM
-			@Param("id") String id, @Param("order_date_id") String orderDateId);
+	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND order_date_id = :orderDateId AND status = 'COMPLETED'", nativeQuery = true)
+	public int updateOrderStatus(@Param("status") String status, // AI 是說要字串型態，我有說資料庫是設ENUM
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
 	
 	/* 更改總金額 */
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */

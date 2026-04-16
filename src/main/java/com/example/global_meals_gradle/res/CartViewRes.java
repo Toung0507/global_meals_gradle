@@ -8,7 +8,7 @@ public class CartViewRes extends BasicRes {
 
 	private int cartId;
 
-	private int globalAreaId;
+//	private int globalAreaId;
 
 	private String operationType;
 
@@ -21,6 +21,7 @@ public class CartViewRes extends BasicRes {
 	// 使用者「有資格參加」的活動清單（兩層結構：第一層是活動，第二層是各活動的贈品選項）
 	// 空清單 [] → 消費金額達不到任何活動門檻 → 前端不顯示「選擇活動」按鈕
 	// 有資料   → 前端顯示「選擇活動」按鈕，按下後展開活動下拉選單
+//	回傳「以活動為單位」的兩層巢狀結構
 	private List<AvailablePromotionVO> availablePromotions;
 
 	// 稅務資訊（稅率、稅的類型、稅額）
@@ -45,13 +46,13 @@ public class CartViewRes extends BasicRes {
 		this.cartId = cartId;
 	}
 
-	public int getGlobalAreaId() {
-		return globalAreaId;
-	}
+//	public int getGlobalAreaId() {
+//		return globalAreaId;
+//	}
 
-	public void setGlobalAreaId(int globalAreaId) {
-		this.globalAreaId = globalAreaId;
-	}
+//	public void setGlobalAreaId(int globalAreaId) {
+//		this.globalAreaId = globalAreaId;
+//	}
 
 	public String getOperationType() {
 		return operationType;
@@ -77,7 +78,7 @@ public class CartViewRes extends BasicRes {
 		this.subtotal = subtotal;
 	}
 
-	// 新版：回傳「以活動為單位」的兩層巢狀結構
+	
 	public List<AvailablePromotionVO> getAvailablePromotions() {
 		return availablePromotions;
 	}

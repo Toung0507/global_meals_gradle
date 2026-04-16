@@ -32,7 +32,8 @@ public class CartSyncReq {
 	// 只要這個欄位在某些情境下會是空的（沒有值），我們就必須用大寫的 Integer，如果用 int ，是用0去撈資料
 	private Integer staffId;
 
-	// 訪客也一定會傳過來，所以不可能是null
+	// 訪客固定傳 1，一般會員傳自己的 id，所以最小值是 1
+	@Min(value = 1, message = ValidationMsg.MEMBER_ID_MUST_BE_POSITIVE)
 	private int memberId;
 
 	public Integer getCartId() {

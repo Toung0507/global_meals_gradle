@@ -9,7 +9,7 @@ import jakarta.persistence.*;
 public class Promotions {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY) // 對應 DB 的 AUTO_INCREMENT，新增時自動產生 id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "id")
 	private int id;
 
@@ -76,5 +76,4 @@ public class Promotions {
 	public void setPromotionImg(byte[] promotionImg) {
 		this.promotionImg = promotionImg;
 	}
-
 }
