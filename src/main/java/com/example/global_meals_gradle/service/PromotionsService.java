@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,7 +63,7 @@ public class PromotionsService {
 
 		// currentTotal 是會隨折扣變動的金額，初始值等於原始金額
 		// 贈品判斷不用這個，折扣才用這個
-		double currentTotal = originalAmount.doubleValue();
+		BigDecimal currentTotal = originalAmount;
 
 		// 折扣名稱預設為空字串，有打折才會填入
 		res.setAppliedDiscountName("");
@@ -158,18 +159,18 @@ public class PromotionsService {
 				}
 
 				// 折扣上限從 regions.usage_cap 取得，不再寫死
-				double discountCap = usageCap.doubleValue();
+				BigDecimal discountCap = BigDecimal.valueOf(usageCap);
 
 				// 計算九折實際折扣金額：currentTotal * 0.1
 				// 例如 1000 → 折 100；5000 → 折 500
-				double discountAmount = currentTotal * 0.1;
+				BigDecimal discountAmount = currentTotal.multiply(new BigDecimal("0.1"));
 
 				// 實際折扣 = min(計算折扣, 上限)
 				// 例如台灣：5000 打九折折 500，但上限 200，所以只折 200，實付 4800
-				double actualDiscount = Math.min(discountAmount, discountCap);
+				BigDecimal actualDiscount = discountAmount.min(discountCap);
 
 				// 套用折扣
-				currentTotal = currentTotal - actualDiscount;
+				currentTotal = currentTotal.subtract(actualDiscount);
 
 				// 告訴前端這次有套用折扣，名稱固定為此字串
 				res.setAppliedDiscountName("會員 9 折優惠");
@@ -181,7 +182,7 @@ public class PromotionsService {
 		// =============================================
 
 		// currentTotal 無條件進位後轉成整數（例如 801.2 → 802）
-		res.setFinalAmount((int) Math.ceil(currentTotal));
+		res.setFinalAmount(currentTotal.setScale(0, RoundingMode.CEILING).intValue());
 
 		// 把收集到的促銷活動 ID 和贈品清單放進回傳物件
 		res.setAppliedPromotionIds(appliedPromotionIds);

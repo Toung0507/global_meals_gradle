@@ -4,14 +4,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import com.example.global_meals_gradle.entity.PromotionsGifts;
-
-import jakarta.transaction.Transactional;
-
-import jakarta.transaction.Transactional;
 
 public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integer> {
 
@@ -130,23 +125,29 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 		   nativeQuery = true)
 	List<PromotionsGifts> findByPromotionsId(@Param("promotionsId") int promotionsId);
 
-
-
 	/**
-	 * 根據贈品商品 ID 查出對應的消費門檻金額（OrdersService 結帳驗證用）
+	 * 查出所有目前有效且還有庫存的贈品，依門檻由高到低排序（CartService 自動加贈品用）
 	 *
 	 * 條件說明：
-	 *   gift_product_id = :giftProductId → 指定商品
-	 *   is_active = 1                    → 只查啟用中的規則
+	 *   gifts.is_active = 1                       → 贈品本身未下架
+	 *   prom.is_active = 1                        → 對應活動啟用中
+	 *   prom.start_time <= CURRENT_DATE           → 活動已開始
+	 *   prom.end_time >= CURRENT_DATE             → 活動未結束
+	 *   (gifts.quantity = -1 OR gifts.quantity > 0) → 無限供應或還有庫存
 	 *
-	 * 使用場景：OrdersService 在建立訂單時，驗證購物車內的贈品是否符合門檻
-	 * 回傳 null 表示找不到對應的有效規則
+	 * 使用場景：CartService 在結帳前自動判斷是否達標並加入贈品
 	 */
-	@Query(value = "SELECT full_amount FROM promotions_gifts " +
-				   "WHERE gift_product_id = :giftProductId AND is_active = 1",
+	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts " +
+				   "JOIN promotions AS prom ON gifts.promotions_id = prom.id " +
+				   "WHERE gifts.is_active = 1 " +
+				   "AND prom.is_active = 1 " +
+				   "AND prom.start_time <= CURRENT_DATE " +
+				   "AND prom.end_time >= CURRENT_DATE " +
+				   "AND (gifts.quantity = -1 OR gifts.quantity > 0) " +
+				   "ORDER BY gifts.full_amount DESC",
 		   nativeQuery = true)
-	BigDecimal findFullAmountByGiftProductId(@Param("giftProductId") int giftProductId);
-	
+	List<PromotionsGifts> findAllActiveGiftsOrdered();
+
 	/*
     
 	根據「贈品商品 ID」找到對應的目前上架的規則。用途：在 getCartView() 步驟3 驗證已選贈品是否還有效。
@@ -189,15 +190,15 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     PromotionsGifts findActiveRuleByGiftRuleId(int giftRuleId);
 
     
-    /* 更新贈品兌換次數(用於兌換贈品，數量-1) */
+    /* 更新贈品兌換次數(用於兌換贈品，數量-1)，庫存歸零時下架邏輯由 OrdersService 處理 */
     @Modifying
-    @Transactional
-    @Query(value = "UPDATE promotions_gifts SET quantity = quantity -1 WHERE promotions_id = ?1 "
-    		+ "And gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
+    @jakarta.transaction.Transactional
+    @Query(value = "UPDATE promotions_gifts SET quantity = quantity - 1 WHERE promotions_id = ?1 "
+    		+ "AND gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
     public int reduceGiftQuota(int promotionsId, int giftProductId);
 
 	/* 根據 活動id 商品id 取的門檻資料(用於orders) */
-    @Query(value = "SELECT full_amount FROM promotions_gifts"
-    		+ "WHERE promotions_id = ?1 And gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
+    @Query(value = "SELECT full_amount FROM promotions_gifts "
+    		+ "WHERE promotions_id = ?1 AND gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
     public BigDecimal findFullAmountByGiftProductId(int promotionsId, int giftProductId);
 }
