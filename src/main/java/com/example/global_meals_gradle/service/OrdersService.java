@@ -199,6 +199,10 @@ public class OrdersService {
 			} catch (RuntimeException e) {
 				// 判斷是否為「可重試」的異常
 				String msg = e.getMessage();
+				// 購物車Id在資料庫有設UQ，所以如果連續點擊，會有錯誤訊息，到這裡就會傳送錯誤訊息給前端
+				if (msg != null && msg.contains("order_cart_id")) {
+				    throw new RuntimeException("該購物車已轉換為訂單，請勿重複提交");
+				}
 				// 只有當訊息包含「衝突」(樂觀鎖失敗) 或 「Duplicate」(序號重複) 時才進入重試
 				if (msg != null && (msg.contains("衝突") || msg.contains("Duplicate")//
 						|| msg.contains("Primary"))) {
