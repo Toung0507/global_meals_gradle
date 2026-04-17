@@ -181,9 +181,9 @@ public class OrdersService {
 			}
 		}
 		if (ordersDao.existsByOrderCartId(req.getOrderCartId())) {
-		    throw new RuntimeException("該購物車已轉換為訂單，請勿重複提交");
+			throw new RuntimeException("該購物車已轉換為訂單，請勿重複提交");
 		}
-		
+
 		// 取得今天的日期字串，例如 "20260328"
 		// DateTimeFormatter.ofPattern("yyyyMMdd"): 定義日期格式 .format(...):
 		// 把得到的日期轉換成前面定義的格式
@@ -286,7 +286,7 @@ public class OrdersService {
 		// 取的該分店的所在國家的折扣金額上限
 		BigDecimal highestDiscountAmount = BigDecimal.valueOf(region.getUsageCap());
 		BigDecimal discountOff = BigDecimal.ZERO; // 最終實際折掉的金額
-		
+
 		// ====== 金額計算/贈品id儲存 ======
 		// 不是贈品的才要計算金額 / 贈品的Id要存進贈品清單
 		for (OrderCartDetails detail : cartDetailsList) {
@@ -314,38 +314,37 @@ public class OrdersService {
 				giftProductIds.add(detail.getProductId());
 			}
 		}
-		
+
 		// 計算初始含稅總金額
 		BigDecimal initialTotal; // 初始含稅總金額
-		if("INCLUSIVE".equals(taxType)) { // 內含稅本身就是含稅金額
+		if ("INCLUSIVE".equals(taxType)) { // 內含稅本身就是含稅金額
 			initialTotal = subtotal;
-		}else {  // 外加稅須把未稅總金額*(1+稅率)
+		} else { // 外加稅須把未稅總金額*(1+稅率)
 			initialTotal = subtotal.multiply(BigDecimal.ONE.add(taxRate));
 		}
-		
+
 		// --- 統一計算折扣 (以含稅總額為基準，最公平) ---
 		if (req.isUseDiscount()) {
-		    BigDecimal discountMultiplier = new BigDecimal("0.1"); // 折扣掉 10%
-		    BigDecimal potentialDiscount = initialTotal.multiply(discountMultiplier); // 取的折扣金額
-		    
-		    // 檢查折扣是否超過上限(最高折扣金額/折扣金額) // BigDecimal 需使用 compareTo 來比較
-		    discountOff = potentialDiscount.compareTo(highestDiscountAmount) > 0 
-		                  ? highestDiscountAmount : potentialDiscount;
+			BigDecimal discountMultiplier = new BigDecimal("0.1"); // 折扣掉 10%
+			BigDecimal potentialDiscount = initialTotal.multiply(discountMultiplier); // 取的折扣金額
+
+			// 檢查折扣是否超過上限(最高折扣金額/折扣金額) // BigDecimal 需使用 compareTo 來比較
+			discountOff = potentialDiscount.compareTo(highestDiscountAmount) > 0 ? highestDiscountAmount
+					: potentialDiscount;
 		}
-		
+
 		// --- 算出最終實收金額 ---
 		afterTax = initialTotal.subtract(discountOff).setScale(0, RoundingMode.UP);
 
 		// --- 反推稅額與未稅小計 ---
 		// 公式：稅額 = 總額 - (總額 / (1 + 稅率))
 		// 反推「未稅金額」(總額 / (1 + 稅率))
-		BigDecimal beforeTax = afterTax
-				.divide(BigDecimal.ONE.add(taxRate), 4, RoundingMode.HALF_UP);
+		BigDecimal beforeTax = afterTax.divide(BigDecimal.ONE.add(taxRate), 4, RoundingMode.HALF_UP);
 		// 稅額 = 總共付的錢 - 原始餐點的錢
 		taxAmount = afterTax.subtract(beforeTax).setScale(0, RoundingMode.UP);
 		// 定義「最終未稅小計」
 		finalSubtotal = afterTax.subtract(taxAmount);
-		
+
 		// ====== 贈品門檻檢查 ======
 		if (!giftProductIds.isEmpty()) { // 判斷贈品清單有沒有資料
 			for (Integer giftId : giftProductIds) {
@@ -355,7 +354,7 @@ public class OrdersService {
 
 				if (giftRule != null) { // 如果有取得金額
 					// 2. 直接拿 total 跟這個金額比
-					if (subtotal.compareTo(giftRule) < 0) { // compareTo：這是 BigDecimal 比較大小的標準寫法
+					if (initialTotal.compareTo(giftRule) < 0) { // compareTo：這是 BigDecimal 比較大小的標準寫法
 						throw new RuntimeException("金額未達門檻 " + giftRule + "，無法領取贈品 ID: " + giftId);
 					}
 				}
@@ -364,16 +363,6 @@ public class OrdersService {
 
 		String newId = ""; // 先宣告變數
 		try {
-			// ====== 產生新訂單編號 (悲觀鎖排隊入口) ======
-			// 去資料庫找今天最後一筆訂單 (DAO 裡面要有 ORDER BY id DESC LIMIT 1)
-			Optional<Orders> lastOrder = ordersDao.getOrderByOrderDateId(todayStr);
-			int nextSeq = 1; // 預設從 1 開始
-			if (lastOrder.isPresent()) {
-				// 如果今天有訂單，把最大的序號轉成數字並 +1
-				nextSeq = Integer.parseInt(lastOrder.get().getId()) + 1;
-			}
-			// 將數字格式化為 4 位字串，例如 1 變成 "0001"
-			newId = String.format("%04d", nextSeq);
 
 			// ====== 執行庫存扣除 ======
 			// 依照排序後的 ID 逐一處理，每個產品 ID 只會執行一次資料庫更新
@@ -416,6 +405,17 @@ public class OrdersService {
 					}
 				}
 			}
+
+			// ====== 產生新訂單編號 (悲觀鎖排隊入口) ======
+			// 去資料庫找今天最後一筆訂單 (DAO 裡面要有 ORDER BY id DESC LIMIT 1)
+			Optional<Orders> lastOrder = ordersDao.getOrderByOrderDateId(todayStr);
+			int nextSeq = 1; // 預設從 1 開始
+			if (lastOrder.isPresent()) {
+				// 如果今天有訂單，把最大的序號轉成數字並 +1
+				nextSeq = Integer.parseInt(lastOrder.get().getId()) + 1;
+			}
+			// 將數字格式化為 4 位字串，例如 1 變成 "0001"
+			newId = String.format("%04d", nextSeq);
 
 			// ====== 執行新增主訂單 ======
 			ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
