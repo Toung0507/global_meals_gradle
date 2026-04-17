@@ -100,4 +100,34 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ "And completed_at BETWEEN ?2 AND ?3",
 			nativeQuery = true)
 	public BigDecimal findTotalAmountByGlobalAreaId(int branchId, LocalDateTime start, LocalDateTime end);
+	
+	// 查詢某分店的營業額(一個區間)
+	@Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.after_tax) AS totalAmount " +
+            "FROM orders o " +
+            "JOIN global_area g ON o.global_area_id = g.id " +
+            "JOIN regions r ON g.regions_id = r.id " +
+            "WHERE o.global_area_id = ?1 " +
+            "AND o.create_time BETWEEN ?2 AND ?3 " +
+            "GROUP BY g.id, g.name, r.name", nativeQuery = true)
+    public List<Object[]> findSingleBranchRevenue(Integer branchId, LocalDateTime start, LocalDateTime end);
+    
+	// 查詢特定國家內，每一間分店的營業額(一個區間)
+    @Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.after_tax) AS totalAmount " +
+            "FROM orders o " +
+            "JOIN global_area g ON o.global_area_id = g.id " +
+            "JOIN regions r ON g.regions_id = r.id " +
+            "WHERE r.id = ?1 " +
+            "AND o.create_time BETWEEN ?2 AND ?3 " +
+            "GROUP BY g.id, g.name, r.name", nativeQuery = true)
+    public List<Object[]> findRevenueByRegionGroupedByBranch(Integer regionsId, //
+    		LocalDateTime start, LocalDateTime end);
+    
+    // 查詢每一間分店的營業額(一個區間)
+    @Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.after_tax) AS totalAmount " +
+    		"FROM orders o " +
+    		"JOIN global_area g ON o.global_area_id = g.id " +
+    		"JOIN regions r ON g.regions_id = r.id " +
+    		"WHERE o.create_time BETWEEN ?2 AND ?3 " +
+    		"GROUP BY g.id, g.name, r.name", nativeQuery = true)
+    public List<Object[]> findRevenue(LocalDateTime start, LocalDateTime end);
 }
