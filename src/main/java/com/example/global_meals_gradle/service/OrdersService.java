@@ -295,8 +295,6 @@ public class OrdersService {
 		// 不是贈品的才要計算金額 / 贈品的Id要存進贈品清單
 		for (OrderCartDetails detail : cartDetailsList) {
 			if (!detail.isGift()) {
-				// 這裡還是需要查一次價格來算總帳
-				Products p = productsDao.findById(detail.getProductId());
 				// 取的該商品在該分店的價格(未稅)
 				BranchInventory inv = branchInventoryDao
 						.findByProductIdAndGlobalAreaId(detail.getProductId(), req.getGlobalAreaId())

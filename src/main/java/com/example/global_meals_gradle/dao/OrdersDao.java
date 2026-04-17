@@ -1,6 +1,7 @@
 package com.example.global_meals_gradle.dao;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -77,7 +78,8 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	/* 訂單狀態更新(用於退款或取消訂單) */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND order_date_id = :orderDateId", nativeQuery = true)
+	@Query(value = "UPDATE orders SET status = :status "
+			+ "WHERE id = :id AND order_date_id = :orderDateId", nativeQuery = true)
 	public int updateOrderStatus(@Param("status") String status, //
 			@Param("id") String id, @Param("orderDateId") String orderDateId);
 	
@@ -90,4 +92,12 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	
 	/* 判斷訂單表有無該購物車 id */
 	public boolean existsByOrderCartId(String orderCartId);
+	
+	// 從訂單表加總該分店、該月份、狀態為「已完成」的訂單
+	@Query(value = "SELECT SUM(total_amount) FROM orders"
+			+ " WHERE global_area_id = ?1 "
+			+ "And status = 'COMPLETED' "
+			+ "And completed_at BETWEEN ?2 AND ?3",
+			nativeQuery = true)
+	public BigDecimal findTotalAmountByGlobalAreaId(int branchId, LocalDateTime start, LocalDateTime end);
 }
