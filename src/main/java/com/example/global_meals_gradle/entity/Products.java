@@ -29,9 +29,6 @@ public class Products {
 	@Column(name = "food_img", columnDefinition = "MEDIUMBLOB")
 	private byte[] foodImg;
 
-	@Column(name = "region_country")
-	private String regionCountry;
-
 	@Column(name = "base_price", precision = 12, scale = 2) // DECIMAL(12,2)
 	private BigDecimal basePrice;
 
@@ -43,9 +40,6 @@ public class Products {
 	@Min(value = 1, message = ValidationMsg.MAX_ORDER_QUANTITY) // 單次最大購買量至少為１
 	@Column(name = "max_order_quantity", columnDefinition = "INT UNSIGNED")
 	private int maxOrderQuantity;
-
-	@Column(name = "version")
-	private int version;
 
 	@Column(name = "description")
 	private String description;
@@ -88,14 +82,6 @@ public class Products {
 		this.foodImg = foodImg;
 	}
 
-	public String getRegionCountry() {
-		return regionCountry;
-	}
-
-	public void setRegionCountry(String regionCountry) {
-		this.regionCountry = regionCountry;
-	}
-
 	public BigDecimal getBasePrice() {
 		return basePrice;
 	}
@@ -118,14 +104,6 @@ public class Products {
 
 	public void setMaxOrderQuantity(int maxOrderQuantity) {
 		this.maxOrderQuantity = maxOrderQuantity;
-	}
-
-	public int getVersion() {
-		return version;
-	}
-
-	public void setVersion(int version) {
-		this.version = version;
 	}
 
 	public String getDescription() {

@@ -29,6 +29,9 @@ public class Promotions {
 	@Column(name = "promotion_img")
 	private byte[] promotionImg;
 
+	@Column(name = "description", length = 45)
+	private String description;
+
 	public int getId() {
 		return id;
 	}
@@ -75,5 +78,13 @@ public class Promotions {
 
 	public void setPromotionImg(byte[] promotionImg) {
 		this.promotionImg = promotionImg;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
 	}
 }
