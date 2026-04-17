@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.example.global_meals_gradle.constants.OrdersStatus;
 
 /* 查詢訂單中的外層 */
 public class GetOrdersVo {

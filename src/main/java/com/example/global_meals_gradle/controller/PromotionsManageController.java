@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,24 +36,10 @@ public class PromotionsManageController {
 	@Autowired
 	private PromotionsService promotionsService;
 
-	/* 新增促銷活動 */
-	@PostMapping("Promotions/addPromotion")
-	public BasicRes addPromotion(@Valid @RequestBody PromotionsManageReq req) {
-		promotionsManageService.addPromotion(req);
-		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-	}
-
-	/* 新增贈品至促銷活動 */
+	/* 新增贈品至促銷活動（對已存在的活動補加贈品） */
 	@PostMapping("Promotions/addPromotionGift")
-	public BasicRes addPromotionGift(@Valid @RequestBody PromotionsManageReq req) {
+	public BasicRes addPromotionGift(@RequestBody PromotionsManageReq req) {
 		promotionsManageService.addPromotionGift(req);
-		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-	}
-
-	/* 開關促銷活動：active=true 開啟、active=false 關閉（同步關閉底下所有贈品） */
-	@PutMapping("Promotions/togglePromotion")
-	public BasicRes togglePromotion(@Valid @RequestBody PromotionsManageReq req) {
-		promotionsManageService.togglePromotion(req);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
@@ -97,10 +82,10 @@ public class PromotionsManageController {
 	 *   選填（贈品）：giftProductId（> 0 才會建贈品）、fullAmount、quantity
 	 *
 	 * 兩個步驟在同一個 @Transactional 內，任一失敗整筆 rollback
-	 * @Valid 觸發 PromotionsManageReq 上的 annotation 驗證（如 @NotBlank）
+	 * 欄位驗證全部在 Service 層手動進行
 	 */
 	@PostMapping("/promotions/create")
-	public BasicRes create(@Valid @RequestBody PromotionsManageReq req) {
+	public BasicRes create(@RequestBody PromotionsManageReq req) {
 		// 委派給 createPromotionWithGift()，由 Service 處理驗證與寫入
 		promotionsManageService.createPromotionWithGift(req);
 		// 成功後回傳 200 + "Success!!"
@@ -119,7 +104,7 @@ public class PromotionsManageController {
 	 * 這裡新增 POST 路徑讓前端能用統一的 /promotions/* 命名風格呼叫
 	 */
 	@PostMapping("/promotions/toggle")
-	public BasicRes toggle(@Valid @RequestBody PromotionsManageReq req) {
+	public BasicRes toggle(@RequestBody PromotionsManageReq req) {
 		// 委派給既有的 togglePromotion()，邏輯不重複實作
 		promotionsManageService.togglePromotion(req);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
@@ -132,7 +117,7 @@ public class PromotionsManageController {
 	 * Request Body（PromotionsReq）欄位說明：
 	 *   cartId         → 購物車 ID（原封不動帶回回傳值，讓前端對應）
 	 *   memberId       → 1 = 訪客（無折扣），> 1 = 會員（查折扣券）
-	 *   useCoupon      → true = 使用者勾選使用 8 折券
+	 *   useCoupon      → true = 使用者勾選使用 9 折券
 	 *   selectedGiftId → 使用者選的贈品 ID（0 = 放棄）
 	 *   originalAmount → 購物車原始總金額（由前端計算後傳入）
 	 *
