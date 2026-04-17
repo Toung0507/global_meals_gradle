@@ -48,6 +48,9 @@ import com.example.global_meals_gradle.res.GetOrdersVo;
 
 @Service
 public class OrdersService {
+	
+	private static final org.slf4j.Logger log = org.slf4j //
+			.LoggerFactory.getLogger(OrdersService.class);
 
 	@Autowired
 	private OrdersDao ordersDao;
@@ -174,9 +177,13 @@ public class OrdersService {
 	/* 成立訂單: 外部呼叫的主入口：負責「高併發重試流程」 */
 	// 這個方法「不加」@Transactional，這樣裡面的 try-catch 才能重複執行。
 	public CreateOrdersRes createOrders(CreateOrdersReq req) {
+		// [DEBUG] 記錄請求進入，方便追蹤
+	    log.debug("【訂單請求】收到購物車 ID: {}, 會員 ID: {}", req.getOrderCartId(), req.getMemberId());
 		if (req.isUseDiscount()) {
 			Members member = membersDao.findById(req.getMemberId());
 			if (!member.isDiscount()) {
+				// [WARN] 記錄異常的折扣請求（可能是前端繞過或邏輯錯誤）
+	            log.warn("【訂單攔截】會員 {} 嘗試使用折扣但資格不符", req.getMemberId());
 				throw new RuntimeException("無優惠可使用");
 			}
 		}
@@ -206,9 +213,14 @@ public class OrdersService {
 				// 只有當訊息包含「衝突」(樂觀鎖失敗) 或 「Duplicate」(序號重複) 時才進入重試
 				if (msg != null && (msg.contains("衝突") || msg.contains("Duplicate")//
 						|| msg.contains("Primary"))) {
+					log.info("【訂單重試】購物車 ID: {} 發生衝突，準備進行第 {} 次重試... 原因: {}", 
+	                         req.getOrderCartId(), i + 1, msg);
 					// 如果還沒超過重試次數，就繼續跑下一輪 for 迴圈。
 					if (i == maxRetries - 1) {
 						// 如果重試了 5 次都還是失敗，才拋出錯誤。
+						// [ERROR] 記錄重試耗盡，這代表系統併發極高，可能需要優化
+	                    log.error("【訂單失敗】購物車 ID: {} 重試 {} 次後仍失敗", //
+	                    		req.getOrderCartId(), maxRetries);
 						throw new RuntimeException("系統繁忙，請重新結帳");
 					}
 
@@ -346,6 +358,9 @@ public class OrdersService {
 		taxAmount = afterTax.subtract(beforeTax).setScale(0, RoundingMode.UP);
 		// 定義「最終未稅小計」
 		finalSubtotal = afterTax.subtract(taxAmount);
+		// [DEBUG] 記錄金額計算結果，這在對帳出錯時非常重要
+	    log.debug("【金額計算】購物車: {} -> 最終未稅: {}, 稅額: {}, 含稅: {}, 折扣: {}", 
+	              req.getOrderCartId(), finalSubtotal, taxAmount, afterTax, discountOff);
 
 		// ====== 贈品門檻檢查 ======
 		if (!giftProductIds.isEmpty()) { // 判斷贈品清單有沒有資料
@@ -357,6 +372,9 @@ public class OrdersService {
 				if (giftRule != null) { // 如果有取得金額
 					// 2. 直接拿 total 跟這個金額比
 					if (initialTotal.compareTo(giftRule) < 0) { // compareTo：這是 BigDecimal 比較大小的標準寫法
+						// [WARN] 記錄未達標的贈品領取嘗試
+		                log.warn("【贈品攔截】購物車: {} 金額 {} 未達門檻 {}", //
+		                		req.getOrderCartId(), initialTotal, giftRule);
 						throw new RuntimeException("金額未達門檻 " + giftRule + "，無法領取贈品 ID: " + giftId);
 					}
 				}
@@ -422,13 +440,14 @@ public class OrdersService {
 			// ====== 執行新增主訂單 ======
 			ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
 					req.getPhone(), finalSubtotal, taxAmount, afterTax, "UNPAID", req.isUseDiscount());
+			log.info("【產單成功】購物車: {} -> 訂單編號: {}-{}", req.getOrderCartId(), todayStr, newId);
 
 			// 成功後回傳結果
 			return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
 					newId, todayStr, afterTax);
 		} catch (Exception e) {
-			// --- 錯誤紀錄 ---
-			// logger.error(e.getMessage());
+			// [ERROR] 記錄詳細的資料庫操作失敗原因
+	        log.error("【資料庫異常】訂單寫入失敗，購物車 ID: {}, 錯誤: {}", req.getOrderCartId(), e.getMessage());
 			System.out.println("executeInsert 執行失敗，準備回滾並交由外層判斷: " + e.getMessage());
 			throw e;
 		}
