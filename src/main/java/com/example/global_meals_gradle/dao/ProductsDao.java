@@ -2,7 +2,6 @@ package com.example.global_meals_gradle.dao;
 
 import java.util.List;
 
-import org.apache.ibatis.annotations.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -64,6 +63,5 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	// 7. 前台實時確認庫存 (只抓數字，不抓整張表，效能最快)
 	@Query(value = "SELECT stock_quantity FROM products WHERE id = ?1 AND deleted_at IS NULL", nativeQuery = true)
 	public Integer getStockById(int productsId);
-
 
 }

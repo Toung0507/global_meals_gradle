@@ -10,6 +10,9 @@ public class GlobalArea {
 	@Column(name = "id")
 	private int id;
 
+	@Column(name = "country")
+	private String country;
+
 	@Column(name = "branch")
 	private String branch;
 
@@ -19,15 +22,20 @@ public class GlobalArea {
 	@Column(name = "phone")
 	private String phone;
 
-	@Column(name = "regions_id")
-	private int regionsId;
-
 	public int getId() {
 		return id;
 	}
 
 	public void setId(int id) {
 		this.id = id;
+	}
+
+	public String getCountry() {
+		return country;
+	}
+
+	public void setCountry(String country) {
+		this.country = country;
 	}
 
 	public String getBranch() {
@@ -52,14 +60,6 @@ public class GlobalArea {
 
 	public void setPhone(String phone) {
 		this.phone = phone;
-	}
-
-	public int getRegionsId() {
-		return regionsId;
-	}
-
-	public void setRegionsId(int regionsId) {
-		this.regionsId = regionsId;
 	}
 
 }

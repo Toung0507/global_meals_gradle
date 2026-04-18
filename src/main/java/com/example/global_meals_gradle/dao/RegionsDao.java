@@ -42,19 +42,7 @@ public interface RegionsDao extends JpaRepository<Regions, Integer>{
 
 
 
-	/* 尋找該分店所在國家的稅制與稅率(成立訂單使用) */ 
+	/* 查找該分店所在國家的稅制與稅率(成立訂單使用) */ 
 	@Query("SELECT r FROM Regions r JOIN GlobalArea g ON r.country = g.country WHERE g.id = ?1")
 	public Regions findTaxByAreaId(int areaId);
-
-	
-	/*
-	 * 根據 global_area 的 id，直接查出對應的 Regions（一條 SQL 走完兩張表）
-	 * 原理：global_area.regions_id 是指向 regions.id 的外鍵，直接用子查詢
-	 */
-	@Query(value = "SELECT r.* FROM regions r "
-	        + "JOIN global_area g ON r.id = g.regions_id "
-	        + "WHERE g.id = :globalAreaId", 
-	        nativeQuery = true)
-	Regions findByGlobalAreaId(@Param("globalAreaId") int globalAreaId);
-	
 }
