@@ -24,7 +24,8 @@ public class CartService {
 
 	@Autowired
 	private OrderCartDao orderCartDao;
-
+	@Autowired
+	private OrdersDao ordersDao;
 	@Autowired
 	private OrderCartDetailsDao orderCartDetailsDao;
 
@@ -39,7 +40,7 @@ public class CartService {
 	@Autowired
 	private RegionsDao regionsDao;
 	@Autowired
-	private PromotionsDao promotionsDao; // 用來撈上架中且在有效期間內的活動清單
+	private PromotionsDao promotionsDao; 
 	@Autowired
 	private BranchInventoryDao branchInventoryDao;
 
@@ -62,11 +63,12 @@ public class CartService {
 			newCart.setOperationType(OperationType.valueOf(req.getOperationType()));
 
 //			操作者：員工點餐存 staffId，顧客點餐存 memberId
-			if ("STAFF".equals(req.getOperationType())) {
-				newCart.setOperation(req.getStaffId()); // 員工點餐存 staffId
-			} else {
-				newCart.setOperation(req.getMemberId());
-			}
+//			三元運算符格式：條件 ? 結果A（條件為true） : 結果B（條件為false）
+//			讀法：「如果是STAFF操作？ → 存staffId ：否則 → 存memberId」
+//			功能完全一樣，4行 → 1行
+			newCart.setOperation("STAFF".equals(req.getOperationType()) ? req.getStaffId() // ← 條件成立時（員工），用這個值
+					: req.getMemberId() // ← 條件不成立時（顧客），用這個值
+			);
 
 //			 這裡必須用 Spring Data JPA 內建的 save(),「新建主表」時我們強烈建議用 save()！
 //			 因為 save() 執行完，資料庫自動生成的 ID 會立刻被裝回 newCart.getId() 裡面。
@@ -79,83 +81,33 @@ public class CartService {
 		} else {
 //			 劇本分支 B：已經有車了,id沿用
 			currentCartId = req.getCartId();
+
+//			   🛡️ 防禦：確認這台車尚未被結帳
+//		     如果前端帶來的 cartId 已在訂單表裡，不允許再修改
+			if (ordersDao.existsByOrderCartId(currentCartId)) {
+				throw new RuntimeException("此購物車已結帳完成，請重新建立新的購物車");
+			}
 		}
 
 //		 步驟 2：處理這筆商品 的增刪改
 //		 這時候我們有了 currentCartId (購物車號碼)，以及 req 傳來的 productId 和 quantity
 
+//			 第87行：數量為0 → 刪除
 		if (req.getQuantity() == 0) {
-//			 ==== 情境 2-1：刪除商品 ====
+//			 一行搞定刪除
 			orderCartDetailsDao.deleteByCartIdAndProductId(currentCartId, req.getProductId());
 
 		} else {
-//			 ==== 情境 2-2：數量大於 0，加入新商品 或 修改數量 ====
-//			 先找找看，這台車裡面是不是已經有這個商品了
+//			 去查購物車裡有沒有這個商品
 			OrderCartDetails existingDetail = orderCartDetailsDao.findByCartIdAndProductId(currentCartId,
 					req.getProductId());
 
 			if (existingDetail != null) {
-			//  情況 A：購物車裡已經有了，要把數量「覆蓋」成前端傳來的新數量
-			    int oldQuantity = existingDetail.getQuantity();
-			    int newQuantity = req.getQuantity();
-			//  只有「增加數量」才需要做庫存驗證（減少數量不影響庫存）
-			    if (newQuantity > oldQuantity) {
-//			      查這個商品在本分店的庫存設定
-			        OrderCart cart = orderCartDao.findById(currentCartId);
-			        BranchInventory inv = branchInventoryDao.findByProductIdAndAreaId(
-			                req.getProductId(), cart.getGlobalAreaId());
-			        if (inv == null) {
-//			          查無庫存設定 → 不能更新
-			            throw new RuntimeException("商品 ID " + req.getProductId()
-			                    + " 在此分店未設定庫存，無法調整數量");
-			        }
-//			          確認庫存數量足夠（至少要有 newQuantity 份）
-			        if (newQuantity > inv.getStockQuantity()) {
-			            throw new RuntimeException("庫存不足，目前剩餘 "
-			                    + inv.getStockQuantity() + " 份，無法調整為 " + newQuantity + " 份");
-			        }
-//			          確認沒有超過單次最大購買量
-			        if (newQuantity > inv.getMaxOrderQuantity()) {
-			            throw new RuntimeException("單次最多只能購買 "
-			                    + inv.getMaxOrderQuantity() + " 份");
-			        }
-			    }
-//			 驗證通過（或是減少數量，不需驗證），覆蓋數量並存入 DB
-			    existingDetail.setQuantity(newQuantity);
-			    orderCartDetailsDao.save(existingDetail);
+//				 【修改數量】：委託給私有方法處理，這裡只剩 1 行
+				updateItemQuantity(existingDetail, req.getQuantity(), currentCartId, req.getProductId());
 			} else {
-//				 情況 B：購物車裡還沒有，這是一筆全新的購物車明細，我們要建一筆新的 OrderCartDetails！
-				OrderCartDetails newDetail = new OrderCartDetails();
-			    newDetail.setOrderCartId(currentCartId);
-			    newDetail.setProductId(req.getProductId());
-//			  第1層防線：確認商品本身存在且上架（Products 表）
-			    Products product = productsDao.findById(req.getProductId());
-			    if (product == null || !product.isActive()) {
-			        throw new RuntimeException("商品 ID " + req.getProductId() + " 不存在或已下架");
-			    }
-//			  第2層防線：確認這個商品在本分店有設定庫存（branch_inventory 表）
-//			  從購物車取 globalAreaId，因為 syncItem 劇本分支A建新車時已把 globalAreaId 存進 DB
-			    OrderCart cart = orderCartDao.findById(currentCartId);
-			    BranchInventory inv = branchInventoryDao.findByProductIdAndAreaId(
-			            req.getProductId(), cart.getGlobalAreaId());
-			    if (inv == null) {
-			        throw new RuntimeException("商品 ID " + req.getProductId() + " 在此分店未設定庫存");
-			    }
-//			  第3層防線：確認庫存數量足夠
-			    if (inv.getStockQuantity() < req.getQuantity()) {
-			        throw new RuntimeException("商品「" + product.getName() + "」庫存不足，目前剩餘 "
-			                + inv.getStockQuantity() + " 份");
-			    }
-//			  第4層防線：確認沒有超過單次最大購買量
-			    if (req.getQuantity() > inv.getMaxOrderQuantity()) {
-			        throw new RuntimeException("商品「" + product.getName() + "」單次最多只能購買 "
-			                + inv.getMaxOrderQuantity() + " 份");
-			    }
-//			  全部驗證通過！從 branch_inventory 取定價快照存進購物車明細
-			    newDetail.setPrice(inv.getBasePrice());      // ← 改這裡，從庫存表取定價
-			    newDetail.setQuantity(req.getQuantity());
-			    newDetail.setGift(false);
-			    orderCartDetailsDao.save(newDetail);
+//				 【新增商品】：委託給私有方法處理，這裡也只剩 1 行
+				addNewItem(currentCartId, req);
 			}
 		}
 
@@ -163,15 +115,103 @@ public class CartService {
 		return getCartView(currentCartId, req.getMemberId());
 	}
 
+//	 這個方法只做一件事：驗證後更新數量
+//	 不再深埋在 syncItem 的第3、4層裡
+	private void updateItemQuantity(OrderCartDetails existing, int newQty, int cartId, int productId) {
+//		 Gate：如果是減少數量，完全不用驗證，直接更新
+		if (newQty <= existing.getQuantity()) {
+			existing.setQuantity(newQty);
+			orderCartDetailsDao.save(existing);
+			return; // ← Guard Clause：條件滿足就提前結束，不繼續往下
+		}
+
+//		 到這裡代表是「增加數量」，才需要驗證
+//		 查購物車主表，取得分店ID
+		OrderCart cart = orderCartDao.findById(cartId);
+		if (cart == null) {
+			throw new RuntimeException("購物車不存在（ID: " + cartId + "），資料異常");
+		}
+
+//		 查庫存表
+		BranchInventory inv = branchInventoryDao.findByProductIdAndGlobalAreaId(productId, cart.getGlobalAreaId())
+				.orElse(null);
+
+//		 Guard 1：庫存設定不存在 → 立即結束（拋錯）
+		if (inv == null) {
+			throw new RuntimeException("商品 ID " + productId + " 在此分店未設定庫存，無法調整數量");
+		}
+//		 Guard 2：庫存不足 → 立即結束
+		if (newQty > inv.getStockQuantity()) {
+			throw new RuntimeException("庫存不足，目前剩餘 " + inv.getStockQuantity() + " 份，無法調整為 " + newQty + " 份");
+		}
+//		 Guard 3：超過單次上限 → 立即結束
+		if (newQty > inv.getMaxOrderQuantity()) {
+			throw new RuntimeException("單次最多只能購買 " + inv.getMaxOrderQuantity() + " 份");
+		}
+
+//		 全部通過才更新
+		existing.setQuantity(newQty);
+		orderCartDetailsDao.save(existing);
+	}
+
+//	 這個方法只做一件事：驗證後新增商品到購物車
+	private void addNewItem(int cartId, CartSyncReq req) {
+
+//		 Guard 1：商品存在且上架？不行就立即結束
+		Products product = productsDao.findById(req.getProductId());
+		if (product == null || !product.isActive()) {
+			throw new RuntimeException("商品 ID " + req.getProductId() + " 不存在或已下架");
+		}
+
+//		 查購物車主表取分店ID
+		OrderCart cart = orderCartDao.findById(cartId);
+		if (cart == null) {
+			throw new RuntimeException("購物車不存在（ID: " + cartId + "），資料異常");
+		}
+//		 查庫存表
+		BranchInventory inv = branchInventoryDao
+				.findByProductIdAndGlobalAreaId(req.getProductId(), cart.getGlobalAreaId()).orElse(null);
+
+//		 Guard 2：這個分店有庫存設定嗎？沒有就立即結束
+		if (inv == null) {
+			throw new RuntimeException("商品 ID " + req.getProductId() + " 在此分店未設定庫存");
+		}
+//		 Guard 3：庫存夠嗎？不夠就立即結束
+		if (inv.getStockQuantity() < req.getQuantity()) {
+			throw new RuntimeException("商品「" + product.getName() + "」庫存不足，目前剩餘 " + inv.getStockQuantity() + " 份");
+		}
+//		 Guard 4：有沒有超過單次購買上限？超過就立即結束
+		if (req.getQuantity() > inv.getMaxOrderQuantity()) {
+			throw new RuntimeException("商品「" + product.getName() + "」單次最多只能購買 " + inv.getMaxOrderQuantity() + " 份");
+		}
+
+//		 全部通過！組裝新的購物車明細物件
+		OrderCartDetails newDetail = new OrderCartDetails();
+		newDetail.setOrderCartId(cartId); // 屬於哪台購物車
+		newDetail.setProductId(req.getProductId()); // 哪個商品
+		newDetail.setPrice(inv.getBasePrice()); // 定價快照（從庫存表取）
+		newDetail.setQuantity(req.getQuantity()); // 數量
+		newDetail.setGift(false); // 不是贈品
+		orderCartDetailsDao.save(newDetail); // 存進資料庫
+	}
+
 	/**
 	 * 核心 API 2:刪除購物車內的特定商品
 	 */
 	@Transactional
 	public CartViewRes removeItem(CartRemoveReq req) {
-//		 1. 直接呼叫剛剛寫好的刪除 SQL
-		orderCartDetailsDao.deleteByCartIdAndProductId(req.getCartId(), req.getProductId());
+//		 🛡️ 防禦：確認這台購物車屬於這個 member
+		OrderCart cart = orderCartDao.findById(req.getCartId());
+		if (cart == null) {
+			throw new RuntimeException("購物車不存在");
+		}
+//		 🛡️ 防禦：只有 CUSTOMER 模式才用 memberId 比對所有權
+//		 STAFF 模式：員工代替客人點餐，不用 memberId 比對（員工天然有操作權限）
+		if (cart.getOperationType() == OperationType.CUSTOMER && cart.getOperation() != req.getMemberId()) {
+			throw new RuntimeException("無權操作他人的購物車");
+		}
 
-//		 2. 刪完之後，重新結算整台車的金額並回傳！ (預設沒有會員資訊就傳 null)
+		orderCartDetailsDao.deleteByCartIdAndProductId(req.getCartId(), req.getProductId());
 		return getCartView(req.getCartId(), req.getMemberId());
 	}
 
@@ -180,6 +220,11 @@ public class CartService {
 //     若使用者直接點「確認下單」而未選贈品，前端不會呼叫此 API
 	@Transactional
 	public CartViewRes selectGift(CartSelectGiftReq req) {
+//		    🛡️ 前置防禦：確認購物車存在，避免對不存在的 ID 做無謂的刪除操作
+		OrderCart cart = orderCartDao.findById(req.getCartId());
+		if (cart == null) {
+			return buildError(ReplyMessage.CART_NOT_FOUND);
+		}
 
 //		步驟1：先把購物車裡舊的贈品全部清掉（確保購物車只有一個贈品）
 		orderCartDetailsDao.deleteAllGiftsByCartId(req.getCartId());
@@ -197,10 +242,7 @@ public class CartService {
 
 //			步驟2-2：確認這條規則存在且有效
 			if (giftRule == null) {
-				CartViewRes err = new CartViewRes();
-				err.setCode(ReplyMessage.GIFT_NOT_AVAILABLE.getCode());
-				err.setMessage(ReplyMessage.GIFT_NOT_AVAILABLE.getMessage());
-				return err;
+				return buildError(ReplyMessage.GIFT_NOT_AVAILABLE);
 			}
 
 //			步驟2-3：從規則物件直接取得贈品的商品 ID（不依賴前端傳值，從資料庫取更安全）
@@ -208,37 +250,35 @@ public class CartService {
 
 //			步驟2-4：重新計算購物車小計，確認消費額仍然達標
 			List<OrderCartDetails> allDetails = orderCartDetailsDao.findAllByCartId(req.getCartId());
-			BigDecimal subtotal = BigDecimal.ZERO;
-			for (OrderCartDetails d : allDetails) {
-				if (!d.isGift()) {
-					subtotal = subtotal.add(d.getPrice().multiply(BigDecimal.valueOf(d.getQuantity())));
-				}
-			}
+			BigDecimal subtotal = allDetails.stream()
+//					 .filter() ← 集合過濾（List Filtering）
+//					 功能：把贈品過濾掉，只留非贈品的明細
+//					 !d.isGift() 代表「不是贈品才保留」
+					.filter(d -> !d.isGift())
+//					 .map() ← 轉換（Mapping）
+//					 功能：把每一筆 OrderCartDetails（明細物件）「轉換成」它的金額（BigDecimal）
+//					 d.getPrice().multiply(...) ← 單價 × 數量 = 這筆的金額
+					.map(d -> d.getPrice().multiply(BigDecimal.valueOf(d.getQuantity())))
+//					 .reduce() ← 聚合（Reducing）
+//					 功能：把所有金額加總在一起
+//					 BigDecimal.ZERO 是起始值（從 0 開始加）
+//					 BigDecimal::add 是加法操作（把兩個值相加）
+					.reduce(BigDecimal.ZERO, BigDecimal::add);
 
 //			步驟2-5：確保2：確認消費額達到這條規則的門檻
 			if (subtotal.compareTo(giftRule.getFullAmount()) < 0) {
-				CartViewRes err = new CartViewRes();
-				err.setCode(ReplyMessage.NOT_REACH_FULLAMOUNT.getCode());
-				err.setMessage(ReplyMessage.NOT_REACH_FULLAMOUNT.getMessage());
-				return err;
+				return buildError(ReplyMessage.NOT_REACH_FULLAMOUNT);
 			}
-
 //			步驟2-6：確保3：確認贈品行銷名額還夠（-1=無限量，0=已送完，>0=還有名額）
 			if (giftRule.getQuantity() == 0) {
-				CartViewRes err = new CartViewRes();
-				err.setCode(ReplyMessage.GIFT_SEND_LIGHT.getCode());
-				err.setMessage(ReplyMessage.GIFT_SEND_LIGHT.getMessage());
-				return err;
+				return buildError(ReplyMessage.GIFT_SEND_LIGHT);
 			}
 
 //			步驟2-7：確保4：確認這個贈品商品在商品表裡
 //			用 giftProductId（從規則物件取的）在步驟2-3，不是從前端取的
 			Products giftProduct = productsDao.findById(giftProductId);
 			if (giftProduct == null) {
-				CartViewRes err = new CartViewRes();
-				err.setCode(ReplyMessage.GIFT_NOT_AVAILABLE.getCode());
-				err.setMessage(ReplyMessage.GIFT_NOT_AVAILABLE.getMessage());
-				return err;
+				return buildError(ReplyMessage.GIFT_NOT_AVAILABLE);
 			}
 
 //			步驟2-8：全部驗證通過！把贈品寫進購物車明細
@@ -256,10 +296,50 @@ public class CartService {
 		return getCartView(req.getCartId(), req.getMemberId());
 	}
 
-//	     API 4：清空購物車（一般商品 + 贈品全刪）
+//        API4:切換分店時候新建一個購物車不用舊的購物車
+	/**
+	 * API4:切換分店時候新建一個購物車不用舊的購物車 前端呼叫時機：使用者在選擇不同分店時 作用：如果目前有購物車且分店不同 → 清空舊購物車 →
+	 * 生成一個屬於新分店的空購物車回傳
+	 */
+	@Transactional
+	public CartViewRes switchBranch(int oldCartId, int newGlobalAreaId, int memberId) {
+//		防禦：確認新分店真實存在
+		GlobalArea newArea = globalAreaDao.findById(newGlobalAreaId);
+		if (newArea == null) {
+			throw new RuntimeException("分店 ID " + newGlobalAreaId + " 不存在，請重新選擇");
+		}
+//	     第一步：查舊購物車是否存在
+		OrderCart oldCart = orderCartDao.findById(oldCartId);
+
+//	     如果舊購物車要存在，且分店ID已經不同了（代表確實換了分店）
+		if (oldCart != null && oldCart.getGlobalAreaId() != newGlobalAreaId) {
+//	         把舊購物車的所有明細刪掉（清空商品和贈品）
+			orderCartDetailsDao.deleteAllByCartId(oldCartId);
+//	         注意：這裡也可以選擇把 order_cart 主表也刪掉，看你的設計
+//	         orderCartDao.delete(oldCartId);
+		}
+
+//	     第二步：建一台新的空購物車，綁定新分店
+		OrderCart newCart = new OrderCart();
+		newCart.setGlobalAreaId(newGlobalAreaId); // ← 關鍵：綁定新分店
+		newCart.setOperationType(OperationType.CUSTOMER); // 預設操作者類型
+		newCart.setOperation(memberId); // 記錄誰在操作
+		orderCartDao.save(newCart); // 存進資料庫，取得新的 CartId
+
+//	     第三步：回傳一台空的購物車給前端（前端用新的 cartId 取代舊的）
+		return getCartView(newCart.getId(), memberId);
+	}
+
+//	     API 5：清空購物車（一般商品 + 贈品全刪）
 
 	@Transactional
 	public CartViewRes clearCart(CartClearReq req) {
+		// 🛡️ 防禦：確認購物車存在才刪，避免對不存在的 ID 做無謂操作
+		OrderCart cart = orderCartDao.findById(req.getCartId());
+		if (cart == null) {
+			return buildError(ReplyMessage.CART_NOT_FOUND);
+		}
+
 //	         刪除這台購物車的所有明細（一般商品 + 贈品全部清空）
 		orderCartDetailsDao.deleteAllByCartId(req.getCartId());
 //	         回傳空的購物車（items=空清單、subtotal=0、total=0）
@@ -267,7 +347,7 @@ public class CartService {
 	}
 
 	/**
-	 * api5：查看購物車內容 (例如前端一進到購物車頁面要拉取資料)
+	 * api6：查看購物車內容 (例如前端一進到購物車頁面要拉取資料)
 	 */
 	public CartViewRes viewCart(int cartId, int memberId) {
 //		 什麼都不用改，直接結算現有的東西！
@@ -300,10 +380,17 @@ public class CartService {
 //	         ── 步驟 2：檢查2：逐一驗算每筆「非贈品」的狀態與金額並組裝成商品VO、最後累加小計 ─
 //		 ①：先撈出這台車的每一個購物車明細進行組裝成商品VO（購物計車明細是商品+贈品的）
 //		這是最大的 for 迴圈，要做 3 件事：（A)檢查狀態（B）檢查金額：比對定價(C) 組裝 成商品VO、(D) 累加小計
+//		 查所有明細
 		List<OrderCartDetails> allDetails = orderCartDetailsDao.findAllByCartId(cartId);
-		for (OrderCartDetails detail : allDetails) {
-			if (detail.isGift())
-				continue; // 贈品留到步驟 3 處理
+
+//		 先用 Stream filter 把「一般商品」和「贈品」分開
+//		 只保留 isGift() = false 的那些明細
+		List<OrderCartDetails> normalItems = allDetails.stream().filter(d -> !d.isGift()) // ← 過濾：只留非贈品
+				.collect(java.util.stream.Collectors.toList()); // ← 收集結果成一個新的 List
+
+//		 現在 normalItems 裡只有一般商品，for 迴圈乾淨多了，不需要再寫 continue
+		for (OrderCartDetails detail : normalItems) {
+//			 贈品留到步驟 3 處理（已在前一步過濾）
 			/*
 			 * ②先去查這個商品目前的狀態.分成-1.存在沒有下架（裡面又分成價格有變->需要更新orderCartDetails資料庫快照
 			 * 、和價格和商品表的價格一樣）-2.下架或者不存在，為了 若是情況-2。商品VO倆面的
@@ -327,47 +414,117 @@ public class CartService {
 				vo.setGift(false);
 				warningMessages.add("「" + name + "」已下架或不存在，請將其移除");
 			} else {
-		
+
 //			  -1：商品存在且上架
-				 vo.setProductName(product.getName());
+				vo.setProductName(product.getName());
 //				  (B) 查詢這個商品在本分店的庫存記錄，取得當前定價
-				    BranchInventory inv = branchInventoryDao.findByProductIdAndAreaId(
-				            detail.getProductId(), cart.getGlobalAreaId());
-				    if (inv == null) {
+				BranchInventory inv = branchInventoryDao
+						.findByProductIdAndGlobalAreaId(detail.getProductId(), cart.getGlobalAreaId()).orElse(null);
+				if (inv == null) {
 //				      庫存設定不存在（branch_inventory 被刪）：視同無法販售
 //				      警告前端；lineTotal 不納入小計；後端 log 方便排查
-				        System.err.println("[WARN] product_id=" + detail.getProductId()
-				                + " 在 global_area_id=" + cart.getGlobalAreaId()
-				                + " 查無 branch_inventory 設定，請檢查資料完整性");
-				        vo.setDetailId(detail.getId());
-				        vo.setProductId(detail.getProductId());
-				        vo.setQuantity(detail.getQuantity());
-				        vo.setPrice(detail.getPrice());           // 顯示快照價供參考
-				        vo.setLineTotal(BigDecimal.ZERO);         // 不納入小計
-				        vo.setGift(false);
-				        warningMessages.add("「" + product.getName() + "」在此分店查無庫存設定，請聯絡店員");
-				    } else {
-//				      (B) 正常情況：比對定價，偵測到調價 → 警告 + 更新快照
-				        BigDecimal currentPrice = inv.getBasePrice();
-				        if (detail.getPrice().compareTo(currentPrice) != 0) {
-				            warningMessages.add("「" + product.getName() + "」的價格已從 $" + detail.getPrice()
-				                    + " 調整為 $" + currentPrice);
-				            detail.setPrice(currentPrice);        // 更新快照
-				            orderCartDetailsDao.save(detail);     // 更新 DB 快照
-				        }
-//				      (C) 組裝商品 VO
-				        vo.setDetailId(detail.getId());
-				        vo.setProductId(detail.getProductId());
-				        vo.setQuantity(detail.getQuantity());
-				        vo.setGift(false);
-				        vo.setDiscountNote(detail.getDiscountNote());
-				        BigDecimal lineTotal = detail.getPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
-				        vo.setPrice(detail.getPrice());
-				        vo.setLineTotal(lineTotal);
-//				      (D) 累加小計
-				        subtotal = subtotal.add(lineTotal);
-				    }
-				}
+					System.err.println("[WARN] product_id=" + detail.getProductId() + " 在 global_area_id="
+							+ cart.getGlobalAreaId() + " 查無 branch_inventory 設定，請檢查資料完整性");
+					vo.setDetailId(detail.getId());
+					vo.setProductId(detail.getProductId());
+					vo.setQuantity(detail.getQuantity());
+					vo.setPrice(detail.getPrice()); // 顯示快照價供參考
+					vo.setLineTotal(BigDecimal.ZERO); // 不納入小計
+					vo.setGift(false);
+					warningMessages.add("「" + product.getName() + "」在此分店查無庫存設定，請聯絡店員");
+				} else {
+//				      ========================== (B-1) 調價偵測：看看店長有沒有改過定價 ==========================
+
+//				      從 branch_inventory 拿到這個商品在這個分店「目前」的最新定價
+					BigDecimal currentPrice = inv.getBasePrice();
+
+//				      把「購物車快照價」和「目前定價」做比較
+//				      compareTo() 的規則：相同回傳 0，不同（任何情況）回傳非 0
+//				      !== 0 就代表：快照價和目前定價不一樣 → 店長改過價！
+					if (detail.getPrice().compareTo(currentPrice) != 0) {
+//				          通知前端：「這個商品已調價」（前端通常顯示紅色警告）
+						warningMessages.add(
+								"「" + product.getName() + "」的價格已從 $" + detail.getPrice() + " 調整為 $" + currentPrice);
+//				          把購物車明細裡的快照價更新成最新定價（避免以舊價格結帳）
+						detail.setPrice(currentPrice);
+//				          把更新後的快照存回資料庫
+						orderCartDetailsDao.save(detail);
+					}
+
+//				      ========================== (B-2) 庫存歸零防禦 ==========================
+
+//				      inv.getStockQuantity() = 這個商品在這個分店「目前」的實際庫存數量
+//				      如果庫存 <= 0，代表這個商品已經賣完了，但店長還沒去後台手動下架
+					if (inv.getStockQuantity() <= 0) {
+//				          這個商品暫時缺貨，不能計算金額：lineTotal 設為 ZERO，不納入總帳單
+//				          原因：如果把缺貨商品的金額算進去，客人付了這筆錢，但廚房根本出不了餐！
+						vo.setDetailId(detail.getId());
+						vo.setProductId(detail.getProductId());
+						vo.setQuantity(detail.getQuantity()); // 數量原樣顯示（讓前端知道客人原本選了幾份）
+						vo.setPrice(detail.getPrice()); // 快照價原樣顯示（供前端參考）
+						vo.setLineTotal(BigDecimal.ZERO); // ← 重點！缺貨 → 金額歸零，不計入總帳單
+						vo.setGift(false);
+//				          提醒前端：告訴客人這個商品暫時缺貨，請他移除或等候補貨
+						warningMessages.add("「" + product.getName() + "」目前暫時缺貨，已暫時從計算中移除，請移除該商品或稍後再試");
+//				          直接跳到下一個商品（後面的 VO 組裝不用做了，lineTotal 已經設 ZERO）
+//				          voList.add(vo) 還是要做，讓前端知道這個商品「存在但缺貨」，可以顯示在畫面上提醒客人
+//				          所以這裡不 continue，因為下面還要 voList.add(vo)
+					} else {
+//				          庫存有貨才進這裡
+
+//				      ========================== (B-3) 超過庫存數量防禦 ==========================
+
+//				          比較：購物車快照數量 vs 目前實際庫存數量
+//				          detail.getQuantity() = 客人加入購物車時選的數量（比如 5 份）
+//				          inv.getStockQuantity() = 目前還剩多少份
+						if (detail.getQuantity() > inv.getStockQuantity()) {
+//				              發現問題：客人購物車裡的數量已經超過目前庫存了！
+//				              解決方案：自動把購物車裡的數量「強制降至庫存上限」
+							int safeQty = inv.getStockQuantity(); // 安全數量 = 目前最大庫存
+							detail.setQuantity(safeQty); // 修改這筆明細的數量（記憶體裡）
+							orderCartDetailsDao.save(detail); // 把修改後的數量存回資料庫
+//				              通知前端：「我已幫你自動調整數量了」
+							warningMessages.add("「" + product.getName() + "」庫存不足，已為您自動調整數量為 " + safeQty + " 份");
+						}
+//				          注意：不需要 else if，因為下面的限購量檢查是獨立的，兩個都要查
+
+//				      ========================== (B-4) 超過單次限購數量防禦 ==========================
+
+//				          比較：（調整後的）購物車數量 vs 店長設定的「單次最多購買量」
+//				          inv.getMaxOrderQuantity() = 店長設定的每次最多能買幾份（比如改成 2 份）
+						if (detail.getQuantity() > inv.getMaxOrderQuantity()) {
+//				              發現問題：購物車數量超過店長設定的限購量！
+//				              解決方案：自動降至限購量上限
+							int safeQty = inv.getMaxOrderQuantity(); // 安全數量 = 限購上限
+							detail.setQuantity(safeQty); // 修改數量
+							orderCartDetailsDao.save(detail); // 存回資料庫
+//				              通知前端
+							warningMessages.add("「" + product.getName() + "」單次限購 " + safeQty + " 份，已為您自動調整");
+						}
+
+//				      ========================== (C) 組裝商品 VO ==========================
+
+//				          走到這裡：調價已處理、庫存已驗證、限購已驗證
+//				          用「已驗證安全的 detail 數量」來組裝 VO（數量已在上面被修正過了）
+
+						vo.setDetailId(detail.getId()); // 這筆明細的主鍵（前端刪除/修改時要拿這個）
+						vo.setProductId(detail.getProductId()); // 商品ID
+						vo.setQuantity(detail.getQuantity()); // ← 這裡的數量是「修正後的安全數量」
+						vo.setGift(false); // 不是贈品
+						vo.setDiscountNote(detail.getDiscountNote()); // 折扣說明
+
+//				          lineTotal = 單價 × 數量（用已修正後的數量算金額）
+						BigDecimal lineTotal = detail.getPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
+						vo.setPrice(detail.getPrice()); // 顯示單價
+						vo.setLineTotal(lineTotal); // 顯示這筆的金額
+
+//				      ========================== (D) 累加到購物車總小計 ==========================
+
+//				          只有庫存有貨的商品才累加（庫存歸零的那條在上面已提前返回了）
+						subtotal = subtotal.add(lineTotal); // 把這筆的金額加進總小計
+					} // inv.getStockQuantity() > 0 的括號結束
+				} // inv != null 的大 else 括號結束
+			}
 
 //			每個cartItemVO都進入cartItemVO的list裡,每個商品顯示不顯示由前端決定什麼值顯示什麼值不顯示，比如null的時候就不顯示，非Null就顯示
 //			CartItemVO的清單voList商品部分：商品的cartitemvoList處理好了，代碼的最後我們在一起res.set
@@ -385,11 +542,21 @@ public class CartService {
 			Products giftProduct = productsDao.findById(existingGift.getProductId());
 //			根據購物車詳情裡的選中的贈品gift，獲取gift的ProductId，通過ProductId尋找商品表的這個贈品的狀態還有贈品表裡這個贈品對應的上架的活動
 			PromotionsGifts giftRule = promotionsGiftsDao.findActiveRuleByGiftProductId(existingGift.getProductId());
-//	             判斷贈品是否「依然有效」（4 個條件全部滿足）：
-			boolean giftStillValid = giftRule != null // 規則存在（上架上面findActiveRuleByGiftProductId已經判斷）
-					&& giftProduct != null // 贈品作為商品狀態：存在才行
-					&& (giftRule.getQuantity() == -1 || giftRule.getQuantity() > 0) // 還有庫存
-					&& subtotal.compareTo(giftRule.getFullAmount()) >= 0; // 金額達標
+
+//			 先查這個贈品在本分店的實體庫存
+//			 cart 物件在步驟1已查好，這裡可以直接使用
+//			 本分店的ID（從購物車主表取）， 贈品的商品ID（從已選贈品明細取）
+			BranchInventory giftInv = branchInventoryDao
+					.findByProductIdAndGlobalAreaId(existingGift.getProductId(), cart.getGlobalAreaId()).orElse(null);
+
+//	             判斷贈品是否「依然有效」：
+			boolean giftStillValid = giftRule != null // 條件1：贈品規則有效
+					&& giftProduct != null // 條件2：贈品商品存在
+					&& (giftRule.getQuantity() == -1 || giftRule.getQuantity() > 0) // 條件3：行銷名額充足
+					&& giftInv != null // 條件4（新增）：分店有庫存設定
+					&& giftInv.getStockQuantity() > 0 // 條件5（新增）：分店實體庫存 > 0
+					&& subtotal.compareTo(giftRule.getFullAmount()) >= 0; // 條件6：消費金額達標
+// ✅ 現在：行銷名額 + 實體庫存 兩層都確認才算有效
 			if (giftStillValid) {
 //	            CartItemVO的清單voList贈品部分：     有效：把贈品 VO 加入CartItemVO的清單voList中顯示在購物車界面
 				CartItemVO giftVO = new CartItemVO();
@@ -418,12 +585,33 @@ public class CartService {
 //		去資料庫撈出所有目前上架且在有效時間範圍內的活動（完整物件，含 id 和 name）
 		List<Promotions> activePromotions = promotionsDao.findActivePromotions();
 
+// =========================================================
+// 改後版本（groupingBy 方案，只查 1 次DB）：
+// =========================================================
+
+// Step 1：一次查詢，拿出【所有有效活動的所有有效贈品規則】
+// findAllActiveGifts() 在 PromotionsGiftsDao 第33~40行已寫好但被注解掉了！
+// 打開注解即可使用
+		List<PromotionsGifts> allActiveGifts = promotionsGiftsDao.findAllActiveGifts();
+
+// Step 2：用 groupingBy 在記憶體裡分組
+// Collectors.groupingBy(分組的key是什麼)
+// 這裡的 key = 每條規則的 promotionsId（屬於哪個活動）
+// 結果：Map<Integer（活動ID）, List<PromotionsGifts>（這個活動的所有規則）>
+		java.util.Map<Integer, List<PromotionsGifts>> giftsByPromotionId = allActiveGifts.stream()
+//				 .collect() ← 把 Stream 轉成集合
+//				 Collectors.groupingBy() ← 按照某個欄位分組（類似 SQL 的 GROUP BY）
+//				 PromotionsGifts::getPromotionsId ← 用方法引用取出分組的 key（活動ID）
+				.collect(java.util.stream.Collectors.groupingBy(PromotionsGifts::getPromotionsId));
+
 //		 逐一審查每個活動，看使用者的消費有沒有資格進入
 		for (Promotions promotion : activePromotions) {
 
-//			 撈出「這個活動」底下所有上架的贈品規則
-//			 promotions_id = promotion.getId() → 是後端自己迴圈取的，跟前端無關
-			List<PromotionsGifts> giftsInThisPromotion = promotionsGiftsDao.findGiftsByPromotionId(promotion.getId());
+//			 map.getOrDefault(key, 預設值)
+//			 如果 map 裡有這個活動ID的規則 → 回傳那份 List
+//			 如果沒有（這個活動沒有設贈品規則）→ 回傳空清單（不報錯）
+			List<PromotionsGifts> giftsInThisPromotion = giftsByPromotionId.getOrDefault(promotion.getId(),
+					java.util.Collections.emptyList());
 
 //			 如果這個活動底下沒有任何贈品規則（活動建了但沒設贈品），直接跳過
 //			 前端：這個活動完全不出現在下拉選單裡
@@ -432,31 +620,17 @@ public class CartService {
 			}
 
 //			 找出這個活動底下「門檻最低的那條規則的金額」
-//			 目的：使用者消費只要達到最低門檻，就算「有資格進入這個活動」
-//			 進入後，活動底下的每個贈品會再各自判斷使用者能不能選
-
-//			 先設為 null，代表還沒找到任何值
-			BigDecimal minFullAmount = null;
-
-//			 逐一比較每條贈品規則的門檻金額，找最小值
-			for (PromotionsGifts rule : giftsInThisPromotion) {
-				BigDecimal thisAmount = rule.getFullAmount(); // 這條規則的門檻金額
-				if (minFullAmount == null) {
-//					第一次進來，還沒有比較對象，先把第一條的金額當暫時最小值
-					minFullAmount = thisAmount;
-				} else if (thisAmount.compareTo(minFullAmount) < 0) {
-//					 compareTo 回傳負數 → thisAmount 比 minFullAmount 還要小
-//					 → 發現更小的門檻，更新 minFullAmount
-					minFullAmount = thisAmount;
-				}
-			}
-
-//			 保險機制：理論上走到這裡 minFullAmount 不會是 null
-//			 （因為上面 isEmpty() 已排除空清單）
-//			 但萬一發生，給 0 作為預設，防止下面 compareTo(null) 噴 NullPointerException
-			if (minFullAmount == null) {
-				minFullAmount = BigDecimal.ZERO;
-			}
+			BigDecimal minFullAmount = giftsInThisPromotion.stream()
+//					 .map() ← 把每條 PromotionsGifts 規則，取出它的門檻金額（getFullAmount()）
+//					 PromotionsGifts::getFullAmount 是「方法引用」寫法
+//					 等價於：rule -> rule.getFullAmount()
+					.map(PromotionsGifts::getFullAmount)
+//					 .min() ← 在所有取出的金額裡，找最小的那個
+//					 BigDecimal::compareTo 告訴 Stream 怎麼比大小（BigDecimal 不能用 < > 比）
+					.min(BigDecimal::compareTo)
+//					 .orElse() ← 如果清單是空的（沒有任何值），就用 BigDecimal.ZERO 當預設值
+//					 這一行取代了原本的 if (minFullAmount == null) { minFullAmount = ZERO; }
+					.orElse(BigDecimal.ZERO);
 
 //			 判斷使用者消費小計有沒有達到這個活動的最低門檻
 			if (subtotal.compareTo(minFullAmount) < 0) {
@@ -476,7 +650,7 @@ public class CartService {
 //				 同一個活動可能有不同門檻：滿300送可樂、滿500才能選大盤雞
 //				 使用者消費400 → 能選可樂，但不能選大盤雞
 				if (subtotal.compareTo(rule.getFullAmount()) < 0) {
-					continue; 
+					continue;
 				}
 
 //				 消費達到這條規則！開始組裝這個贈品的 VO
@@ -507,11 +681,24 @@ public class CartService {
 					option.setUnavailableReason("「" + giftAsProd.getName() + "」贈品已送完");
 
 				} else {
-//					 情況3：一切正常，這個贈品可以選
-//					 前端：正常顯示，使用者可以點選
+//				 情況3：行銷名額充足，進一步確認分店實體庫存
+//				 防禦缺口：promotions_gifts.quantity（行銷名額）充足，
+//				 但 branch_inventory（分店實體庫存）可能已空，兩者是不同層面的庫存
+					BranchInventory giftInv = branchInventoryDao
+							.findByProductIdAndGlobalAreaId(rule.getGiftProductId(), cart.getGlobalAreaId())
+							.orElse(null);
 					option.setGiftProductName(giftAsProd.getName());
-					option.setAvailable(true);
-					option.setUnavailableReason(null); // null → 沒有問題
+					if (giftInv == null || giftInv.getStockQuantity() <= 0) {
+//				 情況3a：行銷名額有，但分店實體庫存已空或未設定
+//				 前端：這個贈品顯示為灰色不可點，旁邊顯示暫時缺貨
+						option.setAvailable(false);
+						option.setUnavailableReason("「" + giftAsProd.getName() + "」暫時缺貨");
+					} else {
+//				 情況3b：行銷名額 + 實體庫存都正常，這個贈品可以選
+//				 前端：正常顯示，使用者可以點選
+						option.setAvailable(true);
+						option.setUnavailableReason(null); // null → 沒有問題
+					}
 				}
 
 //				 把這個贈品選項加入這個活動的贈品清單
@@ -532,33 +719,35 @@ public class CartService {
 //	         ── 步驟 5：查稅務設定並計算稅額 ──
 		TaxInfoVO taxInfo = new TaxInfoVO();
 		BigDecimal totalAmount = subtotal; // 預設（無稅設定時/內含稅）：總計 = 小計
-		GlobalArea area = globalAreaDao.findById(cart.getGlobalAreaId());
-		if (area != null) {
-			Regions region = regionsDao.findByCountry(area.getCountry());
-			if (region != null) {
-				taxInfo.setTaxRate(region.getTaxRate());
+		Regions region = regionsDao.findByGlobalAreaId(cart.getGlobalAreaId());
+		if (region != null) {
+			taxInfo.setTaxRate(region.getTaxRate());
 //				如果它原本是 TaxType.EXCLUSIVE 的enum物件。加上 .name() 後，它身上的一層皮就被剝下來，變成純粹的英文字串 "EXCLUSIVE"。
+			if (region.getTaxType() != null) {
 				taxInfo.setTaxType(region.getTaxType().name());
+
 				BigDecimal taxAmount;
 				if (region.getTaxType() == TaxType.EXCLUSIVE) {
-//	                     外加稅：稅額 = 小計 × 稅率，總計 = 小計 + 稅額
+//					 外加稅：稅額 = 小計 × 稅率，總計 = 小計 + 稅額
 					taxAmount = subtotal.multiply(region.getTaxRate()).setScale(2, RoundingMode.HALF_UP);
 					totalAmount = subtotal.add(taxAmount);
 				} else {
-//	                     內含稅：“稅額”=從含稅金額反推 = 小計 × 稅率 ÷ (1 + 稅率)
-					taxAmount = subtotal.multiply(region.getTaxRate()).divide(BigDecimal.ONE.add(region.getTaxRate()),
-							2, RoundingMode.HALF_UP);
+//					內含稅：反推稅額 = 小計 × 稅率 ÷ (1 + 稅率)
+					taxAmount = subtotal.multiply(region.getTaxRate())
+					        .divide(BigDecimal.ONE.add(region.getTaxRate()), 2, RoundingMode.HALF_UP);
 					totalAmount = subtotal; // 內含稅：總計就是小計，不另加稅
 				}
 				taxInfo.setTaxAmount(taxAmount);
 			}
-		}
+			// taxType 為 null → 完全跳過稅務計算，totalAmount 保持等於 subtotal（無稅）
+
+
 //	         ── 步驟 6：打包所有結果回傳 ──
 		/*
 		 * voList就是cartItem（包括贈品）的list availablePromotions是 以活動為單位的兩層可選贈品清單
 		 * subtotal是小計，taxInfo是稅務資訊，totalAmount是最終總計 warningMessages警告訊息（空清單代表一切正常）
 		 */
-
+		}
 		res.setItems(voList);// 裝填這台車所有的商品與贈品
 		res.setSubtotal(subtotal);
 		res.setAvailablePromotions(availablePromotions);// 設置：以活動為單位的兩層巢狀結構
@@ -568,6 +757,21 @@ public class CartService {
 		res.setCode(ReplyMessage.SUCCESS.getCode());
 		res.setMessage(ReplyMessage.SUCCESS.getMessage());
 		return res;
+	}
+		
+
+	/**
+	 * 私有工具方法：快速組裝一個錯誤回應 功能：把「建立 CartViewRes、設 code、設 message、return」這三行動作包成一行
+	 * 使用情境：selectGift 和其他 API 遇到錯誤時直接 return buildError(ReplyMessage.XXX)
+	 *
+	 * @param replyMessage ReplyMessage 列舉常數（例如 GIFT_NOT_AVAILABLE、CART_NOT_FOUND）
+	 * @return 設好 code 和 message 的錯誤 CartViewRes 物件
+	 */
+	private CartViewRes buildError(ReplyMessage replyMessage) {
+		CartViewRes err = new CartViewRes();
+		err.setCode(replyMessage.getCode());
+		err.setMessage(replyMessage.getMessage());
+		return err;
 	}
 
 }
