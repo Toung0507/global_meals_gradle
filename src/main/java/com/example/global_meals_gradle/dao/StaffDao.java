@@ -36,8 +36,8 @@ public interface StaffDao extends JpaRepository<Staff, Integer>{
 	@Query(value = "SELECT * FROM staff WHERE role = 'STAFF' ORDER BY global_area_id", nativeQuery = true)
 	public List<Staff> getAllST();
 	
-	// REGION_MANAGER 查詢所屬分店員工(STAFF -> ST)
-	@Query(value = "SELECT * FROM staff WHERE role = 'STAFF' AND global_area_id = ?1 ORDER BY global_area_id", nativeQuery = true)
+	// REGION_MANAGER 查詢所屬分店員工((包含普通員工 STAFF 與 副店長 MANAGER_AGENT))
+	@Query(value = "SELECT * FROM staff WHERE role in ('STAFF', 'MANAGER_AGENT') AND global_area_id = ?1 ORDER BY global_area_id", nativeQuery = true)
 	public List<Staff> getSTListById(int globalAreaId);
 	
 	// 停權/復權
