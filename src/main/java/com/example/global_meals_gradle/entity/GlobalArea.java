@@ -10,8 +10,8 @@ public class GlobalArea {
 	@Column(name = "id")
 	private int id;
 
-	@Column(name = "country")
-	private String country;
+	@Column(name = "regions_id")
+	private int regionsId;
 
 	@Column(name = "branch")
 	private String branch;
@@ -30,12 +30,12 @@ public class GlobalArea {
 		this.id = id;
 	}
 
-	public String getCountry() {
-		return country;
+	public int getRegionsId() {
+		return regionsId;
 	}
 
-	public void setCountry(String country) {
-		this.country = country;
+	public void setRegionsId(int regionsId) {
+		this.regionsId = regionsId;
 	}
 
 	public String getBranch() {

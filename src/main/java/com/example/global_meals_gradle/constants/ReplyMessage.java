@@ -5,6 +5,7 @@ public enum ReplyMessage {
 	// 昱文
 	// Service RegionsService
 	REGIONS_ID_ERROR(400, "Regions Id Error!!"),//
+	REGIONS_ID_NOT_FOUND(404, "Regions Id Not Found!!"),//
 	// Service GlobalAreaService
 	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
 	TAX_TYPE_ERROR(400, "Tax Type Error!!"), //
