@@ -87,4 +87,36 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Transactional
 	@Query(value = "UPDATE total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
 	public void upDateTotalAmount(String id, String orderDateId, BigDecimal totalAmount);
+	/**
+	 * 檢查這個購物車 ID 是否已經被結帳（存在於訂單表中）
+	 * 
+	 * 條件說明：
+	 *   order_cart_id = :orderCartId → 尋找這台購物車
+	 * SELECT EXISTS 會回傳 boolean（1 或 0），效能最好
+	 */
+	@Query(value = "SELECT EXISTS(SELECT 1 FROM orders WHERE order_cart_id = :orderCartId)", 
+		   nativeQuery = true)
+	boolean existsByOrderCartId(@Param("orderCartId") int orderCartId);
+
+//	 查詢某年某月所有已完成的訂單中，每個商品賣出的總數量
+//	 說明：
+//	   LEFT JOIN order_cart_details  → 把購物車明細接進來
+//	   LEFT JOIN products             → 把商品名稱接進來
+//	   WHERE order_date_id LIKE ?1    → ?1 會帶入 "202604%" 這樣的格式
+//	   AND status = 'COMPLETED'       → 只算已付款完成的訂單，退款(REFUNDED)的不算
+//	   AND is_gift = 0                → 贈品不算入銷售，只算正常商品
+//	   GROUP BY d.product_id          → 把相同商品的數量加總在一起
+//	   ORDER BY total_quantity DESC   → 賣最多的排最前面
+	@Query(value = "SELECT p.name AS productName, SUM(d.quantity) AS totalQuantity "
+	        + "FROM orders o "
+	        + "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+	        + "LEFT JOIN products p ON d.product_id = p.id "
+	        + "WHERE o.order_date_id LIKE :yearMonth "
+	        + "AND o.status = 'COMPLETED' "
+	        + "AND d.is_gift = 0 "
+	        + "GROUP BY d.product_id, p.name "
+	        + "ORDER BY totalQuantity DESC",
+	        nativeQuery = true)
+	List<Object[]> getMonthlySales(@Param("yearMonth") String yearMonth);
+
 }
