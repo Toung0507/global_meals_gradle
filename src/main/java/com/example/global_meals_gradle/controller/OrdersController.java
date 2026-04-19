@@ -21,6 +21,7 @@ import com.example.global_meals_gradle.service.EcpayService;
 import com.example.global_meals_gradle.service.LinePayService;
 import com.example.global_meals_gradle.service.OrdersService;
 
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 //@CrossOrigin(origins = "http://localhost:4200")
@@ -38,8 +39,8 @@ public class OrdersController {
 
 	/* 取的該會員的歷史訂單 */
 	@PostMapping("orders/get_all_orders_list")
-	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req) {
-		return ordersService.getAllOrders(req);
+	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req, HttpSession httpSession) {
+		return ordersService.getAllOrders(req, httpSession);
 	}
 
 	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED */

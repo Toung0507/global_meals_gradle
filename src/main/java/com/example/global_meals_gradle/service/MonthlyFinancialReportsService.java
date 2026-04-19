@@ -107,7 +107,7 @@ public class MonthlyFinancialReportsService {
 	}
 
 	// 取的特定期間的營業額(以日為單位)
-	public RevenueQueryRes getRevenueReport(RevenueQueryReq req) {
+	public RevenueQueryRes getRevenueReports(RevenueQueryReq req) {
 
 		// 1. 處理日期邊界 (避免漏掉最後一天的訂單)
 		// LocalDate.parse: 把字串變為 LocalDate
@@ -203,7 +203,7 @@ public class MonthlyFinancialReportsService {
 	}
 
 	// 查詢特定區間的營業額(以月份為單位)
-	public MonthRangeReportsRes getMonthlyReportByDateRange(MonthRangeReportsReq req, HttpSession session) {
+	public MonthRangeReportsRes getMonthlyReportsByDateRange(MonthRangeReportsReq req, HttpSession session) {
 		// 從 Session 取得目前登入者的資訊
 		Staff loginStaff = (Staff) session.getAttribute("SESSION_KEY");
 		if (loginStaff == null) {
