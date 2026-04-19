@@ -36,7 +36,7 @@ public class MembersService {
 	        return new BasicRes(ReplyMessage.PHONE_ERROR.getCode(), //
 	        		ReplyMessage.PHONE_ERROR.getMessage());
 	    }
-	    // 【新增】標準化：把電話號碼轉成 E.164 格式再存進 DB
+	    // 標準化：把電話號碼轉成 E.164 格式再存進 DB
 	    // 這樣不管使用者輸入 "0912345678" 還是 "+886912345678"，存進去都是 "+886912345678"
 	    // 讓資料庫格式統一，避免重複帳號問題（"0912345678" 和 "+886912345678" 其實是同一個號碼）
 	    String normalizedPhone = PhoneValidatorUtils.toE164Format(req.getPhone(), req.getCountryCode());

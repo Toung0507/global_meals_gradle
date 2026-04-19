@@ -8,6 +8,7 @@ public enum ReplyMessage {
 	REGIONS_ID_NOT_FOUND(404, "Regions Id Not Found!!"),//
 	// Service GlobalAreaService
 	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
+	GLOBAL_AREA_ID_NOT_FOUND(404, "Global Area Id Not Found!!"),//
 	TAX_TYPE_ERROR(400, "Tax Type Error!!"), //
 	// Service MembersService
 	PHONE_ERROR(400, "Phone Error!!"), //
