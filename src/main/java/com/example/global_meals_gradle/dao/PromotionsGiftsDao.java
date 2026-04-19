@@ -4,12 +4,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import com.example.global_meals_gradle.entity.PromotionsGifts;
-
-import jakarta.transaction.Transactional;
 
 import jakarta.transaction.Transactional;
 
@@ -129,23 +126,6 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 	@Query(value = "SELECT * FROM promotions_gifts WHERE promotions_id = :promotionsId",
 		   nativeQuery = true)
 	List<PromotionsGifts> findByPromotionsId(@Param("promotionsId") int promotionsId);
-
-
-
-	/**
-	 * 根據贈品商品 ID 查出對應的消費門檻金額（OrdersService 結帳驗證用）
-	 *
-	 * 條件說明：
-	 *   gift_product_id = :giftProductId → 指定商品
-	 *   is_active = 1                    → 只查啟用中的規則
-	 *
-	 * 使用場景：OrdersService 在建立訂單時，驗證購物車內的贈品是否符合門檻
-	 * 回傳 null 表示找不到對應的有效規則
-	 */
-	@Query(value = "SELECT full_amount FROM promotions_gifts " +
-				   "WHERE gift_product_id = :giftProductId AND is_active = 1",
-		   nativeQuery = true)
-	BigDecimal findFullAmountByGiftProductId(@Param("giftProductId") int giftProductId);
 	
 	/*
     
@@ -196,8 +176,9 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     		+ "And gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
     public int reduceGiftQuota(int promotionsId, int giftProductId);
 
-	/* 根據 活動id 商品id 取的門檻資料(用於orders) */
-    @Query(value = "SELECT full_amount FROM promotions_gifts"
+    
+	/* 根據 活動id 商品id 取的門檻資料(用於orders) */  
+    @Query(value = "SELECT full_amount FROM promotions_gifts "
     		+ "WHERE promotions_id = ?1 And gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
     public BigDecimal findFullAmountByGiftProductId(int promotionsId, int giftProductId);
 }
