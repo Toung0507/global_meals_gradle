@@ -23,8 +23,10 @@ import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.entity.GlobalArea;
 import com.example.global_meals_gradle.entity.MonthlyFinancialReports;
 import com.example.global_meals_gradle.entity.Staff;
+import com.example.global_meals_gradle.req.MonthRangeReportsReq;
 import com.example.global_meals_gradle.req.MonthlyReportReq;
 import com.example.global_meals_gradle.req.RevenueQueryReq;
+import com.example.global_meals_gradle.res.MonthRangeReportsRes;
 import com.example.global_meals_gradle.res.MonthlyReportDetail;
 import com.example.global_meals_gradle.res.MonthlyReportRes;
 import com.example.global_meals_gradle.res.RevenueData;
@@ -48,6 +50,7 @@ public class MonthlyFinancialReportsService {
 	@Autowired
 	private MonthlyFinancialReportsDao monthlyFinancialReportsDao;
 
+	// 自動產出一個月的報表
 	@Transactional(rollbackFor = Exception.class)
 	public void monthlyRevenue() {
 		// 1. 自動計算上個月的年份與月份 (格式: 2026-03)
@@ -103,7 +106,7 @@ public class MonthlyFinancialReportsService {
 		return monthReports;
 	}
 
-	// 取的特定期間的營業額
+	// 取的特定期間的營業額(以日為單位)
 	public RevenueQueryRes getRevenueReport(RevenueQueryReq req) {
 
 		// 1. 處理日期邊界 (避免漏掉最後一天的訂單)
@@ -129,7 +132,8 @@ public class MonthlyFinancialReportsService {
 		}
 		// 判斷是否為空的 List
 		if (rawData == null || rawData.isEmpty()) {
-			throw new RuntimeException("查無資料");
+			return new RevenueQueryRes(ReplyMessage.REPORTS_NOT_FOUND.getCode(), //
+					ReplyMessage.REPORTS_NOT_FOUND.getMessage());
 		}
 		// rawData.stream(): 把這個清單(rawData) 變成一個「流（Stream）」，準備一個一個加工
 		// .map(result -> { ... }): 舊的東西轉成新的東西
@@ -146,6 +150,7 @@ public class MonthlyFinancialReportsService {
 
 	}
 
+	// 預設查詢一個月份時，會傳該月與上個月的營業額
 	public MonthlyReportRes getMonthlyReport(MonthlyReportReq req, HttpSession session) {
 		// 從 Session 取得目前登入者的資訊
 		Staff loginStaff = (Staff) session.getAttribute("SESSION_KEY");
@@ -159,36 +164,80 @@ public class MonthlyFinancialReportsService {
 
 		List<Object[]> rawData; // 裝報表資料用的
 		// 如果是店長，只能查自己的店，所以分店id一律是自己的店id
-		if (loginStaff.getRole() == StaffRole.REGION_MANAGER) {  // ENUM 建議用 ==
-			req.setBranchId(loginStaff.getGlobalAreaId());
-			log.info("店長身分驗證成功，自動鎖定查詢分店 ID: {}", req.getBranchId());
+		if (loginStaff.getRole() == StaffRole.REGION_MANAGER) { // ENUM 建議用 ==
+			log.info("店長身分驗證成功，自動鎖定查詢分店 ID: {}", loginStaff.getGlobalAreaId());
 			rawData = monthlyFinancialReportsDao //
-					.getReportByDateIdAndBranchId(dateList, req.getBranchId());
-		}else {  // 老闆查詢所有分店的月營業額
+					.getReportByDateIdAndBranchId(dateList, loginStaff.getGlobalAreaId());
+		} else { // 老闆查詢所有分店的月營業額
 			rawData = monthlyFinancialReportsDao //
 					.getReportByDateId(dateList);
 		}
+		// 判斷是否為空的 List
+		if (rawData == null || rawData.isEmpty()) {
+			return new MonthlyReportRes(ReplyMessage.REPORTS_NOT_FOUND.getCode(), //
+					ReplyMessage.REPORTS_NOT_FOUND.getMessage());
+		}
+
 		List<MonthlyReportDetail> currentData = new ArrayList<>();
 		List<MonthlyReportDetail> lastData = new ArrayList<>();
-		
+
 		rawData.forEach(result -> {
 			String reportDate = (String) result[0];
-			
+
 			MonthlyReportDetail data = new MonthlyReportDetail();
 			data.setReportDate(reportDate);
-		    data.setBranchName((String) result[1]);
-		    data.setRegionsName((String) result[2]);
-		    data.setTotalAmount((BigDecimal) result[3]);
-		    
-		    // 判斷這筆是本月還是上月，塞進對應的變數
-		    if (reportDate.equals(req.getReportDate())) {
-		    	currentData.add(data);
-		    } else {
-		    	lastData.add(data);
-		    }
+			data.setBranchName((String) result[1]);
+			data.setRegionsName((String) result[2]);
+			data.setTotalAmount((BigDecimal) result[3]);
+
+			// 判斷這筆是本月還是上月，塞進對應的變數
+			if (reportDate.equals(req.getReportDate())) {
+				currentData.add(data);
+			} else {
+				lastData.add(data);
+			}
 		});
-		
+
 		return new MonthlyReportRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage(), currentData, lastData);
+	}
+
+	// 查詢特定區間的營業額(以月份為單位)
+	public MonthRangeReportsRes getMonthlyReportByDateRange(MonthRangeReportsReq req, HttpSession session) {
+		// 從 Session 取得目前登入者的資訊
+		Staff loginStaff = (Staff) session.getAttribute("SESSION_KEY");
+		if (loginStaff == null) {
+			throw new RuntimeException("請先登入");
+		}
+
+		List<Object[]> rawData; // 裝報表資料用的
+		// 如果是店長，只能查自己的店，所以分店id一律是自己的店id
+		if (loginStaff.getRole() == StaffRole.REGION_MANAGER) { // ENUM 建議用 ==
+			log.info("店長身分驗證成功，自動鎖定查詢分店 ID: {}", loginStaff.getGlobalAreaId());
+			rawData = monthlyFinancialReportsDao.getReportByDateRangeAndBranchId(req.getStartMonth(), //
+					req.getEndMonth(), loginStaff.getGlobalAreaId());
+		} else { // 老闆查詢所有分店的月營業額
+			rawData = monthlyFinancialReportsDao //
+					.getReportByDateRange(req.getStartMonth(), req.getEndMonth());
+		}
+		// 判斷是否為空的 List
+		if (rawData == null || rawData.isEmpty()) {
+			return new MonthRangeReportsRes(ReplyMessage.REPORTS_NOT_FOUND.getCode(), //
+					ReplyMessage.REPORTS_NOT_FOUND.getMessage());
+		}
+
+		List<MonthlyReportDetail> currentMonth = new ArrayList<>();
+
+		rawData.forEach(result -> { // 把陣列資料轉換
+			MonthlyReportDetail data = new MonthlyReportDetail();
+			data.setReportDate((String) result[0]);
+			data.setBranchName((String) result[1]);
+			data.setRegionsName((String) result[2]);
+			data.setTotalAmount((BigDecimal) result[3]);
+			currentMonth.add(data);
+		});
+
+		return new MonthRangeReportsRes(ReplyMessage.SUCCESS.getCode(), //
+				ReplyMessage.SUCCESS.getMessage(), currentMonth);
 	}
 }
