@@ -39,7 +39,8 @@ public class OrdersController {
 
 	/* 取的該會員的歷史訂單 */
 	@PostMapping("orders/get_all_orders_list")
-	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req, HttpSession httpSession) {
+	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req, //
+			HttpSession httpSession) {
 		return ordersService.getAllOrders(req, httpSession);
 	}
 
@@ -51,8 +52,9 @@ public class OrdersController {
 
 	/* 成立訂單(未結帳) */
 	@PostMapping("orders/create_orders")
-	public CreateOrdersRes createOrdersRes(@Valid @RequestBody CreateOrdersReq req) {
-		return ordersService.createOrders(req);
+	public CreateOrdersRes createOrders(@Valid @RequestBody CreateOrdersReq req, //
+			HttpSession httpSession) {
+		return ordersService.createOrders(req, httpSession);
 	}
 
 	/* 現金付款成功 */
@@ -69,7 +71,8 @@ public class OrdersController {
 	
 	// 前端點擊「前往付款」時請求的 API
 	@GetMapping("/goPay")
-	public String goPay(@RequestParam String orderDateId, @RequestParam String id, @RequestParam String way) {
+	public String goPay(@RequestParam String orderDateId, @RequestParam String id, //
+			@RequestParam String way) {
 		// 判斷付款方式是否為綠界 (ECPAY) 還是LINE Pay
 		if ("ECPAY".equalsIgnoreCase(way)) {
             // 執行綠界刷卡
