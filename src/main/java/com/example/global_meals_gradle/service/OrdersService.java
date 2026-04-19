@@ -3,6 +3,7 @@ package com.example.global_meals_gradle.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +33,7 @@ import com.example.global_meals_gradle.entity.OrderCartDetails;
 import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.entity.Regions;
+import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
 import com.example.global_meals_gradle.req.RefundedReq;
@@ -41,6 +43,9 @@ import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
 import com.example.global_meals_gradle.res.GetOrdersDetailVo;
 import com.example.global_meals_gradle.res.GetOrdersVo;
+import com.example.global_meals_gradle.res.MembersRes;
+
+import jakarta.servlet.http.HttpSession;
 
 /*	待做:
  * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額
@@ -116,15 +121,25 @@ public class OrdersService {
 	// }
 	// }
 
-	/* 查詢歷史訂單 */
+	/* 查詢歷史訂單(有分員工或會員查詢) */
 	@Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
-	public GetAllOrdersRes getAllOrders(HistoricalOrdersReq req) {
-		// 會員id檢查，如果是null，就是id有誤
-		Members member = membersDao.findById(req.getMemberId());
-		if (member == null) {
-			return new GetAllOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
-					ReplyMessage.MEMBER_NOT_FOUND.getMessage());
-		}
+	public GetAllOrdersRes getAllOrders(HistoricalOrdersReq req, HttpSession httpSession) {
+		// 抓員工資訊
+	    Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+	    // 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
+	    MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+	    Members member = (membersRes != null) ? membersRes.getMembers() : null;
+	    if(staff != null) {  // 代表是員工操作  // MemberId是設Integer，如果是int就要判斷是否 ==0
+	    	if(req.getMemberId() == null || membersDao.findById(req.getMemberId()) == null) {
+	    		return new GetAllOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
+						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
+	    	}
+	    }else if(member != null) {  // 代表會員操作，只能查自己的歷史訂單紀錄
+	    	req.setMemberId(member.getId());
+	    }else {
+	        // 既不是員工也不是會員 -> 攔截
+	    	throw new RuntimeException("請先登入以查詢歷史訂單");
+	    }
 		List<Object[]> rawData = ordersDao.getFullOrderHistory(req.getMemberId());
 		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
 		// LinkedHashMap 是為了「照順序排」，讓最新下單的排在最前面
@@ -152,6 +167,7 @@ public class OrdersService {
 				newVo.setGlobalAreaId((Integer) row[2]); // o.global_area_id
 				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
 				newVo.setStatus(row[4].toString()); // o.status
+				newVo.setCompletedAt((LocalDateTime)row[5]);
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -159,11 +175,11 @@ public class OrdersService {
 			// 建立明細並塞入該訂單的 List
 			GetOrdersDetailVo detail = new GetOrdersDetailVo();
 			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
-			detail.setQuantity(((Number) row[3]).intValue());
-			detail.setPrice((BigDecimal) row[4]);
-			detail.setGift((Boolean) row[5]);
-			detail.setDiscountNote((String) row[6]);
-			detail.setName((String) row[7]); // 產品名稱已經在 SQL 抓好了
+			detail.setQuantity(((Number) row[6]).intValue());
+			detail.setPrice((BigDecimal) row[7]);
+			detail.setGift((Boolean) row[8]);
+			detail.setDiscountNote((String) row[9]);
+			detail.setName((String) row[10]); // 產品名稱已經在 SQL 抓好了
 
 			vo.getGetOrdersDetailVoList().add(detail);
 		}
