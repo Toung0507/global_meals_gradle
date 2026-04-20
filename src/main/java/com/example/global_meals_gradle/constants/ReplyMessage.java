@@ -6,10 +6,10 @@ public enum ReplyMessage {
 	// Service RegionsService
 	REGIONS_ID_ERROR(400, "Regions Id Error!!"),//
 	REGIONS_ID_NOT_FOUND(404, "Regions Id Not Found!!"),//
+	TAX_TYPE_ERROR(400, "Tax Type Error!!"), //
 	// Service GlobalAreaService
 	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
 	GLOBAL_AREA_ID_NOT_FOUND(404, "Global Area Id Not Found!!"),//
-	TAX_TYPE_ERROR(400, "Tax Type Error!!"), //
 	// Service MembersService
 	PHONE_ERROR(400, "Phone Error!!"), //
 	PHONE_HAS_EXISTED(400, "Phone Has Existed!!"), // 電話號碼已存在
