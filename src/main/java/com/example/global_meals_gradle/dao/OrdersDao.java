@@ -97,26 +97,46 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "SELECT EXISTS(SELECT 1 FROM orders WHERE order_cart_id = :orderCartId)", 
 		   nativeQuery = true)
 	boolean existsByOrderCartId(@Param("orderCartId") int orderCartId);
-
-//	 查詢某年某月所有已完成的訂單中，每個商品賣出的總數量
-//	 說明：
-//	   LEFT JOIN order_cart_details  → 把購物車明細接進來
-//	   LEFT JOIN products             → 把商品名稱接進來
-//	   WHERE order_date_id LIKE ?1    → ?1 會帶入 "202604%" 這樣的格式
-//	   AND status = 'COMPLETED'       → 只算已付款完成的訂單，退款(REFUNDED)的不算
-//	   AND is_gift = 0                → 贈品不算入銷售，只算正常商品
-//	   GROUP BY d.product_id          → 把相同商品的數量加總在一起
-//	   ORDER BY total_quantity DESC   → 賣最多的排最前面
+	// =====================================================================
+	// 功能A：分店長用 - 查某年某月「指定分店」所有商品銷售量
+	// 說明：
+	//   AND o.global_area_id = :globalAreaId → 只算該分店的訂單
+	// =====================================================================
 	@Query(value = "SELECT p.name AS productName, SUM(d.quantity) AS totalQuantity "
 	        + "FROM orders o "
 	        + "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
 	        + "LEFT JOIN products p ON d.product_id = p.id "
 	        + "WHERE o.order_date_id LIKE :yearMonth "
+	        + "AND o.global_area_id = :globalAreaId "
 	        + "AND o.status = 'COMPLETED' "
 	        + "AND d.is_gift = 0 "
 	        + "GROUP BY d.product_id, p.name "
 	        + "ORDER BY totalQuantity DESC",
 	        nativeQuery = true)
-	List<Object[]> getMonthlySales(@Param("yearMonth") String yearMonth);
+	List<Object[]> getMonthlySalesByBranch(
+	        @Param("yearMonth") String yearMonth,
+	        @Param("globalAreaId") int globalAreaId);
+
+	// =====================================================================
+	// 功能B：老闆用 - 查某年某月「指定國家」所有分店銷售前5名商品
+	// =====================================================================
+	@Query(value = "SELECT p.name AS productName, SUM(d.quantity) AS totalQuantity "
+	        + "FROM orders o "
+	        + "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+	        + "LEFT JOIN products p ON d.product_id = p.id "
+	        + "LEFT JOIN global_area ga ON o.global_area_id = ga.id "
+	        + "LEFT JOIN regions r ON ga.regions_id = r.id "
+	        + "WHERE o.order_date_id LIKE :yearMonth "
+	        + "AND r.id = :regionId "
+	        + "AND o.status = 'COMPLETED' "
+	        + "AND d.is_gift = 0 "
+	        + "GROUP BY d.product_id, p.name "
+	        + "ORDER BY totalQuantity DESC "
+	        + "LIMIT 5",
+	        nativeQuery = true)
+	List<Object[]> getTop5MonthlySalesByRegion(
+	        @Param("yearMonth") String yearMonth,
+	        @Param("regionId") int regionId);
+
 
 }

@@ -3,6 +3,7 @@ package com.example.global_meals_gradle.req;
 import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 
 /** 同步購物車商品（加入商品 / 更改數量（包括刪除單一商品） */
 public class CartSyncReq {
@@ -11,30 +12,31 @@ public class CartSyncReq {
 	// 如果某天你們的商品 ID 剛好允許 0，這個驗證就報廢了。所以業界統一規定：只要是可能沒傳的欄位，
 	// 一律用大寫 Integer 配 @NotNull
 	// 如果用int,用0撈資料庫回傳Null，那後續很容易出現空指針錯誤
-
+	@Min(value = 1, message = "CartId 必須大於 0")
 	private Integer cartId;
 
 	/*
 	 * 已有購物車（cartId 有值，舊車）： 後端只需要去 order_cart_details 裡加一條明細，主表 order_cart 不需要動，所以
 	 * globalAreaId 傳什麼都不影響，傳 null 後端一樣會忽略它。 這個欄位只在建新車的那次有用。
 	 */
+	@Min(value = 1, message = ValidationMsg.GLOBAL_AREA_ID_MUST_BE_POSITIVE)
 	private Integer globalAreaId;
+	
+	private String operationType;
 
+	// 只要這個欄位在某些情境下會是空的（沒有值），我們就必須用大寫的 Integer，如果用 int ，是用0去撈資料
+	@Min(value = 1, message = "StaffId 必須大於 0")
+	private Integer staffId;
+
+	// 訪客固定傳 1，一般會員傳自己的 id，所以最小值是 1
+	@Min(value = 1, message = ValidationMsg.MEMBER_ID_MUST_BE_POSITIVE)
+	private int memberId;
 	// 商品ID必填（必須是正整數）；用 int 讓 Spring 無法偷塞 null，@Min(1) 擋掉 0 和負數
 	@Min(value = 1, message = ValidationMsg.PRODUCT_ID_MUST_BE_POSITIVE)
 	private int productId;
 
 	@Min(value = 0, message = ValidationMsg.QUANTITY_CANT_BE_NEGATIVE)
 	private int quantity;
-
-	private String operationType;
-
-	// 只要這個欄位在某些情境下會是空的（沒有值），我們就必須用大寫的 Integer，如果用 int ，是用0去撈資料
-	private Integer staffId;
-
-	// 訪客固定傳 1，一般會員傳自己的 id，所以最小值是 1
-	@Min(value = 1, message = ValidationMsg.MEMBER_ID_MUST_BE_POSITIVE)
-	private int memberId;
 
 	public Integer getCartId() {
 		return cartId;

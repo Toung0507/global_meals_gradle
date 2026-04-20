@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CartService {
@@ -33,14 +34,13 @@ public class CartService {
 	private ProductsDao productsDao;
 	@Autowired
 	private PromotionsGiftsDao promotionsGiftsDao;
-//	@Autowired
-//	private MembersDao membersDao;
+
 	@Autowired
 	private GlobalAreaDao globalAreaDao;
 	@Autowired
 	private RegionsDao regionsDao;
 	@Autowired
-	private PromotionsDao promotionsDao; 
+	private PromotionsDao promotionsDao;
 	@Autowired
 	private BranchInventoryDao branchInventoryDao;
 
@@ -55,37 +55,63 @@ public class CartService {
 		if (req.getCartId() == null) {
 
 //			 劇本分支 A：建新車
-//        	A-1.準備一個裝新購物車的空殼子
+
+			// 🛡️ 修改六-1：globalAreaId 格式防呆（null 或 <= 0 直接擋回）
+			// globalAreaId 是 Integer（物件型），可能為 null，必須先判斷 null 再判斷值
+			if (req.getGlobalAreaId() == null || req.getGlobalAreaId() <= 0) {
+				return buildError(ReplyMessage.GLOBAL_AREA_ID_ERROR); // code=400，格式錯誤
+			}
+
+			// 🛡️ 修改六-2：globalAreaId 實際存在於 DB 的驗證（格式對但分店不存在）
+			// globalAreaDao.findById() 是自定義查詢（GlobalAreaDao），找不到回傳 null
+			Optional<GlobalArea> targetArea = globalAreaDao.findById(req.getGlobalAreaId());
+			// 用內建的dao方法判斷是不是空的
+			if (targetArea.isEmpty()) {
+				return buildError(ReplyMessage.GLOBAL_AREA_NOT_FOUND); // code=404，分店不存在
+			}
+
+			// 🛡️ 修改六-3：operationType 不可為 null 或空白字串
+			if (req.getOperationType() == null || req.getOperationType().isBlank()) {
+				return buildError(ReplyMessage.INVALID_OPERATION_TYPE); // code=400
+			}
+
+			// 🛡️ 修改六-4：operationType 字串安全轉 Enum
+			// 原本：OperationType.valueOf(req.getOperationType()) 若傳 "abc" →
+			// IllegalArgumentException（500）
+			// 改法：try-catch 包住 valueOf，抓到就回傳友善的 400，不讓 500 暴露給前端
+			OperationType opType; // 先宣告，等安全轉換完再賦值
+			try {
+				// toUpperCase()：前端傳 "customer" 也能正確轉成 CUSTOMER，增加大小寫容錯
+				opType = OperationType.valueOf(req.getOperationType().toUpperCase());
+			} catch (IllegalArgumentException e) {
+				// valueOf 找不到對應 Enum 值，代表前端傳了不合法的字串
+				return buildError(ReplyMessage.INVALID_OPERATION_TYPE); // code=400
+			}
+
+//			A-1.準備一個裝新購物車的空殼子
 			OrderCart newCart = new OrderCart();
-//        	A-2:塞東西進去，讓newCart各個屬性完整
+//			A-2:塞東西進去，讓newCart各個屬性完整
 			newCart.setGlobalAreaId(req.getGlobalAreaId());
-//			   字串轉列舉
-			newCart.setOperationType(OperationType.valueOf(req.getOperationType()));
-
+			// 改用安全轉換後的 opType，不再直接用 valueOf（已在上面通過 try-catch 安全轉換）
+			newCart.setOperationType(opType);
 //			操作者：員工點餐存 staffId，顧客點餐存 memberId
-//			三元運算符格式：條件 ? 結果A（條件為true） : 結果B（條件為false）
 //			讀法：「如果是STAFF操作？ → 存staffId ：否則 → 存memberId」
-//			功能完全一樣，4行 → 1行
-			newCart.setOperation("STAFF".equals(req.getOperationType()) ? req.getStaffId() // ← 條件成立時（員工），用這個值
-					: req.getMemberId() // ← 條件不成立時（顧客），用這個值
-			);
+			newCart.setOperation(
+					"STAFF".equals(req.getOperationType().toUpperCase()) ? req.getStaffId() : req.getMemberId());
 
-//			 這裡必須用 Spring Data JPA 內建的 save(),「新建主表」時我們強烈建議用 save()！
-//			 因為 save() 執行完，資料庫自動生成的 ID 會立刻被裝回 newCart.getId() 裡面。
-//			 我們馬上就能拿到剛建好的「7號」，提供給後面的商品明細使用。原生 SQL 很難做到這點！
-//            A-3:用DAO將塞滿req資料的OrderCart存到資料庫去
+//			A-3:用DAO將塞滿req資料的OrderCart存到資料庫，save()完 DB 自動產生的 ID 會回填到 newCart.getId()
 			orderCartDao.save(newCart);
-//			 把剛建好的newCart的Id值獲取到，至此新購物車的id就已經知道了
-			currentCartId = newCart.getId();
+			currentCartId = newCart.getId(); // 至此新購物車的 id 就已經知道了
 
 		} else {
-//			 劇本分支 B：已經有車了,id沿用
+//			 劇本分支 B：已經有車了，id 沿用
 			currentCartId = req.getCartId();
 
-//			   🛡️ 防禦：確認這台車尚未被結帳
-//		     如果前端帶來的 cartId 已在訂單表裡，不允許再修改
+			// 🛡️ 防禦：確認這台車尚未被結帳
+			// 如果前端帶來的 cartId 已在訂單表裡，不允許再修改
 			if (ordersDao.existsByOrderCartId(currentCartId)) {
-				throw new RuntimeException("此購物車已結帳完成，請重新建立新的購物車");
+				// 修改十三：從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
+				return buildError(ReplyMessage.CART_ALREADY_CHECKED_OUT); // code=400
 			}
 		}
 
@@ -200,15 +226,24 @@ public class CartService {
 	 */
 	@Transactional
 	public CartViewRes removeItem(CartRemoveReq req) {
-//		 🛡️ 防禦：確認這台購物車屬於這個 member
+		// 🛡️ 防禦：確認購物車存在
 		OrderCart cart = orderCartDao.findById(req.getCartId());
 		if (cart == null) {
-			throw new RuntimeException("購物車不存在");
+			// 修改十三：從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
+			return buildError(ReplyMessage.CART_NOT_FOUND); // code=404
 		}
-//		 🛡️ 防禦：只有 CUSTOMER 模式才用 memberId 比對所有權
-//		 STAFF 模式：員工代替客人點餐，不用 memberId 比對（員工天然有操作權限）
+
+		// 🛡️ 修改七：確認這台購物車尚未被結帳
+		// 已結帳的購物車不允許再刪商品，防止購物車資料與訂單資料不一致
+		if (ordersDao.existsByOrderCartId(req.getCartId())) {
+			return buildError(ReplyMessage.CART_ALREADY_CHECKED_OUT); // code=400
+		}
+
+		// 🛡️ 防禦：只有 CUSTOMER 模式才驗擁有者
+		// STAFF 模式：員工代替客人點餐，員工天然有操作權限，不需要 memberId 比對
 		if (cart.getOperationType() == OperationType.CUSTOMER && cart.getOperation() != req.getMemberId()) {
-			throw new RuntimeException("無權操作他人的購物車");
+			// 修改十三：從 throw 改成 return buildError
+			return buildError(ReplyMessage.OPERATE_ERROR); // code=403
 		}
 
 		orderCartDetailsDao.deleteByCartIdAndProductId(req.getCartId(), req.getProductId());
@@ -306,12 +341,22 @@ public class CartService {
 //		防禦：確認新分店真實存在
 		GlobalArea newArea = globalAreaDao.findById(newGlobalAreaId);
 		if (newArea == null) {
-			throw new RuntimeException("分店 ID " + newGlobalAreaId + " 不存在，請重新選擇");
+			// 修改十三：從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
+			return buildError(ReplyMessage.GLOBAL_AREA_NOT_FOUND); // code=404
 		}
+
 //	     第一步：查舊購物車是否存在
 		OrderCart oldCart = orderCartDao.findById(oldCartId);
 
-//	     如果舊購物車要存在，且分店ID已經不同了（代表確實換了分店）
+		// 🛡️ 修改九：確認舊購物車的擁有者是這個 memberId
+		// 只有 CUSTOMER 模式需要驗擁有者
+		// STAFF 模式：員工代客點餐，天然有操作權，不需要驗
+		if (oldCart != null && oldCart.getOperationType() == OperationType.CUSTOMER // 是顧客自己的車
+				&& oldCart.getOperation() != memberId) { // 但主人不是這個 memberId
+			return buildError(ReplyMessage.OPERATE_ERROR); // code=403，無權操作他人的購物車
+		}
+
+//	     如果舊購物車存在，且分店ID已經不同了（代表確實換了分店）
 		if (oldCart != null && oldCart.getGlobalAreaId() != newGlobalAreaId) {
 //	         把舊購物車的所有明細刪掉（清空商品和贈品）
 			orderCartDetailsDao.deleteAllByCartId(oldCartId);
@@ -338,6 +383,12 @@ public class CartService {
 		OrderCart cart = orderCartDao.findById(req.getCartId());
 		if (cart == null) {
 			return buildError(ReplyMessage.CART_NOT_FOUND);
+		}
+
+		// 🛡️ 修改八：確認這台購物車尚未被結帳
+		// 已結帳的購物車不允許清空，防止訂單資料失去對應的明細記錄
+		if (ordersDao.existsByOrderCartId(req.getCartId())) {
+			return buildError(ReplyMessage.CART_ALREADY_CHECKED_OUT); // code=400
 		}
 
 //	         刪除這台購物車的所有明細（一般商品 + 贈品全部清空）
@@ -369,12 +420,18 @@ public class CartService {
 		List<CartItemVO> voList = new ArrayList<>(); // 商品明細清單
 		BigDecimal subtotal = BigDecimal.ZERO; // 稅前小計，從 0 開始
 
-//	         ── 步驟 1：檢查1：確認傳進來的cartId對應的購物車存在嗎？──
+//	         ── 步驟 1：確認購物車存在，並驗證擁有者身份 ──
 		OrderCart cart = orderCartDao.findById(cartId);
 		if (cart == null) {
-			res.setCode(ReplyMessage.CART_NOT_FOUND.getCode());
-			res.setMessage(ReplyMessage.CART_NOT_FOUND.getMessage());
-			return res; // 直接返回，後面不用繼續
+			// 修改十三：改成 buildError，與其他方法風格一致
+			return buildError(ReplyMessage.CART_NOT_FOUND); // code=404
+		}
+
+		// 🛡️ 修改十：確認這台購物車屬於這個 memberId
+		// STAFF 模式（員工代客點餐）不需要驗，員工天然有操作權
+		// CUSTOMER 模式只有本人可以查看自己的購物車
+		if (cart.getOperationType() == OperationType.CUSTOMER && cart.getOperation() != memberId) {
+			return buildError(ReplyMessage.OPERATE_ERROR); // code=403，無權查看他人的購物車
 		}
 
 //	         ── 步驟 2：檢查2：逐一驗算每筆「非贈品」的狀態與金額並組裝成商品VO、最後累加小計 ─
@@ -389,146 +446,14 @@ public class CartService {
 				.collect(java.util.stream.Collectors.toList()); // ← 收集結果成一個新的 List
 
 //		 現在 normalItems 裡只有一般商品，for 迴圈乾淨多了，不需要再寫 continue
+		// 修改十一：把「組裝單一商品 VO」的複雜邏輯委託給私有方法 buildNormalItemVO
+		// for 迴圈從原來的 5 層巢狀縮排簡化到只剩 3 行，可讀性大幅提升
 		for (OrderCartDetails detail : normalItems) {
-//			 贈品留到步驟 3 處理（已在前一步過濾）
-			/*
-			 * ②先去查這個商品目前的狀態.分成-1.存在沒有下架（裡面又分成價格有變->需要更新orderCartDetails資料庫快照
-			 * 、和價格和商品表的價格一樣）-2.下架或者不存在，為了 若是情況-2。商品VO倆面的
-			 * setProductName會顯示XX已下架、setLineTotal會顯示0、商品單價就是加入購物車時的快照價、
-			 * 然後加入警告warningMessages提示商品已下架或不存在
-			 */
-			Products product = productsDao.findById(detail.getProductId());
-			CartItemVO vo = new CartItemVO();
-//			（A）檢查狀態：
-//			-2.如果商品已下架或不存在：
-			if (product == null || !product.isActive()) {
-//	           如果商品物件還在只是被下架了，就抓它的原名。
-//             如果商品被刪除了，就抓 detail（訂單明細快照）裡的 productId 來當替代名稱。
-				String name = (product != null) ? product.getName() : "商品 #" + detail.getProductId();
-				vo.setProductName(name + "（已下架）");
-				vo.setPrice(detail.getPrice()); // 顯示最後快照的價格
-				vo.setLineTotal(BigDecimal.ZERO); // 不納入小計
-				vo.setDetailId(detail.getId());
-				vo.setProductId(detail.getProductId());
-				vo.setQuantity(detail.getQuantity());
-				vo.setGift(false);
-				warningMessages.add("「" + name + "」已下架或不存在，請將其移除");
-			} else {
-
-//			  -1：商品存在且上架
-				vo.setProductName(product.getName());
-//				  (B) 查詢這個商品在本分店的庫存記錄，取得當前定價
-				BranchInventory inv = branchInventoryDao
-						.findByProductIdAndGlobalAreaId(detail.getProductId(), cart.getGlobalAreaId()).orElse(null);
-				if (inv == null) {
-//				      庫存設定不存在（branch_inventory 被刪）：視同無法販售
-//				      警告前端；lineTotal 不納入小計；後端 log 方便排查
-					System.err.println("[WARN] product_id=" + detail.getProductId() + " 在 global_area_id="
-							+ cart.getGlobalAreaId() + " 查無 branch_inventory 設定，請檢查資料完整性");
-					vo.setDetailId(detail.getId());
-					vo.setProductId(detail.getProductId());
-					vo.setQuantity(detail.getQuantity());
-					vo.setPrice(detail.getPrice()); // 顯示快照價供參考
-					vo.setLineTotal(BigDecimal.ZERO); // 不納入小計
-					vo.setGift(false);
-					warningMessages.add("「" + product.getName() + "」在此分店查無庫存設定，請聯絡店員");
-				} else {
-//				      ========================== (B-1) 調價偵測：看看店長有沒有改過定價 ==========================
-
-//				      從 branch_inventory 拿到這個商品在這個分店「目前」的最新定價
-					BigDecimal currentPrice = inv.getBasePrice();
-
-//				      把「購物車快照價」和「目前定價」做比較
-//				      compareTo() 的規則：相同回傳 0，不同（任何情況）回傳非 0
-//				      !== 0 就代表：快照價和目前定價不一樣 → 店長改過價！
-					if (detail.getPrice().compareTo(currentPrice) != 0) {
-//				          通知前端：「這個商品已調價」（前端通常顯示紅色警告）
-						warningMessages.add(
-								"「" + product.getName() + "」的價格已從 $" + detail.getPrice() + " 調整為 $" + currentPrice);
-//				          把購物車明細裡的快照價更新成最新定價（避免以舊價格結帳）
-						detail.setPrice(currentPrice);
-//				          把更新後的快照存回資料庫
-						orderCartDetailsDao.save(detail);
-					}
-
-//				      ========================== (B-2) 庫存歸零防禦 ==========================
-
-//				      inv.getStockQuantity() = 這個商品在這個分店「目前」的實際庫存數量
-//				      如果庫存 <= 0，代表這個商品已經賣完了，但店長還沒去後台手動下架
-					if (inv.getStockQuantity() <= 0) {
-//				          這個商品暫時缺貨，不能計算金額：lineTotal 設為 ZERO，不納入總帳單
-//				          原因：如果把缺貨商品的金額算進去，客人付了這筆錢，但廚房根本出不了餐！
-						vo.setDetailId(detail.getId());
-						vo.setProductId(detail.getProductId());
-						vo.setQuantity(detail.getQuantity()); // 數量原樣顯示（讓前端知道客人原本選了幾份）
-						vo.setPrice(detail.getPrice()); // 快照價原樣顯示（供前端參考）
-						vo.setLineTotal(BigDecimal.ZERO); // ← 重點！缺貨 → 金額歸零，不計入總帳單
-						vo.setGift(false);
-//				          提醒前端：告訴客人這個商品暫時缺貨，請他移除或等候補貨
-						warningMessages.add("「" + product.getName() + "」目前暫時缺貨，已暫時從計算中移除，請移除該商品或稍後再試");
-//				          直接跳到下一個商品（後面的 VO 組裝不用做了，lineTotal 已經設 ZERO）
-//				          voList.add(vo) 還是要做，讓前端知道這個商品「存在但缺貨」，可以顯示在畫面上提醒客人
-//				          所以這裡不 continue，因為下面還要 voList.add(vo)
-					} else {
-//				          庫存有貨才進這裡
-
-//				      ========================== (B-3) 超過庫存數量防禦 ==========================
-
-//				          比較：購物車快照數量 vs 目前實際庫存數量
-//				          detail.getQuantity() = 客人加入購物車時選的數量（比如 5 份）
-//				          inv.getStockQuantity() = 目前還剩多少份
-						if (detail.getQuantity() > inv.getStockQuantity()) {
-//				              發現問題：客人購物車裡的數量已經超過目前庫存了！
-//				              解決方案：自動把購物車裡的數量「強制降至庫存上限」
-							int safeQty = inv.getStockQuantity(); // 安全數量 = 目前最大庫存
-							detail.setQuantity(safeQty); // 修改這筆明細的數量（記憶體裡）
-							orderCartDetailsDao.save(detail); // 把修改後的數量存回資料庫
-//				              通知前端：「我已幫你自動調整數量了」
-							warningMessages.add("「" + product.getName() + "」庫存不足，已為您自動調整數量為 " + safeQty + " 份");
-						}
-//				          注意：不需要 else if，因為下面的限購量檢查是獨立的，兩個都要查
-
-//				      ========================== (B-4) 超過單次限購數量防禦 ==========================
-
-//				          比較：（調整後的）購物車數量 vs 店長設定的「單次最多購買量」
-//				          inv.getMaxOrderQuantity() = 店長設定的每次最多能買幾份（比如改成 2 份）
-						if (detail.getQuantity() > inv.getMaxOrderQuantity()) {
-//				              發現問題：購物車數量超過店長設定的限購量！
-//				              解決方案：自動降至限購量上限
-							int safeQty = inv.getMaxOrderQuantity(); // 安全數量 = 限購上限
-							detail.setQuantity(safeQty); // 修改數量
-							orderCartDetailsDao.save(detail); // 存回資料庫
-//				              通知前端
-							warningMessages.add("「" + product.getName() + "」單次限購 " + safeQty + " 份，已為您自動調整");
-						}
-
-//				      ========================== (C) 組裝商品 VO ==========================
-
-//				          走到這裡：調價已處理、庫存已驗證、限購已驗證
-//				          用「已驗證安全的 detail 數量」來組裝 VO（數量已在上面被修正過了）
-
-						vo.setDetailId(detail.getId()); // 這筆明細的主鍵（前端刪除/修改時要拿這個）
-						vo.setProductId(detail.getProductId()); // 商品ID
-						vo.setQuantity(detail.getQuantity()); // ← 這裡的數量是「修正後的安全數量」
-						vo.setGift(false); // 不是贈品
-						vo.setDiscountNote(detail.getDiscountNote()); // 折扣說明
-
-//				          lineTotal = 單價 × 數量（用已修正後的數量算金額）
-						BigDecimal lineTotal = detail.getPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
-						vo.setPrice(detail.getPrice()); // 顯示單價
-						vo.setLineTotal(lineTotal); // 顯示這筆的金額
-
-//				      ========================== (D) 累加到購物車總小計 ==========================
-
-//				          只有庫存有貨的商品才累加（庫存歸零的那條在上面已提前返回了）
-						subtotal = subtotal.add(lineTotal); // 把這筆的金額加進總小計
-					} // inv.getStockQuantity() > 0 的括號結束
-				} // inv != null 的大 else 括號結束
-			}
-
-//			每個cartItemVO都進入cartItemVO的list裡,每個商品顯示不顯示由前端決定什麼值顯示什麼值不顯示，比如null的時候就不顯示，非Null就顯示
-//			CartItemVO的清單voList商品部分：商品的cartitemvoList處理好了，代碼的最後我們在一起res.set
-			voList.add(vo);
+			CartItemVO vo = buildNormalItemVO(detail, cart, warningMessages); // 商品狀態驗證 + VO 組裝
+			voList.add(vo); // 不管是否缺貨，都要顯示在畫面讓用戶知道
+			// 所有情況的 lineTotal：error 時是 BigDecimal.ZERO，正常時是 price × qty
+			// 累加 ZERO 不影響結果，所以不需要 if 判斷就能直接加
+			subtotal = subtotal.add(vo.getLineTotal());
 		}
 
 		/*
@@ -720,7 +645,10 @@ public class CartService {
 		TaxInfoVO taxInfo = new TaxInfoVO();
 		BigDecimal totalAmount = subtotal; // 預設（無稅設定時/內含稅）：總計 = 小計
 		Regions region = regionsDao.findByGlobalAreaId(cart.getGlobalAreaId());
-		if (region != null) {
+		if (region == null) {
+			System.err.println("[WARN] global_area_id=" + cart.getGlobalAreaId() + " 查無稅務設定");
+			warningMessages.add("此分店稅務設定有誤，金額僅供參考，請聯繫管理員");
+		} else {
 			taxInfo.setTaxRate(region.getTaxRate());
 //				如果它原本是 TaxType.EXCLUSIVE 的enum物件。加上 .name() 後，它身上的一層皮就被剝下來，變成純粹的英文字串 "EXCLUSIVE"。
 			if (region.getTaxType() != null) {
@@ -733,20 +661,19 @@ public class CartService {
 					totalAmount = subtotal.add(taxAmount);
 				} else {
 //					內含稅：反推稅額 = 小計 × 稅率 ÷ (1 + 稅率)
-					taxAmount = subtotal.multiply(region.getTaxRate())
-					        .divide(BigDecimal.ONE.add(region.getTaxRate()), 2, RoundingMode.HALF_UP);
+					taxAmount = subtotal.multiply(region.getTaxRate()).divide(BigDecimal.ONE.add(region.getTaxRate()),
+							2, RoundingMode.HALF_UP);
 					totalAmount = subtotal; // 內含稅：總計就是小計，不另加稅
 				}
 				taxInfo.setTaxAmount(taxAmount);
 			}
 			// taxType 為 null → 完全跳過稅務計算，totalAmount 保持等於 subtotal（無稅）
 
-
 //	         ── 步驟 6：打包所有結果回傳 ──
-		/*
-		 * voList就是cartItem（包括贈品）的list availablePromotions是 以活動為單位的兩層可選贈品清單
-		 * subtotal是小計，taxInfo是稅務資訊，totalAmount是最終總計 warningMessages警告訊息（空清單代表一切正常）
-		 */
+			/*
+			 * voList就是cartItem（包括贈品）的list availablePromotions是 以活動為單位的兩層可選贈品清單
+			 * subtotal是小計，taxInfo是稅務資訊，totalAmount是最終總計 warningMessages警告訊息（空清單代表一切正常）
+			 */
 		}
 		res.setItems(voList);// 裝填這台車所有的商品與贈品
 		res.setSubtotal(subtotal);
@@ -758,7 +685,106 @@ public class CartService {
 		res.setMessage(ReplyMessage.SUCCESS.getMessage());
 		return res;
 	}
-		
+
+	/**
+	 * 【修改十一】私有工具方法：組裝單一「一般商品」的 CartItemVO 抽出這個方法的目的：讓 getCartView 的 for 迴圈從 5
+	 * 層巢狀縮排降至 1 層，大幅提升可讀性 使用 Guard Clause（守門人模式）：遇到問題就提前 return，不用繼續往下執行
+	 *
+	 * @param detail          購物車明細（單一商品那列）
+	 * @param cart            購物車主表（需要裡面的 globalAreaId）
+	 * @param warningMessages 警告訊息清單（共用引用，方法內部直接往裡 add）
+	 * @return 組裝好的 CartItemVO（lineTotal = ZERO 代表不計入小計；有值代表正常商品）
+	 */
+	private CartItemVO buildNormalItemVO(OrderCartDetails detail, OrderCart cart, List<String> warningMessages) {
+		CartItemVO vo = new CartItemVO();
+
+		// 先查這個商品目前的狀態（是否存在、是否上架）
+		Products product = productsDao.findById(detail.getProductId());
+
+		// ── 情況一：商品已下架或被刪除（Guard Clause：提前回傳，lineTotal=ZERO）──
+		if (product == null || !product.isActive()) {
+			// 商品物件還在只是被下架 → 抓原名；商品被刪除 → 用 productId 當替代名稱
+			String name = (product != null) ? product.getName() : "商品 #" + detail.getProductId();
+			vo.setProductName(name + "（已下架）"); // 名稱後面加（已下架）讓前端顯示原因
+			vo.setPrice(detail.getPrice()); // 顯示最後一次的快照價（供參考）
+			vo.setLineTotal(BigDecimal.ZERO); // 不計入小計
+			vo.setDetailId(detail.getId());
+			vo.setProductId(detail.getProductId());
+			vo.setQuantity(detail.getQuantity());
+			vo.setGift(false);
+			warningMessages.add("「" + name + "」已下架或不存在，請將其移除");
+			return vo; // ← Guard Clause：提前回傳，下面不需要執行
+		}
+
+		// 走到這裡：商品存在且上架
+		vo.setProductName(product.getName());
+
+		// ── 情況二：商品上架，但分店庫存設定不存在 ──
+		BranchInventory inv = branchInventoryDao
+				.findByProductIdAndGlobalAreaId(detail.getProductId(), cart.getGlobalAreaId()).orElse(null);
+		if (inv == null) {
+			// 這代表後台資料有問題（商品存在但這個分店沒有庫存設定）
+			System.err.println("[WARN] product_id=" + detail.getProductId() + " 在 global_area_id="
+					+ cart.getGlobalAreaId() + " 查無 branch_inventory 設定，請檢查資料完整性");
+			vo.setDetailId(detail.getId());
+			vo.setProductId(detail.getProductId());
+			vo.setQuantity(detail.getQuantity());
+			vo.setPrice(detail.getPrice()); // 顯示快照價供前端參考
+			vo.setLineTotal(BigDecimal.ZERO); // 不計入小計
+			vo.setGift(false);
+			warningMessages.add("「" + product.getName() + "」在此分店查無庫存設定，請聯絡店員");
+			return vo; // ← Guard Clause：提前回傳，lineTotal=ZERO
+		}
+
+		// ── 情況三：商品上架且庫存設定存在，依序做各種防禦性檢查 ──
+
+		// (B-1) 調價偵測：看看店長有沒有改過定價
+		BigDecimal currentPrice = inv.getBasePrice();
+		if (detail.getPrice().compareTo(currentPrice) != 0) {
+			warningMessages.add("「" + product.getName() + "」的價格已從 $" + detail.getPrice() + " 調整為 $" + currentPrice);
+			detail.setPrice(currentPrice); // 更新 detail 的快照價（記憶體）
+			orderCartDetailsDao.save(detail); // 儲存回資料庫
+		}
+
+		// (B-2) 庫存歸零防禦：商品賣完了但還沒手動下架（Guard Clause：提前回傳）
+		if (inv.getStockQuantity() <= 0) {
+			vo.setDetailId(detail.getId());
+			vo.setProductId(detail.getProductId());
+			vo.setQuantity(detail.getQuantity()); // 顯示原本數量，讓前端提醒客人
+			vo.setPrice(detail.getPrice());
+			vo.setLineTotal(BigDecimal.ZERO); // 缺貨不計入小計
+			vo.setGift(false);
+			warningMessages.add("「" + product.getName() + "」目前暫時缺貨，已暫時從計算中移除，請移除該商品或稍後再試");
+			return vo; // ← Guard Clause：提前回傳，lineTotal=ZERO
+		}
+
+		// (B-3) 超過庫存數量防禦：自動降至庫存上限
+		if (detail.getQuantity() > inv.getStockQuantity()) {
+			int safeQty = inv.getStockQuantity(); // 安全數量 = 目前最大庫存
+			detail.setQuantity(safeQty); // 強制降至庫存上限（記憶體）
+			orderCartDetailsDao.save(detail); // 存回資料庫
+			warningMessages.add("「" + product.getName() + "」庫存不足，已為您自動調整數量為 " + safeQty + " 份");
+		}
+
+		// (B-4) 超過單次限購數量防禦：自動降至限購上限
+		if (detail.getQuantity() > inv.getMaxOrderQuantity()) {
+			int safeQty = inv.getMaxOrderQuantity(); // 安全數量 = 限購上限
+			detail.setQuantity(safeQty);
+			orderCartDetailsDao.save(detail);
+			warningMessages.add("「" + product.getName() + "」單次限購 " + safeQty + " 份，已為您自動調整");
+		}
+
+		// (C) 全部檢查通過！用「最終安全數量」組裝完整 VO
+		vo.setDetailId(detail.getId());
+		vo.setProductId(detail.getProductId());
+		vo.setQuantity(detail.getQuantity()); // 已修正後的安全數量
+		vo.setGift(false);
+		vo.setDiscountNote(detail.getDiscountNote()); // 折扣說明
+		BigDecimal lineTotal = detail.getPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
+		vo.setPrice(detail.getPrice()); // 顯示單價
+		vo.setLineTotal(lineTotal); // 這筆的金額（非ZERO，會被累加進 subtotal）
+		return vo;
+	}
 
 	/**
 	 * 私有工具方法：快速組裝一個錯誤回應 功能：把「建立 CartViewRes、設 code、設 message、return」這三行動作包成一行

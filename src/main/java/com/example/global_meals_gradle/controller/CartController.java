@@ -112,8 +112,8 @@ public class CartController {
 	// POST /cart/switch-branch
 	// 前端傳：舊的 cartId + 新的 globalAreaId + memberId
 	// 後端回：一台空的新購物車（屬於新分店）
-	@PostMapping("/switch-branch")
-	public CartViewRes switchBranch(@RequestBody CartSwitchBranchReq req) {
+	@PostMapping("cart/switch-branch")
+	public CartViewRes switchBranch(@Valid@RequestBody CartSwitchBranchReq req) {
 	    return cartService.switchBranch(
 	        req.getOldCartId(),
 	        req.getNewGlobalAreaId(),
