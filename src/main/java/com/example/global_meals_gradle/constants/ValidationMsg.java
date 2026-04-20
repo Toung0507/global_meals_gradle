@@ -11,6 +11,7 @@ public class ValidationMsg {
 	// Req CreateRegions
 	public static final String COUNTRY_ERROR = "Country Error!!";
 	public static final String CURRENCY_CODE_ERROR = "Currency Code Error!!";
+	public static final String COUNTRY_CODE_ERROR = "Country Code Error!!";
 	public static final String TAX_TYPE_ERROR = "Tax Type Error!!";
 	public static final String TAX_RATE_ERROR = "Tax Rate Error!!";
 	// Req UpdateRegionsReq
@@ -24,9 +25,10 @@ public class ValidationMsg {
 	public static final String GLOBAL_AREA_ID_LIST_ERROR = "Global Area Id List Error!!";
 	// Req ExchangeRatesReq
 	public static final String DATE_TIME_ERROR = "Date Time Error!!";
-	// Req MembersReq
+	// Req RegisterMembersReq
 	public static final String NAME_ERROR = "Name Error!!";
 	public static final String PASSWORD_ERROR = "Password Error!!";
+	public static final String COUNTRY_CODE_CANT_BE_EMPTY = "Country Code Cant Be Empty!!";
 	// Req UpdatePasswordReq
 	public static final String MEMBERS_ID_ERROR = "Members Id Error!!";
 	
