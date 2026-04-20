@@ -30,7 +30,7 @@ public class PromotionsService {
 	@Autowired
 	private ProductsTempDao productTempDao;
 
-	// 查詢 regions 表，用來確認國家是否合法
+	// 查詢 regions 表，用來確認國家是否合法並取得該國折扣上限
 	@Autowired
 	private RegionsDao regionsDao;
 
@@ -145,18 +145,21 @@ public class PromotionsService {
 			//   2. 前端 useCoupon = true（使用者有勾選使用折扣券）
 			if (member.isDiscount() && req.isUseCoupon()) {
 
-				// 使用折扣券時 country 必須有值，沒有傳就無法驗證國家
+				// 使用折扣券時 country 必須有值，沒有傳就無法查折扣上限
 				if (req.getCountry() == null || req.getCountry().isBlank()) {
 					throw new RuntimeException(ReplyMessage.COUNTRY_ERROR.getMessage());
 				}
 
-				// 確認國家存在於 regions 表，不存在表示前端傳入異常，直接擋下
-				if (!regionsDao.existsByCountry(req.getCountry())) {
+				// 查出該國的折扣上限，查不到表示國家不存在於 regions 表，直接擋下
+				Integer usageCap = regionsDao.findUsageCapByCountry(req.getCountry());
+				if (usageCap == null) {
 					throw new RuntimeException(ReplyMessage.COUNTRY_ERROR.getMessage());
 				}
 
-				// 九折優惠
-				currentTotal = currentTotal.multiply(new BigDecimal("0.9"));
+				// 九折省下的金額 vs 該國折扣上限，取較小值為實際折扣
+				BigDecimal discount = currentTotal.multiply(new BigDecimal("0.1"));
+				BigDecimal actualDiscount = discount.min(new BigDecimal(usageCap));
+				currentTotal = currentTotal.subtract(actualDiscount);
 
 				// 告訴前端這次有套用折扣，名稱固定為此字串
 				res.setAppliedDiscountName("會員 9 折優惠");
