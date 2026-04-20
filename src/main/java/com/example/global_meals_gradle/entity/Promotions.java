@@ -26,6 +26,7 @@ public class Promotions {
 	private boolean active;
 
 	@Lob
+	@Basic(fetch = FetchType.LAZY)
 	@Column(name = "promotion_img")
 	private byte[] promotionImg;
 
