@@ -206,6 +206,9 @@ public class OrdersService {
 		} else if (member != null) { // 代表會員操作
 			req.setMemberId(member.getId());
 		} else { // 代表是遊客
+			if(req.getMemberId() >1) {  // 可能是會員，但session失效(登出)
+				throw new RuntimeException("連線已逾時，請重新登入後再結帳");
+			}
 			req.setMemberId(1);
 		}
 
@@ -545,17 +548,39 @@ public class OrdersService {
 
 	/* 訂單狀態: 退款或取消 */
 	@Transactional(rollbackFor = Exception.class)
-	public BasicRes ordersStatus(RefundedReq req) {
-		// 參數檢查(在req有做自動檢查)
-		try {
-			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-			// 找不到該筆訂單
-			if (order == null) { // 找不到該筆訂單
-				return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
-						ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+	public BasicRes ordersStatus(RefundedReq req, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		Members member = (membersRes != null) ? membersRes.getMembers() : null;
+		
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+		// 找不到該筆訂單
+		if (order == null) { // 找不到該筆訂單
+			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
+					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+		}
+		
+		if(staff != null) {  // 員工操作
+			member = membersDao.findById(order.getMemberId());
+			if (member == null) {
+				return new BasicRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(), //
+						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
 			}
+		}else if(member != null) {  // 會員操作
+			if(member.getId() != order.getMemberId()) {  // 如果與該訂單的會員ID不相符
+				return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(),
+						ReplyMessage.MEMBER_ERROR.getMessage());
+			}
+		}else {  // 遊客操作
+			throw new RuntimeException("請先登入或請找員工處理");
+		}
+		
+		try {
+			
 			String oldStatus = order.getStatus().toString(); // 目前狀態
-			String targetStatus = req.getStatus().toString(); // 目標狀態
+			String targetStatus = req.getStatus().toString(); // 目標狀態(之後要更新的狀態)
 			// 防呆：只有 COMPLETED 才能退款；只有 UNPAID 才能取消
 			if (targetStatus.equalsIgnoreCase("REFUNDED") && !oldStatus.equals("COMPLETED")) {
 				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
@@ -574,10 +599,6 @@ public class OrdersService {
 				if (targetStatus.equalsIgnoreCase("REFUNDED")) {
 					// 如果是會員，次數扣回
 					if (order.getMemberId() > 1) {
-						Members member = membersDao.findById(order.getMemberId());
-						if (member == null) {
-							throw new RuntimeException("退款失敗：查無會員資料");
-						}
 						if (order.isUseDiscount()) {
 							// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
 							membersDao.restoreCouponAndPoints(order.getMemberId());

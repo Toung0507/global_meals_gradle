@@ -46,8 +46,8 @@ public class OrdersController {
 
 	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED */
 	@PostMapping("orders/orders_status")
-	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req) {
-		return ordersService.ordersStatus(req);
+	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req, HttpSession httpSession) {
+		return ordersService.ordersStatus(req, httpSession);
 	}
 
 	/* 成立訂單(未結帳) */
