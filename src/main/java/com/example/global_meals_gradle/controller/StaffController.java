@@ -61,11 +61,14 @@ public class StaffController {
 	public StaffSearchRes login(@Valid @RequestBody LoginStaffReq req, HttpSession session) {
 
 		StaffSearchRes res = staffService.login(req);
-
+		
 		// code == 200 代表登入成功，把 Staff 存進 Session
 		// res.getStaffList().get(0)：Service 把 Staff 放在 List 的第一個位置
 		if (res.getCode() == ReplyMessage.SUCCESS.getCode()) {
 			session.setAttribute(SESSION_KEY, res.getStaffList().get(0));
+			// 關鍵寫法：設定 5 秒後過期
+						// 單位是「秒」，5 秒沒發請求，保全 (Interceptor) 就會把你擋下來
+						session.setMaxInactiveInterval(86400);
 		}
 
 		return res;

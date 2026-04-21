@@ -162,13 +162,19 @@ public class StaffService {
 	/* =====================================================
 	 * 主功能：【指派副店長 / 職務晉升】
 	 * 邏輯：RM 將所屬區域的 ST 提升為 MA，並同步更改帳號前綴
+	 * 	- 規格：
+	 *  - 只有 ADMIN 或 該店的 RM 可以操作
+	 *  - 目標必須是同一個 globalAreaId 的 STAFF
+	 *  - 採用原地晉升：保留 ID，只改 role + account
+	 *  - 不提供降級（規格第四點：沒有降級功能，不佳就直接停權）
 	 * ===================================================== */
 	@Transactional(rollbackFor = Exception.class)
 	public StaffSearchRes promoteToManagerAgent(int targetId, Staff operator) {
 		
 		// 1. 權限檢查：只有正牌店長 (RM) 或是 老闆 (ADMIN) 可以提拔人
 		if (operator.getRole() != StaffRole.REGION_MANAGER && operator.getRole() != StaffRole.ADMIN) {
-			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), "只有店長以上職級能進行人事提拔");
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), //
+					ReplyMessage.OPERATE_ERROR.getMessage());
 		}
 
 		// 2. 找出目標員工
@@ -177,15 +183,17 @@ public class StaffService {
 			return new StaffSearchRes(ReplyMessage.STAFF_ID_NOT_FOUND.getCode(), ReplyMessage.STAFF_ID_NOT_FOUND.getMessage());
 		}
 
-		// 3. 區域檢查：RM 只能提拔自己分店的人
+		// 3. 區域檢查：RM 只能提拔自己分店的人（ADMIN 無區域限制）
 		if (operator.getRole() == StaffRole.REGION_MANAGER && 
 			targetStaff.getGlobalAreaId() != operator.getGlobalAreaId()) {
-			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), "您不能越權提拔其他分店的員工");
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), //
+					ReplyMessage.OPERATE_ERROR.getMessage());
 		}
 
 		// 4. 狀態檢查：只有目前的 STAFF 才能晉升為 MA
 		if (targetStaff.getRole() != StaffRole.STAFF) {
-			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), "該人員已擁有管理職，不符合晉升流程");
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), //
+					ReplyMessage.PROMOTE_TARGET_ERROR.getMessage());
 		}
 
 		// 5. 執行晉升邏輯
@@ -195,14 +203,15 @@ public class StaffService {
 		// (2) 手動變更帳號前綴 (例：ST0168 -> MA0168)
 		// 這裡利用 replace 將第一個遇到的 ST 換成 MA
 		String oldAccount = targetStaff.getAccount();
-		String newAccount = oldAccount.replace("ST", "MA");
+//		String newAccount = oldAccount.replace("ST", "MA");//只替換第一個出現的 "ST"
+		String newAccount = "MA" + oldAccount.substring(2);//直接加上 "MA"，然後把舊帳號從第 2 個字元開始擷取
 		targetStaff.setAccount(newAccount);
 
 		// 6. 存檔：JPA save 會執行 UPDATE
 		staffDao.save(targetStaff);
 
-		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), 
-				"晉升成功！" + targetStaff.getName() + " 已成為副店長，新帳號為：" + newAccount);
+		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), //
+				ReplyMessage.SUCCESS.getMessage(), List.of(targetStaff));
 	}
 	/*
 	 * =============================================================================
