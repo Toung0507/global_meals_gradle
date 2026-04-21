@@ -147,7 +147,6 @@ public class MonthlyFinancialReportsService {
 		}).collect(Collectors.toList());
 		return new RevenueQueryRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage(), dataList);
-
 	}
 
 	// 預設查詢一個月份時，會傳該月與上個月的營業額
@@ -168,9 +167,11 @@ public class MonthlyFinancialReportsService {
 			log.info("店長身分驗證成功，自動鎖定查詢分店 ID: {}", loginStaff.getGlobalAreaId());
 			rawData = monthlyFinancialReportsDao //
 					.getReportByDateIdAndBranchId(dateList, loginStaff.getGlobalAreaId());
-		} else { // 老闆查詢所有分店的月營業額
+		} else if (loginStaff.getRole() == StaffRole.ADMIN) { // 老闆查詢所有分店的月營業額
 			rawData = monthlyFinancialReportsDao //
 					.getReportByDateId(dateList);
+		} else {
+			throw new RuntimeException("權限不足，無法查詢");
 		}
 		// 判斷是否為空的 List
 		if (rawData == null || rawData.isEmpty()) {
@@ -216,9 +217,11 @@ public class MonthlyFinancialReportsService {
 			log.info("店長身分驗證成功，自動鎖定查詢分店 ID: {}", loginStaff.getGlobalAreaId());
 			rawData = monthlyFinancialReportsDao.getReportByDateRangeAndBranchId(req.getStartMonth(), //
 					req.getEndMonth(), loginStaff.getGlobalAreaId());
-		} else { // 老闆查詢所有分店的月營業額
+		} else if (loginStaff.getRole() == StaffRole.ADMIN) { // 老闆查詢所有分店的月營業額
 			rawData = monthlyFinancialReportsDao //
 					.getReportByDateRange(req.getStartMonth(), req.getEndMonth());
+		} else {
+			throw new RuntimeException("權限不足，無法查詢");
 		}
 		// 判斷是否為空的 List
 		if (rawData == null || rawData.isEmpty()) {

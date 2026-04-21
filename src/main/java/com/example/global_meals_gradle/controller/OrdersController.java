@@ -17,6 +17,7 @@ import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
+import com.example.global_meals_gradle.res.GetOrdersByPhoneRes;
 import com.example.global_meals_gradle.service.EcpayService;
 import com.example.global_meals_gradle.service.LinePayService;
 import com.example.global_meals_gradle.service.OrdersService;
@@ -65,7 +66,7 @@ public class OrdersController {
 
 	/* 報電話號碼取餐(今天) */
 	@GetMapping("orders/get_order_by_phone")
-	public CreateOrdersRes getOrderByPhone(@RequestParam("phone") String phone) {
+	public GetOrdersByPhoneRes getOrderByPhone(@RequestParam("phone") String phone) {
 		return ordersService.getOrderByPhone(phone);
 	}
 	

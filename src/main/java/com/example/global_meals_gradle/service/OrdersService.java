@@ -41,6 +41,7 @@ import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
+import com.example.global_meals_gradle.res.GetOrdersByPhoneRes;
 import com.example.global_meals_gradle.res.GetOrdersDetailVo;
 import com.example.global_meals_gradle.res.GetOrdersVo;
 import com.example.global_meals_gradle.res.MembersRes;
@@ -624,13 +625,13 @@ public class OrdersService {
 	}
 
 	/* 報電話號碼查詢今天的訂單 */
-	public CreateOrdersRes getOrderByPhone(String phone) {
+	public GetOrdersByPhoneRes getOrderByPhone(String phone) {
 		// 取的今天的日期字串，參考成立訂單
 		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 		// 取的資料根據電話號碼跟今天日期
 		GetOrdersVo order = ordersDao.getOrderByPhone(todayStr, phone);
 
-		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
-				order.getId(), order.getOrderDateId(), order.getTotalAmount());
+		return new GetOrdersByPhoneRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
+				order.getId(), order.getOrderDateId(), order.getTotalAmount(), order.getStatus());
 	}
 }
