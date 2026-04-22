@@ -1,6 +1,7 @@
 package com.example.global_meals_gradle.dao;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -77,8 +78,9 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	/* 訂單狀態更新(用於退款或取消訂單) */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND order_date_id = :orderDateId AND status = 'COMPLETED'", nativeQuery = true)
-	public int updateOrderStatus(@Param("status") String status, // AI 是說要字串型態，我有說資料庫是設ENUM
+	@Query(value = "UPDATE orders SET status = :status "
+			+ "WHERE id = :id AND order_date_id = :orderDateId", nativeQuery = true)
+	public int updateOrderStatus(@Param("status") String status, //
 			@Param("id") String id, @Param("orderDateId") String orderDateId);
 	
 	/* 更改總金額 */
@@ -87,6 +89,47 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Transactional
 	@Query(value = "UPDATE total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
 	public void upDateTotalAmount(String id, String orderDateId, BigDecimal totalAmount);
+	
+	/* 判斷訂單表有無該購物車 id */
+	public boolean existsByOrderCartId(String orderCartId);
+	
+	// 從訂單表加總該分店、該月份、狀態為「已完成」的訂單
+	@Query(value = "SELECT SUM(total_amount) FROM orders"
+			+ " WHERE global_area_id = ?1 "
+			+ "And status = 'COMPLETED' "
+			+ "And completed_at BETWEEN ?2 AND ?3",
+			nativeQuery = true)
+	public BigDecimal findTotalAmountByGlobalAreaId(int branchId, LocalDateTime start, LocalDateTime end);
+	
+	// 查詢某分店的營業額(一個區間)
+	@Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.after_tax) AS totalAmount " +
+            "FROM orders o " +
+            "JOIN global_area g ON o.global_area_id = g.id " +
+            "JOIN regions r ON g.regions_id = r.id " +
+            "WHERE o.global_area_id = ?1 " +
+            "AND o.create_time BETWEEN ?2 AND ?3 " +
+            "GROUP BY g.id, g.name, r.name", nativeQuery = true)
+    public List<Object[]> findSingleBranchRevenue(Integer branchId, LocalDateTime start, LocalDateTime end);
+    
+	// 查詢特定國家內，每一間分店的營業額(一個區間)
+    @Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.after_tax) AS totalAmount " +
+            "FROM orders o " +
+            "JOIN global_area g ON o.global_area_id = g.id " +
+            "JOIN regions r ON g.regions_id = r.id " +
+            "WHERE r.id = ?1 " +
+            "AND o.create_time BETWEEN ?2 AND ?3 " +
+            "GROUP BY g.id, g.name, r.name", nativeQuery = true)
+    public List<Object[]> findRevenueByRegionGroupedByBranch(Integer regionsId, //
+    		LocalDateTime start, LocalDateTime end);
+    
+    // 查詢每一間分店的營業額(一個區間)
+    @Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.after_tax) AS totalAmount " +
+    		"FROM orders o " +
+    		"JOIN global_area g ON o.global_area_id = g.id " +
+    		"JOIN regions r ON g.regions_id = r.id " +
+    		"WHERE o.create_time BETWEEN ?2 AND ?3 " +
+    		"GROUP BY g.id, g.name, r.name", nativeQuery = true)
+    public List<Object[]> findRevenue(LocalDateTime start, LocalDateTime end);
 	/**
 	 * 檢查這個購物車 ID 是否已經被結帳（存在於訂單表中）
 	 * 

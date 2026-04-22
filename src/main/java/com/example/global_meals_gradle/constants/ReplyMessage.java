@@ -22,16 +22,17 @@ public enum ReplyMessage {
 
 	/* 劭頴 */
 	SUCCESS(200, "Success!!"), //
-	ORDER_NOT_FOUND(400, "Order Not Found!!"), //
+	ORDER_NOT_FOUND(404, "Order Not Found!!"), //
 	STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"), //
-	PRODUCT_NOT_FOUND(400, "Product Not Found!!"), //
-	MEMBER_NOT_FOUND(400, "Member Not Found!!"), //
-	ORDER_NUMBER_NOT_FOUND(400, "Order Number Not Found!!"), //
+	PRODUCT_NOT_FOUND(404, "Product Not Found!!"), //
+	MEMBER_NOT_FOUND(404, "Member Not Found!!"), //
+	ORDER_NUMBER_NOT_FOUND(404, "Order Number Not Found!!"), //
 	ORDERS_STATUS_ERROR(400, "Orders Status Error!!"), //
 	DISCOUNT_ERROR(400, "Disscount Error!!"), //
 	MEMBER_ERROR(400, "Member ERROR!!"), //
 	TOTAL_AMOUNT_ERROR(400, "Total Amount ERROR!!"), //
 	NOT_DISCOUNT_ERROR(400, "Not Discount ERROR!!"), //
+	REPORTS_NOT_FOUND(404, "Reports Not Found!!"), //
 
 	// 促銷活動相關錯誤-致遠//////////
 	PROMOTION_NOT_FOUND(404, "Promotion Not Found!!"),              // 找不到符合條件的促銷活動
@@ -77,8 +78,8 @@ public enum ReplyMessage {
 	// 副店長相關
 	DEPUTY_OPERATE_ERROR(403, "Deputy Operate Error"), //翻譯:副店長無法執行此操作
 	TARGET_NOT_STAFF(400, "Target Not Staff"), //目標人物必須是員工
-	TARGET_NOT_DEPUTY(400, "Target Not Deputy"); //目標人物不是副店長
-	PROMOTE_TARGET_ERROR(400, "Promote Target Error"), //提升目標錯誤
+	TARGET_NOT_DEPUTY(400, "Target Not Deputy"), //目標人物不是副店長
+	PROMOTE_TARGET_ERROR(400, "Promote Target Error"); //提升目標錯誤
 
 	
 
