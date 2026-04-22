@@ -1,5 +1,6 @@
 package com.example.global_meals_gradle.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import org.hibernate.annotations.UpdateTimestamp;
@@ -28,6 +29,12 @@ public class BranchInventory {
     @Column(name = "stock_quantity")
     private int stockQuantity;
 
+    @Column(name = "base_price")
+    private BigDecimal basePrice;
+    
+    @Column(name = "max_order_quantity")
+    private int maxOrderQuantity;
+    
     @Column(name = "version")
     private int version;
 
@@ -65,6 +72,22 @@ public class BranchInventory {
 
 	public void setStockQuantity(int stockQuantity) {
 		this.stockQuantity = stockQuantity;
+	}
+
+	public BigDecimal getBasePrice() {
+		return basePrice;
+	}
+
+	public void setBasePrice(BigDecimal basePrice) {
+		this.basePrice = basePrice;
+	}
+
+	public int getMaxOrderQuantity() {
+		return maxOrderQuantity;
+	}
+
+	public void setMaxOrderQuantity(int maxOrderQuantity) {
+		this.maxOrderQuantity = maxOrderQuantity;
 	}
 
 	public int getVersion() {
