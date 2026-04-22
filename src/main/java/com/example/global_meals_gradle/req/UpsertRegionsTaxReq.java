@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public class CreateRegionsReq {
+public class UpsertRegionsTaxReq {
 	
 	/* @NotBlank: 限制屬性值不能是 1. 空字串 2. 全空白字串 3. null */
 	
@@ -19,6 +19,10 @@ public class CreateRegionsReq {
 	@NotBlank(message = ValidationMsg.CURRENCY_CODE_ERROR)
 	@JsonAlias("currency_code")
     private String currencyCode;
+	
+	@NotBlank(message = ValidationMsg.COUNTRY_CODE_ERROR)
+	@JsonAlias("country_code")
+    private String countryCode;
     
 	@NotNull(message = ValidationMsg.TAX_RATE_ERROR) // BigDecimal 建議用 NotNull
 	@Min(value = 0, message = ValidationMsg.TAX_RATE_ERROR) // 至少 >=0
@@ -43,6 +47,14 @@ public class CreateRegionsReq {
 
 	public void setCurrencyCode(String currencyCode) {
 		this.currencyCode = currencyCode;
+	}
+
+	public String getCountryCode() {
+		return countryCode;
+	}
+
+	public void setCountryCode(String countryCode) {
+		this.countryCode = countryCode;
 	}
 
 	public BigDecimal getTaxRate() {

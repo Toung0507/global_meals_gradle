@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.global_meals_gradle.req.CreateRegionsReq;
-import com.example.global_meals_gradle.req.UpdateRegionsReq;
+import com.example.global_meals_gradle.req.UpsertRegionsTaxReq;
+import com.example.global_meals_gradle.req.UpdateRegionsUsageCapReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.RegionsRes;
 import com.example.global_meals_gradle.service.RegionsService;
@@ -24,16 +24,16 @@ public class RegionsController {
 	@Autowired
 	private RegionsService regionsService;
 	
-	// 新增國家稅值
-	@PostMapping("regions/create")
-	public BasicRes create(@Valid @RequestBody CreateRegionsReq req) {
-		return regionsService.create(req);
+	// 新增/修改國家稅值
+	@PostMapping("regions/upsert")
+	public BasicRes upsert(@Valid @RequestBody UpsertRegionsTaxReq req) {
+		return regionsService.upsert(req);
 	}
 	
 	// 更改國家稅值
-	@PostMapping("regions/update")
-	public BasicRes update(@Valid @RequestBody UpdateRegionsReq req) {
-		return regionsService.update(req);
+	@PostMapping("regions/update_usage_cap")
+	public BasicRes updateUsageCap(@Valid @RequestBody UpdateRegionsUsageCapReq req) {
+		return regionsService.updateUsageCap(req);
 	}
 	
 	// 取得各國稅率清單

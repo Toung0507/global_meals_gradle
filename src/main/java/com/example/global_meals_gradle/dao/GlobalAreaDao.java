@@ -16,9 +16,9 @@ public interface GlobalAreaDao extends JpaRepository<GlobalArea, Integer>{
 	// 新增分店
 	@Modifying
 	@Transactional
-	@Query(value = "INSERT INTO global_area (country, branch, address, phone) "
+	@Query(value = "INSERT INTO global_area (regions_id, branch, address, phone) "
 			+ " values (?1, ?2, ?3, ?4)", nativeQuery = true)
-	public void insert(String country, String branch, String address, String phone);
+	public void insert(int regionsId, String branch, String address, String phone);
 	
 	// 更新分店
 	@Modifying
