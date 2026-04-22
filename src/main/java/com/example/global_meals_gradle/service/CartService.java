@@ -56,13 +56,16 @@ public class CartService {
 
 //			 劇本分支 A：建新車
 
-			// 🛡️ 修改六-1：globalAreaId 格式防呆（null 或 <= 0 直接擋回）
-			// globalAreaId 是 Integer（物件型），可能為 null，必須先判斷 null 再判斷值
+//			 🛡️globalAreaId 格式防呆（null 或 <= 0 直接擋回）
+//			 globalAreaId 是 Integer（物件型），可能為 null，必須先判斷 null 再判斷值
+//			是Integer的原因：
+//			情境A：第一次加商品（req.cartId == null）→ 要建新車 → globalAreaId 必填
+//		    情境B：後續加商品（req.cartId 有值）    → 沿用舊車 → globalAreaId 完全沒用，前端不需要傳
 			if (req.getGlobalAreaId() == null || req.getGlobalAreaId() <= 0) {
 				return buildError(ReplyMessage.GLOBAL_AREA_ID_ERROR); // code=400，格式錯誤
 			}
 
-			// 🛡️ 修改六-2：globalAreaId 實際存在於 DB 的驗證（格式對但分店不存在）
+			// 🛡️ globalAreaId 實際存在於 DB 的驗證（格式對但分店不存在）
 			// globalAreaDao.findById() 是自定義查詢（GlobalAreaDao），找不到回傳 null
 			Optional<GlobalArea> targetArea = globalAreaDao.findById(req.getGlobalAreaId());
 			// 用內建的dao方法判斷是不是空的
@@ -70,12 +73,12 @@ public class CartService {
 				return buildError(ReplyMessage.GLOBAL_AREA_NOT_FOUND); // code=404，分店不存在
 			}
 
-			// 🛡️ 修改六-3：operationType 不可為 null 或空白字串
+			// 🛡️ operationType 不可為 null 或空白字串
 			if (req.getOperationType() == null || req.getOperationType().isBlank()) {
 				return buildError(ReplyMessage.INVALID_OPERATION_TYPE); // code=400
 			}
 
-			// 🛡️ 修改六-4：operationType 字串安全轉 Enum
+			// 🛡️ operationType 字串安全轉 Enum
 			// 原本：OperationType.valueOf(req.getOperationType()) 若傳 "abc" →
 			// IllegalArgumentException（500）
 			// 改法：try-catch 包住 valueOf，抓到就回傳友善的 400，不讓 500 暴露給前端
@@ -182,7 +185,6 @@ public class CartService {
 
 //	 這個方法只做一件事：驗證後新增商品到購物車
 	private void addNewItem(int cartId, CartSyncReq req) {
-
 //		 Guard 1：商品存在且上架？不行就立即結束
 		Products product = productsDao.findById(req.getProductId());
 		if (product == null || !product.isActive()) {
@@ -229,11 +231,11 @@ public class CartService {
 		// 🛡️ 防禦：確認購物車存在
 		OrderCart cart = orderCartDao.findById(req.getCartId());
 		if (cart == null) {
-			// 修改十三：從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
+			//從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
 			return buildError(ReplyMessage.CART_NOT_FOUND); // code=404
 		}
 
-		// 🛡️ 修改七：確認這台購物車尚未被結帳
+		// 🛡️ 確認這台購物車尚未被結帳
 		// 已結帳的購物車不允許再刪商品，防止購物車資料與訂單資料不一致
 		if (ordersDao.existsByOrderCartId(req.getCartId())) {
 			return buildError(ReplyMessage.CART_ALREADY_CHECKED_OUT); // code=400
@@ -242,7 +244,7 @@ public class CartService {
 		// 🛡️ 防禦：只有 CUSTOMER 模式才驗擁有者
 		// STAFF 模式：員工代替客人點餐，員工天然有操作權限，不需要 memberId 比對
 		if (cart.getOperationType() == OperationType.CUSTOMER && cart.getOperation() != req.getMemberId()) {
-			// 修改十三：從 throw 改成 return buildError
+			//從 throw 改成 return buildError
 			return buildError(ReplyMessage.OPERATE_ERROR); // code=403
 		}
 
@@ -324,6 +326,11 @@ public class CartService {
 			giftDetail.setQuantity(1); // 固定送 1 份
 			giftDetail.setGift(true); // 標記為贈品
 			giftDetail.setDiscountNote("滿額贈"); // 說明來源
+//			 記錄「當時選的是哪條規則」
+//			 未來 getCartView() 重驗時，就能用這個 ID 精準找回同一條規則，
+//			 如果用product_id 反查時，出現不同規則同樣的贈品就會恰好撈到另一個活動的規則的風險，
+//			導致促銷稽核時會出現「看似合法但扣錯活動名額」問題。
+			giftDetail.setPromotionsGiftsId(giftRuleId); 
 			orderCartDetailsDao.save(giftDetail); // INSERT 進資料庫
 		}
 
@@ -341,14 +348,14 @@ public class CartService {
 //		防禦：確認新分店真實存在
 		GlobalArea newArea = globalAreaDao.findById(newGlobalAreaId);
 		if (newArea == null) {
-			// 修改十三：從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
+			// 從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
 			return buildError(ReplyMessage.GLOBAL_AREA_NOT_FOUND); // code=404
 		}
 
 //	     第一步：查舊購物車是否存在
 		OrderCart oldCart = orderCartDao.findById(oldCartId);
 
-		// 🛡️ 修改九：確認舊購物車的擁有者是這個 memberId
+		// 🛡️ 確認舊購物車的擁有者是這個 memberId
 		// 只有 CUSTOMER 模式需要驗擁有者
 		// STAFF 模式：員工代客點餐，天然有操作權，不需要驗
 		if (oldCart != null && oldCart.getOperationType() == OperationType.CUSTOMER // 是顧客自己的車
@@ -385,7 +392,7 @@ public class CartService {
 			return buildError(ReplyMessage.CART_NOT_FOUND);
 		}
 
-		// 🛡️ 修改八：確認這台購物車尚未被結帳
+		// 🛡️ 確認這台購物車尚未被結帳
 		// 已結帳的購物車不允許清空，防止訂單資料失去對應的明細記錄
 		if (ordersDao.existsByOrderCartId(req.getCartId())) {
 			return buildError(ReplyMessage.CART_ALREADY_CHECKED_OUT); // code=400
@@ -423,11 +430,11 @@ public class CartService {
 //	         ── 步驟 1：確認購物車存在，並驗證擁有者身份 ──
 		OrderCart cart = orderCartDao.findById(cartId);
 		if (cart == null) {
-			// 修改十三：改成 buildError，與其他方法風格一致
+			// 改成 buildError，與其他方法風格一致
 			return buildError(ReplyMessage.CART_NOT_FOUND); // code=404
 		}
 
-		// 🛡️ 修改十：確認這台購物車屬於這個 memberId
+		// 確認這台購物車屬於這個 memberId
 		// STAFF 模式（員工代客點餐）不需要驗，員工天然有操作權
 		// CUSTOMER 模式只有本人可以查看自己的購物車
 		if (cart.getOperationType() == OperationType.CUSTOMER && cart.getOperation() != memberId) {
@@ -466,7 +473,22 @@ public class CartService {
 			OrderCartDetails existingGift = existingGifts.get(0); // 購物車只會有一個贈品
 			Products giftProduct = productsDao.findById(existingGift.getProductId());
 //			根據購物車詳情裡的選中的贈品gift，獲取gift的ProductId，通過ProductId尋找商品表的這個贈品的狀態還有贈品表裡這個贈品對應的上架的活動
-			PromotionsGifts giftRule = promotionsGiftsDao.findActiveRuleByGiftProductId(existingGift.getProductId());
+//			 修改：改用 promotionsGiftsId（規則主鍵）精準查詢，取代原本用 productId 反查的方式
+//		     原本問題：findActiveRuleByGiftProductId() 若同一贈品商品被設定在兩個活動裡，
+//		               ORDER BY full_amount ASC LIMIT 1 只取門檻最低那條，不一定是使用者當初選的
+//		               → 可能用錯活動規則做門檻驗證，導致扣錯名額
+//		     修改後：從 existingGift.getPromotionsGiftsId() 取出「當初存進去的規則ID」
+//		             用 findActiveRuleByGiftRuleId() 主鍵精準定位，語意完全正確
+			PromotionsGifts giftRule = null;
+			    Integer savedGiftRuleId = existingGift.getPromotionsGiftsId(); // 取出存入時記錄的規則ID
+			    if (savedGiftRuleId != null && savedGiftRuleId > 0) {
+			        // 正常路徑：promotionsGiftsId 有值，用主鍵精準查（新資料走這裡）
+			        giftRule = promotionsGiftsDao.findActiveRuleByGiftRuleId(savedGiftRuleId);
+			    } else {
+			        // 容錯路徑：promotionsGiftsId 是 NULL（舊資料/欄位新增前的資料），
+			        // 退回用 productId 反查，行為與原本一致，不破壞現有資料
+			        giftRule = promotionsGiftsDao.findActiveRuleByGiftProductId(existingGift.getProductId());
+			    }
 
 //			 先查這個贈品在本分店的實體庫存
 //			 cart 物件在步驟1已查好，這裡可以直接使用
@@ -669,11 +691,15 @@ public class CartService {
 			}
 			// taxType 為 null → 完全跳過稅務計算，totalAmount 保持等於 subtotal（無稅）
 
-//	         ── 步驟 6：打包所有結果回傳 ──
-			/*
-			 * voList就是cartItem（包括贈品）的list availablePromotions是 以活動為單位的兩層可選贈品清單
-			 * subtotal是小計，taxInfo是稅務資訊，totalAmount是最終總計 warningMessages警告訊息（空清單代表一切正常）
-			 */
+
+		}
+//        ── 步驟 6：打包所有結果回傳 ──
+		/*
+		 * voList就是cartItem（包括贈品）的list availablePromotions是 以活動為單位的兩層可選贈品清單
+		 * subtotal是小計，taxInfo是稅務資訊，totalAmount是最終總計 warningMessages警告訊息（空清單代表一切正常）
+		 */
+		if (cart.getOperationType() != null) {
+			res.setOperationType(cart.getOperationType().name());
 		}
 		res.setItems(voList);// 裝填這台車所有的商品與贈品
 		res.setSubtotal(subtotal);
@@ -681,13 +707,14 @@ public class CartService {
 		res.setTaxInfo(taxInfo);
 		res.setTotalAmount(totalAmount);
 		res.setWarningMessages(warningMessages);
+		
 		res.setCode(ReplyMessage.SUCCESS.getCode());
 		res.setMessage(ReplyMessage.SUCCESS.getMessage());
 		return res;
 	}
 
 	/**
-	 * 【修改十一】私有工具方法：組裝單一「一般商品」的 CartItemVO 抽出這個方法的目的：讓 getCartView 的 for 迴圈從 5
+	 * 私有工具方法：組裝單一「一般商品」的 CartItemVO 抽出這個方法的目的：讓 getCartView 的 for 迴圈從 5
 	 * 層巢狀縮排降至 1 層，大幅提升可讀性 使用 Guard Clause（守門人模式）：遇到問題就提前 return，不用繼續往下執行
 	 *
 	 * @param detail          購物車明細（單一商品那列）

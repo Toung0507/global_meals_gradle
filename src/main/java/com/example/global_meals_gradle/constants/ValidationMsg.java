@@ -51,11 +51,16 @@ public class ValidationMsg {
 	public static final String CART_ID_MUST_BE_POSITIVE = "CartId Must Be Positive";
 	public static final String PRODUCT_ID_MUST_BE_POSITIVE = "ProductId Must Be Positive ";
 	public static final String MEMBER_ID_MUST_BE_POSITIVE = "MemberId Must Be Positive";
+	public static final String GIFTRULE_ID_MUST_BE_POSITIVE = "GiftRuleId Must Be Positive";
+	public static final String STAFF_ID_MUST_BE_POSITIVE ="StaffId Must Be Positive";
 	/* 購物車建立驗證 */
-	// CartSyncReq.globalAreaId：建新車時分店 ID 不可為 null 或 <= 0
 	public static final String GLOBAL_AREA_ID_MUST_BE_POSITIVE = "GlobalAreaId Must Be Positive!!";
-	// CartSyncReq.operationType：建新車時操作類型不可空白
 	public static final String OPERATION_TYPE_CANNOT_BE_BLANK = "OperationType Cannot Be Blank!!";
+	/*查看商品銷售量req的驗證:*/
+	public static final String YEAR_REQUIRED = "Year is required"; 
+    public static final String MONTH_REQUIRED = "Month is required"; 
+    public static final String MONTH_RANGE = "Month must be between 1 and 12";
+	
 	/* 景翔 */
 	/* 職員 */
 	public static final String ACCOUNT_ERROR = "Account Error";

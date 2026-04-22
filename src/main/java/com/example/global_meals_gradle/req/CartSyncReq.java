@@ -12,7 +12,7 @@ public class CartSyncReq {
 	// 如果某天你們的商品 ID 剛好允許 0，這個驗證就報廢了。所以業界統一規定：只要是可能沒傳的欄位，
 	// 一律用大寫 Integer 配 @NotNull
 	// 如果用int,用0撈資料庫回傳Null，那後續很容易出現空指針錯誤
-	@Min(value = 1, message = "CartId 必須大於 0")
+	@Min(value = 1, message = ValidationMsg.CART_ID_MUST_BE_POSITIVE)
 	private Integer cartId;
 
 	/*
@@ -25,7 +25,7 @@ public class CartSyncReq {
 	private String operationType;
 
 	// 只要這個欄位在某些情境下會是空的（沒有值），我們就必須用大寫的 Integer，如果用 int ，是用0去撈資料
-	@Min(value = 1, message = "StaffId 必須大於 0")
+	@Min(value = 1, message = ValidationMsg.STAFF_ID_MUST_BE_POSITIVE)
 	private Integer staffId;
 
 	// 訪客固定傳 1，一般會員傳自己的 id，所以最小值是 1
