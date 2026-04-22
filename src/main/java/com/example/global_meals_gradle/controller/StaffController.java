@@ -14,6 +14,7 @@ import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.ChangePasswordReq;
 import com.example.global_meals_gradle.req.LoginStaffReq;
 import com.example.global_meals_gradle.req.RegisterStaffReq;
+import com.example.global_meals_gradle.req.UpdateStaffPasswordReq;
 import com.example.global_meals_gradle.req.UpdateStaffStatusReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.StaffSearchRes;
@@ -57,15 +58,18 @@ public class StaffController {
 	 *           欄位不合格直接回傳 400，不會進到 Service
 	 *  HttpSession session：Spring 自動注入 Session 物件
 	 * ================================================================= */
-	@PostMapping("/api/auth/login")//ATM
+	@PostMapping("/api/auth/login")//看ATM
 	public StaffSearchRes login(@Valid @RequestBody LoginStaffReq req, HttpSession session) {
 
 		StaffSearchRes res = staffService.login(req);
-
+		
 		// code == 200 代表登入成功，把 Staff 存進 Session
 		// res.getStaffList().get(0)：Service 把 Staff 放在 List 的第一個位置
 		if (res.getCode() == ReplyMessage.SUCCESS.getCode()) {
 			session.setAttribute(SESSION_KEY, res.getStaffList().get(0));
+			// 關鍵寫法：設定 5 秒後過期
+						// 單位是「秒」，5 秒沒發請求，保全 (Interceptor) 就會把你擋下來
+						session.setMaxInactiveInterval(86400);
 		}
 
 		return res;
@@ -93,10 +97,7 @@ public class StaffController {
 	public StaffSearchRes register(@Valid @RequestBody RegisterStaffReq req, HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
-		if (operator == null) {
-			return notLoginRes();
-		}
-
+		
 		return staffService.register(req, operator);
 	}
 
@@ -109,9 +110,6 @@ public class StaffController {
 	public StaffSearchRes getStaffList(HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
-		if (operator == null) {
-			return notLoginRes();
-		}
 
 		return staffService.getStaffList(operator);
 	}
@@ -135,10 +133,7 @@ public class StaffController {
 			HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
-		if (operator == null) {
-			return notLoginRes();
-		}
-
+		
 		return staffService.updateStatus(id, req, operator);
 	}
 
@@ -153,11 +148,30 @@ public class StaffController {
 			HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
-		if (operator == null) {
-			return notLoginRes();
-		}
-
+	
 		return staffService.changePassword(id, req, operator);
+	}
+	// 在 StaffController.java 中新增
+	/* =================================================================
+	 * PATCH /api/staff/password — 員工自己修改密碼 (需驗證舊密碼)
+	 * ================================================================= */
+	@PatchMapping("/api/staff/password")
+	public StaffSearchRes selfChangePassword(//
+	        @Valid @RequestBody UpdateStaffPasswordReq req, //
+	        HttpSession session) {
+
+	    Staff operator = getLoginStaff(session);
+	    // 此處不需 PathVariable id，因為就是改「我」自己的密碼
+	    return staffService.selfChangePassword(req, operator);
+	}
+	/* =================================================================
+	 *  PATCH /api/admin/staff/{id}/promote — 晉升
+	 * ================================================================= */
+	@PatchMapping("/api/admin/staff/{id}/promote")
+	public StaffSearchRes promoteToMA(@PathVariable int id, HttpSession session) {
+		Staff operator = getLoginStaff(session);
+        // 此處攔截器會處理登入檢查，不需再寫 if(operator == null)
+		return staffService.promoteToManagerAgent(id, operator);
 	}
 
 }

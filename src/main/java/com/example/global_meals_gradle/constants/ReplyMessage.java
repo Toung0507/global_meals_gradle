@@ -78,8 +78,9 @@ public enum ReplyMessage {
 	// 副店長相關
 	DEPUTY_OPERATE_ERROR(403, "Deputy Operate Error"), //翻譯:副店長無法執行此操作
 	TARGET_NOT_STAFF(400, "Target Not Staff"), //目標人物必須是員工
-	TARGET_NOT_DEPUTY(400, "Target Not Deputy"); //目標人物不是副店長
-
+	TARGET_NOT_DEPUTY(400, "Target Not Deputy"), //目標人物不是副店長
+	PROMOTE_TARGET_ERROR(400, "Promote Target Error"), //提升目標錯誤
+	;
 	
 
 	private int code;
