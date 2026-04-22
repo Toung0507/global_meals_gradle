@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +30,7 @@ public class PromotionsService {
 	@Autowired
 	private ProductsTempDao productTempDao;
 
-	// 查詢 regions 表，用來取得各國折扣上限（usage_cap）
+	// 查詢 regions 表，用來確認國家是否合法並取得該國折扣上限
 	@Autowired
 	private RegionsDao regionsDao;
 
@@ -62,7 +63,7 @@ public class PromotionsService {
 
 		// currentTotal 是會隨折扣變動的金額，初始值等於原始金額
 		// 贈品判斷不用這個，折扣才用這個
-		double currentTotal = originalAmount.doubleValue();
+		BigDecimal currentTotal = originalAmount;
 
 		// 折扣名稱預設為空字串，有打折才會填入
 		res.setAppliedDiscountName("");
@@ -149,27 +150,16 @@ public class PromotionsService {
 					throw new RuntimeException(ReplyMessage.COUNTRY_ERROR.getMessage());
 				}
 
-				// 從 regions 表查出這個國家的折扣上限（usage_cap）
-				// 前端下拉選單內容來自 regions 表，理論上一定查得到
-				// 若查不到表示傳入了不存在的 country，屬於異常，直接擋下
+				// 查出該國的折扣上限，查不到表示國家不存在於 regions 表，直接擋下
 				Integer usageCap = regionsDao.findUsageCapByCountry(req.getCountry());
 				if (usageCap == null) {
 					throw new RuntimeException(ReplyMessage.COUNTRY_ERROR.getMessage());
 				}
 
-				// 折扣上限從 regions.usage_cap 取得，不再寫死
-				double discountCap = usageCap.doubleValue();
-
-				// 計算九折實際折扣金額：currentTotal * 0.1
-				// 例如 1000 → 折 100；5000 → 折 500
-				double discountAmount = currentTotal * 0.1;
-
-				// 實際折扣 = min(計算折扣, 上限)
-				// 例如台灣：5000 打九折折 500，但上限 200，所以只折 200，實付 4800
-				double actualDiscount = Math.min(discountAmount, discountCap);
-
-				// 套用折扣
-				currentTotal = currentTotal - actualDiscount;
+				// 九折省下的金額 vs 該國折扣上限，取較小值為實際折扣
+				BigDecimal discount = currentTotal.multiply(new BigDecimal("0.1"));
+				BigDecimal actualDiscount = discount.min(new BigDecimal(usageCap));
+				currentTotal = currentTotal.subtract(actualDiscount);
 
 				// 告訴前端這次有套用折扣，名稱固定為此字串
 				res.setAppliedDiscountName("會員 9 折優惠");
@@ -181,7 +171,7 @@ public class PromotionsService {
 		// =============================================
 
 		// currentTotal 無條件進位後轉成整數（例如 801.2 → 802）
-		res.setFinalAmount((int) Math.ceil(currentTotal));
+		res.setFinalAmount(currentTotal.setScale(0, RoundingMode.CEILING).intValue());
 
 		// 把收集到的促銷活動 ID 和贈品清單放進回傳物件
 		res.setAppliedPromotionIds(appliedPromotionIds);
@@ -206,14 +196,13 @@ public class PromotionsService {
 
 		// 逐一組成 GiftItem 回傳給前端
 		List<GiftItem> result = new ArrayList<>();
-		for (int i = 0; i < qualifiedGifts.size(); i++) {
-			PromotionsGifts gift = qualifiedGifts.get(i);
+		for (PromotionsGifts gift : qualifiedGifts) {
 
 			// 查商品名稱，避免拉到 MEDIUMBLOB
 			String productName = productTempDao.findNameById(gift.getGiftProductId());
 
 			GiftItem item = new GiftItem();
-			item.setPromotionsGiftsId(gift.getId()); // 前端選完後要帶這個 id 回來
+			item.setPromotionsGiftsId(gift.getId());
 			item.setProductId(gift.getGiftProductId());
 			item.setProductName(productName != null ? productName : "活動贈品");
 			item.setQuantity(gift.getQuantity());

@@ -259,6 +259,50 @@ public class PromotionsManageService {
 	 * @param req 包含活動欄位（name, startTime, endTime）
 	 *            以及可選的贈品欄位（giftProductId, fullAmount, quantity）
 	 */
+	// =============================================
+	// 方法五：上傳促銷活動圖片（POST /promotions/uploadImage/{id} 使用）
+	// =============================================
+
+	/**
+	 * 將圖片存入指定促銷活動
+	 *
+	 * @param promotionsId 目標活動 ID
+	 * @param imageBytes   前端上傳的圖片位元組
+	 */
+	@Transactional
+	public void uploadImage(int promotionsId, byte[] imageBytes) {
+
+		Promotions promotion = promotionsDao.findById(promotionsId)
+				.orElseThrow(() -> new RuntimeException(ReplyMessage.PROMOTION_NOT_FOUND.getMessage()));
+
+		promotion.setPromotionImg(imageBytes);
+		promotionsDao.save(promotion);
+	}
+
+	// =============================================
+	// 方法六：取得促銷活動圖片（GET /promotions/image/{id} 使用）
+	// =============================================
+
+	/**
+	 * 取出指定促銷活動的圖片位元組
+	 *
+	 * 回傳 null 表示該活動沒有圖片
+	 *
+	 * @param promotionsId 目標活動 ID
+	 * @return 圖片 byte[]，或 null
+	 */
+	public byte[] getImage(int promotionsId) {
+
+		Promotions promotion = promotionsDao.findById(promotionsId)
+				.orElseThrow(() -> new RuntimeException(ReplyMessage.PROMOTION_NOT_FOUND.getMessage()));
+
+		return promotion.getPromotionImg();
+	}
+
+	// =============================================
+	// 方法四：一次建立促銷活動 + 贈品規則（POST /promotions/create 使用）
+	// =============================================
+
 	@Transactional
 	public void createPromotionWithGift(PromotionsManageReq req) {
 

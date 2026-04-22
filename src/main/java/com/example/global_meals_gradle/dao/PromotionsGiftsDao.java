@@ -129,8 +129,6 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 		   nativeQuery = true)
 	List<PromotionsGifts> findByPromotionsId(@Param("promotionsId") int promotionsId);
 
-
-
 	
 	
 	/* 核心邏輯：取得所有目前上架的有效期內的活動的上架中的贈品門檻 /規則*/
@@ -180,15 +178,15 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     PromotionsGifts findActiveRuleByGiftRuleId(int giftRuleId);
 
     
-    /* 更新贈品兌換次數(用於兌換贈品，數量-1) */
+    /* 更新贈品兌換次數(用於兌換贈品，數量-1)，庫存歸零時下架邏輯由 OrdersService 處理 */
     @Modifying
-    @Transactional
-    @Query(value = "UPDATE promotions_gifts SET quantity = quantity -1 WHERE promotions_id = ?1 "
-    		+ "And gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
+    @jakarta.transaction.Transactional
+    @Query(value = "UPDATE promotions_gifts SET quantity = quantity - 1 WHERE promotions_id = ?1 "
+    		+ "AND gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
     public int reduceGiftQuota(int promotionsId, int giftProductId);
 
 	/* 根據 活動id 商品id 取的門檻資料(用於orders) */
-    @Query(value = "SELECT full_amount FROM promotions_gifts"
-    		+ "WHERE promotions_id = ?1 And gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
+    @Query(value = "SELECT full_amount FROM promotions_gifts "
+    		+ "WHERE promotions_id = ?1 AND gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
     public BigDecimal findFullAmountByGiftProductId(int promotionsId, int giftProductId);
 }
