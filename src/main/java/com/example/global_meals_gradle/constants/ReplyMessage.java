@@ -50,6 +50,12 @@ public enum ReplyMessage {
 	NOT_REACH_FULLAMOUNT(400, "Not Reach fullamount!"), //
 	GIFT_SEND_LIGHT(400, "Gift Send light!!"), //
 	CART_NOT_FOUND(404, "Cart Not Found!!"),
+	/* 購物車*/
+	// 已結帳的購物車不允許再修改（removeItem / clearCart / syncItem 分支B 用）
+	CART_ALREADY_CHECKED_OUT(400, "Cart Already Checked Out!!"),
+	// operationType 傳了非法值（不在 OperationType 枚舉裡的字串）
+	INVALID_OPERATION_TYPE(400, "Invalid Operation Type!!"),
+	
 	
 	/*景翔*/
 	// 基本欄位錯誤
@@ -71,8 +77,8 @@ public enum ReplyMessage {
 	// 副店長相關
 	DEPUTY_OPERATE_ERROR(403, "Deputy Operate Error"), //翻譯:副店長無法執行此操作
 	TARGET_NOT_STAFF(400, "Target Not Staff"), //目標人物必須是員工
-	TARGET_NOT_DEPUTY(400, "Target Not Deputy"), //目標人物不是副店長
-	;
+	TARGET_NOT_DEPUTY(400, "Target Not Deputy"); //目標人物不是副店長
+
 	
 
 	private int code;

@@ -24,6 +24,9 @@ public class Regions {
 	@Column(name = "country_code") // 國家代碼(TW、JP、KR....)
 	private String countryCode;
 
+	@Column(name = "country_code", length = 3)
+	private String countryCode;
+
 	@Column(name = "tax_rate", precision = 5, scale = 4) // DECIMAL(5,4)
 	private BigDecimal taxRate;
 
@@ -67,6 +70,14 @@ public class Regions {
 		this.currencyCode = currencyCode;
 	}
 	
+	public String getCountryCode() {
+		return countryCode;
+	}
+
+	public void setCountryCode(String countryCode) {
+		this.countryCode = countryCode;
+	}
+
 	public String getCountryCode() {
 		return countryCode;
 	}

@@ -1,6 +1,10 @@
 package com.example.global_meals_gradle.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.req.PromotionsManageReq;
@@ -22,6 +27,7 @@ import com.example.global_meals_gradle.service.PromotionsService;
 
 import jakarta.validation.Valid;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -37,22 +43,22 @@ public class PromotionsManageController {
 	private PromotionsService promotionsService;
 
 	/* 新增贈品至促銷活動（對已存在的活動補加贈品） */
-	@PostMapping("Promotions/addPromotionGift")
+	@PostMapping("/promotions/addPromotionGift")
 	public BasicRes addPromotionGift(@RequestBody PromotionsManageReq req) {
 		promotionsManageService.addPromotionGift(req);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
 	/* 刪除促銷活動（同時真刪除底下所有贈品） */
-	@DeleteMapping("Promotions/deletePromotion/{id}")
+	@DeleteMapping("/promotions/deletePromotion/{id}")
 	public BasicRes deletePromotion(@PathVariable("id") int id) {
 		promotionsManageService.deletePromotion(id);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
 	/* 查詢可選贈品清單：傳入消費金額，回傳所有達標的贈品讓使用者選一個 */
-	@PostMapping("Promotions/getAvailableGifts")
-	public List<GiftItem> getAvailableGifts(@RequestParam("amount") BigDecimal amount) {
+	@PostMapping("/promotions/getAvailableGifts")
+	public List<GiftItem> getAvailableGifts(@RequestBody BigDecimal amount) {
 		return promotionsService.getAvailableGifts(amount);
 	}
 
@@ -99,15 +105,44 @@ public class PromotionsManageController {
 	 * Request Body 欄位說明：
 	 *   promotionsId → 要切換的活動 ID
 	 *   active       → true = 開啟，false = 關閉（關閉時連帶停用底下所有贈品）
-	 *
-	 * 與舊的 PUT Promotions/togglePromotion 邏輯完全相同，
-	 * 這裡新增 POST 路徑讓前端能用統一的 /promotions/* 命名風格呼叫
 	 */
 	@PostMapping("/promotions/toggle")
 	public BasicRes toggle(@RequestBody PromotionsManageReq req) {
 		// 委派給既有的 togglePromotion()，邏輯不重複實作
 		promotionsManageService.togglePromotion(req);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	}
+
+	/**
+	 * POST /promotions/uploadImage/{id}
+	 * 上傳促銷活動圖片，存入 promotions.promotion_img
+	 *
+	 * 前端用 multipart/form-data 格式傳送，欄位名稱為 "image"
+	 * 活動 ID 由路徑帶入
+	 */
+	@PostMapping("/promotions/uploadImage/{id}")
+	public BasicRes uploadImage(@PathVariable("id") int id,
+			@RequestParam("image") MultipartFile image) throws IOException {
+		promotionsManageService.uploadImage(id, image.getBytes());
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	}
+
+	/**
+	 * GET /promotions/image/{id}
+	 * 取得促銷活動圖片，供前端 <img> 標籤直接顯示
+	 *
+	 * 回傳原始圖片位元組，Content-Type 為 image/jpeg
+	 * 若該活動沒有圖片，回傳 404
+	 */
+	@GetMapping("/promotions/image/{id}")
+	public ResponseEntity<byte[]> getImage(@PathVariable("id") int id) {
+		byte[] imageBytes = promotionsManageService.getImage(id);
+		if (imageBytes == null) {
+			return ResponseEntity.notFound().build();
+		}
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.IMAGE_JPEG);
+		return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
 	}
 
 	/**
