@@ -15,11 +15,14 @@ public class Regions {
 	@Column(name = "id")
 	private int id;
 
-	@Column(name = "country")
+	@Column(name = "country", unique = true)
 	private String country;
 
-	@Column(name = "currency_code")
+	@Column(name = "currency_code") // 國家匯率代碼(TWD，JPY、KRW....)
 	private String currencyCode;
+
+	@Column(name = "country_code", length = 3) // 國家代碼(TW、JP、KR....)
+	private String countryCode;
 
 	@Column(name = "tax_rate", precision = 5, scale = 4) // DECIMAL(5,4)
 	private BigDecimal taxRate;
@@ -62,6 +65,14 @@ public class Regions {
 
 	public void setCurrencyCode(String currencyCode) {
 		this.currencyCode = currencyCode;
+	}
+
+	public String getCountryCode() {
+		return countryCode;
+	}
+
+	public void setCountryCode(String countryCode) {
+		this.countryCode = countryCode;
 	}
 
 	public BigDecimal getTaxRate() {

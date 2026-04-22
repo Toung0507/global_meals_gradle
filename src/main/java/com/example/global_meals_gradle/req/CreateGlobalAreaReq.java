@@ -1,15 +1,17 @@
 package com.example.global_meals_gradle.req;
 
-import org.hibernate.validator.constraints.Length;
-
 import com.example.global_meals_gradle.constants.ValidationMsg;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public class CreateGlobalAreaReq {
 
-	@NotBlank(message = ValidationMsg.COUNTRY_ERROR)
-	private String country;
+	@Min(value = 1, message = ValidationMsg.REGIONS_ID_ERROR)
+	@JsonAlias("regions_id")
+	private int regionsId;
 
 	@NotBlank(message = ValidationMsg.BRANCH_ERROR)
 	private String branch;
@@ -18,15 +20,15 @@ public class CreateGlobalAreaReq {
 	private String address;
 
 	@NotBlank(message = ValidationMsg.PHONE_ERROR) // 避免有10個空格輸入
-	@Length(min = 10, max = 10, message = ValidationMsg.PHONE_ERROR) // 電話號碼10碼
+    @Size(min = 7, max = 16, message = ValidationMsg.PHONE_ERROR) // 合理的國際電話長度範圍 (通常 7~15 碼)
 	private String phone;
 
-	public String getCountry() {
-		return country;
+	public int getRegionsId() {
+		return regionsId;
 	}
 
-	public void setCountry(String country) {
-		this.country = country;
+	public void setRegionsId(int regionsId) {
+		this.regionsId = regionsId;
 	}
 
 	public String getBranch() {

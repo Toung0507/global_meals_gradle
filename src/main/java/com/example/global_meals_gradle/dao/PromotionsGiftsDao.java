@@ -10,6 +10,8 @@ import com.example.global_meals_gradle.entity.PromotionsGifts;
 
 import jakarta.transaction.Transactional;
 
+
+
 public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integer> {
 
 	/**
@@ -126,7 +128,20 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 	@Query(value = "SELECT * FROM promotions_gifts WHERE promotions_id = :promotionsId",
 		   nativeQuery = true)
 	List<PromotionsGifts> findByPromotionsId(@Param("promotionsId") int promotionsId);
+
 	
+	
+	/* 核心邏輯：取得所有目前上架的有效期內的活動的上架中的贈品門檻 /規則*/
+	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
+		    + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
+		    + "WHERE gifts.is_active = 1 "
+		    + "AND prom.is_active = 1 "
+		    + "AND prom.start_time <= CURRENT_DATE "
+		    + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
+	public List<PromotionsGifts> findAllActiveGifts();
+
+	
+
 	/*
     
 	根據「贈品商品 ID」找到對應的目前上架的規則。用途：在 getCartView() 步驟3 驗證已選贈品是否還有效。
@@ -148,12 +163,6 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 	+ "LIMIT 1", nativeQuery = true)
 	    PromotionsGifts findActiveRuleByGiftProductId(int giftProductId);
 
-	// 根據「活動 ID」撈出這個活動底下所有上架的贈品規則
-	// 使用時機：CartService 步驟4，確認了某個活動後，找這個活動底下有哪些贈品可以送
-    @Query(value = "SELECT * FROM promotions_gifts WHERE promotions_id = ?1 AND is_active = 1",
-           nativeQuery = true)
-    List<PromotionsGifts> findGiftsByPromotionId(int promotionId);
-
 	// 根據「贈品規則 ID（主鍵）」找到對應的上架有效規則
 	// 使用時機：selectGift()，前端傳來 giftRuleId，後端用主鍵精準定位這條規則
 	// 同時 JOIN promotions 確認這條規則對應的活動是否仍在有效期間內且啟用
@@ -169,16 +178,15 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     PromotionsGifts findActiveRuleByGiftRuleId(int giftRuleId);
 
     
-    /* 更新贈品兌換次數(用於兌換贈品，數量-1) */
+    /* 更新贈品兌換次數(用於兌換贈品，數量-1)，庫存歸零時下架邏輯由 OrdersService 處理 */
     @Modifying
-    @Transactional
-    @Query(value = "UPDATE promotions_gifts SET quantity = quantity -1 WHERE promotions_id = ?1 "
-    		+ "And gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
+    @jakarta.transaction.Transactional
+    @Query(value = "UPDATE promotions_gifts SET quantity = quantity - 1 WHERE promotions_id = ?1 "
+    		+ "AND gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
     public int reduceGiftQuota(int promotionsId, int giftProductId);
 
-    
-	/* 根據 活動id 商品id 取的門檻資料(用於orders) */  
+	/* 根據 活動id 商品id 取的門檻資料(用於orders) */
     @Query(value = "SELECT full_amount FROM promotions_gifts "
-    		+ "WHERE promotions_id = ?1 And gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
+    		+ "WHERE promotions_id = ?1 AND gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
     public BigDecimal findFullAmountByGiftProductId(int promotionsId, int giftProductId);
 }
