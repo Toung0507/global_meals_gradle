@@ -5,7 +5,6 @@ import org.hibernate.validator.constraints.Length;
 import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 
 public class RegisterMembersReq {
 	

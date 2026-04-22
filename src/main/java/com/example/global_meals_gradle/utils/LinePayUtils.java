@@ -1,8 +1,9 @@
 package com.example.global_meals_gradle.utils;
 
+import java.util.Base64;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import java.util.Base64;
 
 public class LinePayUtils {
 

@@ -3,6 +3,7 @@ package com.example.global_meals_gradle.dao;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
 import com.example.global_meals_gradle.entity.Products;
 
 public interface ProductsTempDao extends JpaRepository<Products, Integer> {

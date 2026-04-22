@@ -1,24 +1,44 @@
 package com.example.global_meals_gradle.service;
 
-import com.example.global_meals_gradle.dao.*;
-import com.example.global_meals_gradle.entity.*;
-import com.example.global_meals_gradle.req.*;
-import com.example.global_meals_gradle.res.*;
-
-import com.example.global_meals_gradle.constants.OperationType;
-import com.example.global_meals_gradle.constants.ReplyMessage;
-import com.example.global_meals_gradle.constants.TaxType;
-
-import org.springframework.beans.factory.annotation.Autowired;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.global_meals_gradle.constants.OperationType;
+import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.constants.TaxType;
+import com.example.global_meals_gradle.dao.BranchInventoryDao;
+import com.example.global_meals_gradle.dao.GlobalAreaDao;
+import com.example.global_meals_gradle.dao.OrderCartDao;
+import com.example.global_meals_gradle.dao.OrderCartDetailsDao;
+import com.example.global_meals_gradle.dao.OrdersDao;
+import com.example.global_meals_gradle.dao.ProductsDao;
+import com.example.global_meals_gradle.dao.PromotionsDao;
+import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
+import com.example.global_meals_gradle.dao.RegionsDao;
+import com.example.global_meals_gradle.entity.BranchInventory;
+import com.example.global_meals_gradle.entity.GlobalArea;
+import com.example.global_meals_gradle.entity.OrderCart;
+import com.example.global_meals_gradle.entity.OrderCartDetails;
+import com.example.global_meals_gradle.entity.Products;
+import com.example.global_meals_gradle.entity.Promotions;
+import com.example.global_meals_gradle.entity.PromotionsGifts;
+import com.example.global_meals_gradle.entity.Regions;
+import com.example.global_meals_gradle.req.CartClearReq;
+import com.example.global_meals_gradle.req.CartRemoveReq;
+import com.example.global_meals_gradle.req.CartSelectGiftReq;
+import com.example.global_meals_gradle.req.CartSyncReq;
+import com.example.global_meals_gradle.res.AvailableGiftVO;
+import com.example.global_meals_gradle.res.AvailablePromotionVO;
+import com.example.global_meals_gradle.res.CartItemVO;
+import com.example.global_meals_gradle.res.CartViewRes;
+import com.example.global_meals_gradle.res.TaxInfoVO;
 
 @Service
 public class CartService {

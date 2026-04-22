@@ -1,6 +1,9 @@
 package com.example.global_meals_gradle.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "global_area")
@@ -21,9 +24,6 @@ public class GlobalArea {
 
 	@Column(name = "phone")
 	private String phone;
-
-	@Column(name = "regions_id")
-	private int regionsId;
 
 	public int getId() {
 		return id;
@@ -64,13 +64,4 @@ public class GlobalArea {
 	public void setPhone(String phone) {
 		this.phone = phone;
 	}
-
-	public int getRegionsId() {
-		return regionsId;
-	}
-
-	public void setRegionsId(int regionsId) {
-		this.regionsId = regionsId;
-	}
-
 }

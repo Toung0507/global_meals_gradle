@@ -1,9 +1,11 @@
 package com.example.global_meals_gradle.dao;
 
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+
 import com.example.global_meals_gradle.entity.Promotions;
-import java.util.List;
 
 public interface PromotionsDao extends JpaRepository<Promotions, Integer> {
 

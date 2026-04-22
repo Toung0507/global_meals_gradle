@@ -1,5 +1,8 @@
 package com.example.global_meals_gradle.controller;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,9 +24,6 @@ import com.example.global_meals_gradle.service.PromotionsManageService;
 import com.example.global_meals_gradle.service.PromotionsService;
 
 import jakarta.validation.Valid;
-
-import java.math.BigDecimal;
-import java.util.List;
 
 @CrossOrigin(origins = "http://localhost:4200")
 @RestController

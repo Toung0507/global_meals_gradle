@@ -1,8 +1,9 @@
 package com.example.global_meals_gradle.req;
 
+import java.math.BigDecimal;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import java.math.BigDecimal;
 
 /**
  * 促銷活動結帳請求參數

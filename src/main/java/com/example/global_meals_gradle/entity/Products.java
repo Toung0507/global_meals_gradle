@@ -1,12 +1,16 @@
 package com.example.global_meals_gradle.entity;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import com.example.global_meals_gradle.constants.ValidationMsg;
-
-import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
+import jakarta.persistence.Basic;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "products")

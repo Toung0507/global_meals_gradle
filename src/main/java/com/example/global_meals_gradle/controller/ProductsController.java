@@ -1,14 +1,16 @@
 package com.example.global_meals_gradle.controller;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.MonthlyProductsSalesReq;
 import com.example.global_meals_gradle.res.MonthlyProductsSalesRes;
 import com.example.global_meals_gradle.service.ProductService;
+
 import jakarta.servlet.http.HttpSession;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class ProductsController {

@@ -1,18 +1,23 @@
 package com.example.global_meals_gradle.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.dao.MemberTempDao;
+import com.example.global_meals_gradle.dao.ProductsTempDao;
+import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
+import com.example.global_meals_gradle.dao.RegionsDao;
+import com.example.global_meals_gradle.entity.Members;
+import com.example.global_meals_gradle.entity.PromotionsGifts;
 import com.example.global_meals_gradle.req.PromotionsReq;
-import com.example.global_meals_gradle.res.PromotionsRes;
 import com.example.global_meals_gradle.res.GiftItem;
-import com.example.global_meals_gradle.dao.*;
-import com.example.global_meals_gradle.entity.*;
+import com.example.global_meals_gradle.res.PromotionsRes;
 
 @Service
 public class PromotionsService {
