@@ -22,9 +22,6 @@ public class GlobalArea {
 	@Column(name = "phone")
 	private String phone;
 
-	@Column(name = "regions_id")
-	private int regionsId;
-
 	public int getId() {
 		return id;
 	}
@@ -63,14 +60,6 @@ public class GlobalArea {
 
 	public void setPhone(String phone) {
 		this.phone = phone;
-	}
-
-	public int getRegionsId() {
-		return regionsId;
-	}
-
-	public void setRegionsId(int regionsId) {
-		this.regionsId = regionsId;
 	}
 
 }
