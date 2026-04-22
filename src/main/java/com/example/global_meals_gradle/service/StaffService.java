@@ -15,6 +15,7 @@ import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.ChangePasswordReq;
 import com.example.global_meals_gradle.req.LoginStaffReq;
 import com.example.global_meals_gradle.req.RegisterStaffReq;
+import com.example.global_meals_gradle.req.UpdateStaffPasswordReq;
 import com.example.global_meals_gradle.req.UpdateStaffStatusReq;
 import com.example.global_meals_gradle.res.StaffSearchRes;
 
@@ -24,6 +25,7 @@ public class StaffService {
 	/*
 	 * 角色（怕我忘記）： ADMIN =老闆（不能控制自己） 
 	 * REGION_MANAGER = 分店長（縮寫 RM，管一個分店） 
+	 * MANAGER_AGENT  = 副店長（MA）：有日常操作權，但不管人（不能建帳號、不能停權、不能改別人密碼）
 	 * STAFF = 普通員工（縮寫 ST，負責被管的那位）
 	 * =====================================================
 	 */
@@ -71,15 +73,17 @@ public class StaffService {
 		if (staffDao.findByAccount(autoAccount) != null) {
 			return new StaffSearchRes(ReplyMessage.REPEAT_ERROR.getCode(), ReplyMessage.REPEAT_ERROR.getMessage());
 		}
-
-		// 5. 寫入資料庫 (移除多餘的 try-catch)
-		staffDao.insert(
-				req.getName(), 
-				autoAccount, 
-				encoder.encode(req.getPassword()), 
-				targetRole.name(),
-				req.getGlobalAreaId());
-
+		try {
+			// 5. 寫入資料庫 (移除多餘的 try-catch)
+			staffDao.insert(
+					req.getName(), 
+					autoAccount, 
+					encoder.encode(req.getPassword()), 
+					targetRole.name(),
+					req.getGlobalAreaId());
+		} catch (Exception e) {
+			throw e;
+		}
 		Staff newStaff = staffDao.findByAccount(autoAccount);
 		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), List.of(newStaff));
 	}
@@ -106,6 +110,28 @@ public class StaffService {
 		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
+	// 修改自己的密碼
+	@Transactional(rollbackFor = Exception.class)
+	public StaffSearchRes selfChangePassword(UpdateStaffPasswordReq req, Staff operator) {
+	    
+	    // 1. 從資料庫重新抓取目前的員工資料（確保資料是最新的）
+	    Staff staff = staffDao.findById(operator.getId()).orElse(null);
+	    if (staff == null) {
+	        return new StaffSearchRes(ReplyMessage.STAFF_ID_NOT_FOUND.getCode(), ReplyMessage.STAFF_ID_NOT_FOUND.getMessage());
+	    }
+
+	    // 2. 核心檢查：驗證舊密碼是否正確
+	    // 注意：資料庫存的是加密後的密碼，必須用 encoder.matches 比對
+	    if (!encoder.matches(req.getOldPassword(), staff.getPassword())) {
+	        return new StaffSearchRes(ReplyMessage.OLDPASSWORD_ERROR.getCode(), ReplyMessage.OLDPASSWORD_ERROR.getMessage());
+	    }
+
+	    // 3. 執行修改：加密新密碼並存檔
+	    staff.setPassword(encoder.encode(req.getNewPassword()));
+	    staffDao.save(staff);
+
+	    return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	}
 	/* =====================================================
 	 * 主功能 3：【停權 / 復權】
 	 * ===================================================== */
@@ -192,7 +218,7 @@ public class StaffService {
 
 		// 4. 狀態檢查：只有目前的 STAFF 才能晉升為 MA
 		if (targetStaff.getRole() != StaffRole.STAFF) {
-			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), //
+			return new StaffSearchRes(ReplyMessage.PROMOTE_TARGET_ERROR.getCode(), //
 					ReplyMessage.PROMOTE_TARGET_ERROR.getMessage());
 		}
 

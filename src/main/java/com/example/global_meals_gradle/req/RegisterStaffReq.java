@@ -15,7 +15,7 @@ public class RegisterStaffReq {
 	@NotBlank(message = ValidationMsg.NAME_ERROR)
 	private String name;
 	
-	@NotBlank(message = ValidationMsg.ACCOUNT_ERROR)
+//	@NotBlank(message = ValidationMsg.ACCOUNT_ERROR)//因為帳號是自動產生的
     private String account;
     
 	@NotBlank(message = ValidationMsg.PASSWORD_ERROR)

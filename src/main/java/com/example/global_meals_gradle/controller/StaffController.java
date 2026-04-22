@@ -14,6 +14,7 @@ import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.ChangePasswordReq;
 import com.example.global_meals_gradle.req.LoginStaffReq;
 import com.example.global_meals_gradle.req.RegisterStaffReq;
+import com.example.global_meals_gradle.req.UpdateStaffPasswordReq;
 import com.example.global_meals_gradle.req.UpdateStaffStatusReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.StaffSearchRes;
@@ -149,6 +150,19 @@ public class StaffController {
 		Staff operator = getLoginStaff(session);
 	
 		return staffService.changePassword(id, req, operator);
+	}
+	// 在 StaffController.java 中新增
+	/* =================================================================
+	 * PATCH /api/staff/password — 員工自己修改密碼 (需驗證舊密碼)
+	 * ================================================================= */
+	@PatchMapping("/api/staff/password")
+	public StaffSearchRes selfChangePassword(//
+	        @Valid @RequestBody UpdateStaffPasswordReq req, //
+	        HttpSession session) {
+
+	    Staff operator = getLoginStaff(session);
+	    // 此處不需 PathVariable id，因為就是改「我」自己的密碼
+	    return staffService.selfChangePassword(req, operator);
 	}
 	/* =================================================================
 	 *  PATCH /api/admin/staff/{id}/promote — 晉升
