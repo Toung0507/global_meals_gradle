@@ -12,8 +12,6 @@ public class CartViewRes extends BasicRes {
 
 	private int cartId;
 
-	private int globalAreaId;
-
 	private String operationType;
 
 	/* 裝填這台車所有的商品與贈品！ */
@@ -25,6 +23,7 @@ public class CartViewRes extends BasicRes {
 	// 使用者「有資格參加」的活動清單（兩層結構：第一層是活動，第二層是各活動的贈品選項）
 	// 空清單 [] → 消費金額達不到任何活動門檻 → 前端不顯示「選擇活動」按鈕
 	// 有資料 → 前端顯示「選擇活動」按鈕，按下後展開活動下拉選單
+	// 回傳「以活動為單位」的兩層巢狀結構
 	private List<AvailablePromotionVo> availablePromotions;
 
 	// 稅務資訊（稅率、稅的類型、稅額）
@@ -47,14 +46,6 @@ public class CartViewRes extends BasicRes {
 
 	public void setCartId(int cartId) {
 		this.cartId = cartId;
-	}
-
-	public int getGlobalAreaId() {
-		return globalAreaId;
-	}
-
-	public void setGlobalAreaId(int globalAreaId) {
-		this.globalAreaId = globalAreaId;
 	}
 
 	public String getOperationType() {
@@ -81,7 +72,6 @@ public class CartViewRes extends BasicRes {
 		this.subtotal = subtotal;
 	}
 
-	// 新版：回傳「以活動為單位」的兩層巢狀結構
 	public List<AvailablePromotionVo> getAvailablePromotions() {
 		return availablePromotions;
 	}
@@ -118,11 +108,11 @@ public class CartViewRes extends BasicRes {
 	 * 套用折價券後的實際應付金額 - null = 尚未使用折價券（前端顯示 subtotal 即可）<br>
 	 * - 有值 = 已套用折價券（前端顯示這個打折後的金額）
 	 */
-	//	private BigDecimal discountedTotal;
+	// private BigDecimal discountedTotal;
 
 	/**
 	 * 告訴前端：這個會員是否有折價券可用？ true → 前端顯示「是否使用折價券？」的選擇按鈕
 	 */
-	//	private boolean hasCoupon;
+	// private boolean hasCoupon;
 
 }

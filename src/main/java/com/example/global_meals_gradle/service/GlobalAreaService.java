@@ -1,5 +1,6 @@
 package com.example.global_meals_gradle.service;
 
+import org.hibernate.validator.internal.util.stereotypes.Lazy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +20,8 @@ public class GlobalAreaService {
 	private GlobalAreaDao globalAreaDao;
 
 	@Autowired
-	private ProductService productService;
+	@Lazy
+	private BranchInventoryService branchInventoryService;
 
 	// 新增分店
 	@Transactional(rollbackFor = Exception.class)
@@ -33,7 +35,7 @@ public class GlobalAreaService {
 			int newBranchId = globalAreaDao.findLastId();
 
 			// 3. 呼叫你的庫存初始化
-			productService.initInventoryForNewBranch(newBranchId);
+			branchInventoryService.initInventoryForNewBranch(newBranchId);
 		} catch (Exception e) {
 			throw e;
 		}

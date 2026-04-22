@@ -28,6 +28,14 @@ public class PromotionsGifts {
 	@Column(name = "is_active")
 	private boolean active = true;
 
+	public int getQuantity() {
+		return quantity;
+	}
+
+	public void setQuantity(int quantity) {
+		this.quantity = quantity;
+	}
+
 	public int getId() {
 		return id;
 	}
@@ -50,14 +58,6 @@ public class PromotionsGifts {
 
 	public void setFullAmount(BigDecimal fullAmount) {
 		this.fullAmount = fullAmount;
-	}
-
-	public int getQuantity() {
-		return quantity;
-	}
-
-	public void setQuantity(int quantity) {
-		this.quantity = quantity;
 	}
 
 	public int getGiftProductId() {

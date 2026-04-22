@@ -32,6 +32,10 @@ public class CreateOrdersReq {
 	@NotEmpty(message = ValidationMsg.ORDER_CART_DETAILS_NOT_EMPTY)
 	@Valid // 這樣才會去檢查 OrderCartDetails 類別裡面的標註
 	private List<OrderCartDetails> OrderCartDetailsList;
+	
+	private boolean useDiscount;   // 判斷有無使用優惠劵
+	
+	private int promotionsId;  // 判斷參加的優惠活動id
 
 	public String getOrderCartId() {
 		return orderCartId;
@@ -97,4 +101,19 @@ public class CreateOrdersReq {
 		OrderCartDetailsList = orderCartDetailsList;
 	}
 
+	public boolean isUseDiscount() {
+		return useDiscount;
+	}
+
+	public void setUseDiscount(boolean useDiscount) {
+		this.useDiscount = useDiscount;
+	}
+
+	public int getPromotionsId() {
+		return promotionsId;
+	}
+
+	public void setPromotionsId(int promotionsId) {
+		this.promotionsId = promotionsId;
+	}
 }

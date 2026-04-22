@@ -12,6 +12,7 @@ import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.dao.MemberTempDao;
 import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
+import com.example.global_meals_gradle.dao.RegionsDao;
 import com.example.global_meals_gradle.entity.Members;
 import com.example.global_meals_gradle.entity.PromotionsGifts;
 import com.example.global_meals_gradle.req.PromotionsReq;
@@ -32,6 +33,11 @@ public class PromotionsService {
 	// 查詢 products 表，用來抓贈品的商品名稱（避免拉到 MEDIUMBLOB 圖片欄位）
 	@Autowired
 	private ProductsDao productsDao;
+
+	// 查詢 regions 表，用來取得各國折扣上限（usage_cap）
+	@Autowired
+	private RegionsDao regionsDao;
+
 
 	/**
 	 * 促銷活動結帳計算
@@ -142,10 +148,36 @@ public class PromotionsService {
 			//   1. members.is_discount = 1（會員有折扣券，代表累積訂單已達 10 次）
 			//   2. 前端 useCoupon = true（使用者有勾選使用折扣券）
 			if (member.isDiscount() && req.isUseCoupon()) {
-				// 打八折
-				currentTotal = currentTotal * 0.8;
+
+				// 使用折扣券時 country 必須有值，沒有傳就無法查折扣上限
+				if (req.getCountry() == null || req.getCountry().isBlank()) {
+					throw new RuntimeException(ReplyMessage.COUNTRY_ERROR.getMessage());
+				}
+
+				// 從 regions 表查出這個國家的折扣上限（usage_cap）
+				// 前端下拉選單內容來自 regions 表，理論上一定查得到
+				// 若查不到表示傳入了不存在的 country，屬於異常，直接擋下
+				Integer usageCap = regionsDao.findUsageCapByCountry(req.getCountry());
+				if (usageCap == null) {
+					throw new RuntimeException(ReplyMessage.COUNTRY_ERROR.getMessage());
+				}
+
+				// 折扣上限從 regions.usage_cap 取得，不再寫死
+				double discountCap = usageCap.doubleValue();
+
+				// 計算九折實際折扣金額：currentTotal * 0.1
+				// 例如 1000 → 折 100；5000 → 折 500
+				double discountAmount = currentTotal * 0.1;
+
+				// 實際折扣 = min(計算折扣, 上限)
+				// 例如台灣：5000 打九折折 500，但上限 200，所以只折 200，實付 4800
+				double actualDiscount = Math.min(discountAmount, discountCap);
+
+				// 套用折扣
+				currentTotal = currentTotal - actualDiscount;
+
 				// 告訴前端這次有套用折扣，名稱固定為此字串
-				res.setAppliedDiscountName("會員 8 折優惠");
+				res.setAppliedDiscountName("會員 9 折優惠");
 			}
 		}
 

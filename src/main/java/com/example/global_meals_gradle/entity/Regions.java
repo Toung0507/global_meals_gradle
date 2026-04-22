@@ -34,6 +34,12 @@ public class Regions {
 	@Column(name = "updated_at")
 	private LocalDate updatedAt;
 
+	// 折扣上限：各國貨幣單位不同，數字不同但實際價值相當
+	// 例如台灣 200、日本 1000、韓國 10000
+	// 對應 regions.usage_cap 欄位
+	@Column(name = "usage_cap")
+	private int usageCap;
+
 	public int getId() {
 		return id;
 	}
@@ -88,6 +94,14 @@ public class Regions {
 
 	public void setUpdatedAt(LocalDate updatedAt) {
 		this.updatedAt = updatedAt;
+	}
+
+	public int getUsageCap() {
+		return usageCap;
+	}
+
+	public void setUsageCap(int usageCap) {
+		this.usageCap = usageCap;
 	}
 
 }

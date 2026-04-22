@@ -3,6 +3,8 @@ package com.example.global_meals_gradle.entity;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.UpdateTimestamp;
+
 import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.persistence.Column;
@@ -43,6 +45,7 @@ public class BranchInventory {
 	@Column(name = "version")
 	private int version;
 
+	@UpdateTimestamp // 每次更新資料時，Hibernate 會自動幫你填入當前時間
 	@Column(name = "updated_at")
 	private LocalDateTime updatedAt;
 

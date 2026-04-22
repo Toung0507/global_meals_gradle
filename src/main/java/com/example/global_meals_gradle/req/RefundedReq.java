@@ -1,6 +1,5 @@
 package com.example.global_meals_gradle.req;
 
-import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.validation.constraints.NotBlank;
@@ -20,7 +19,7 @@ public class RefundedReq {
 	private String id;
 
 	@NotNull(message = ValidationMsg.STATUS_ERROR)
-	private OrdersStatus status;
+	private String status;
 
 	public String getOrderDateId() {
 		return orderDateId;
@@ -38,11 +37,11 @@ public class RefundedReq {
 		this.id = id;
 	}
 
-	public OrdersStatus getStatus() {
+	public String getStatus() {
 		return status;
 	}
 
-	public void setStatus(OrdersStatus status) {
+	public void setStatus(String status) {
 		this.status = status;
 	}
 

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 @JsonFormat(with = JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_PROPERTIES)
 public enum OrdersStatus {
 
+	UNPAID("UNPAID"), //
 	COMPLETED("COMPLETED"), //
 	CANCELLED("CANCELLED"), //
 	REFUNDED("REFUNDED");

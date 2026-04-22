@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,7 +17,6 @@ import com.example.global_meals_gradle.req.CartSyncReq;
 import com.example.global_meals_gradle.res.CartViewRes;
 import com.example.global_meals_gradle.service.CartService;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import jakarta.validation.Valid;
 
 @RestController
@@ -46,7 +46,7 @@ public class CartController {
 	 * 前端 Body 範例：{ "cartId": 7, "productId": 5, "quantity": 3, ... }
 	 */
 
-	@PostMapping("sync")
+	@PostMapping("/sync")
 	// @Valid 觸發欄位驗證
 	// @RequestBody 把 JSON 轉成 Java 物件
 	public CartViewRes syncItem(@Valid @RequestBody CartSyncReq req) {
@@ -61,7 +61,7 @@ public class CartController {
 	 * 前端 Body 範例：{ "cartId": 7, "productId": 5, "memberId":3 }
 	 */
 
-	@DeleteMapping("item")
+	@DeleteMapping("/item")
 	public CartViewRes removeItem(@Valid @RequestBody CartRemoveReq req) {
 		return cartService.removeItem(req);
 	}
@@ -75,7 +75,7 @@ public class CartController {
 	 * 前端 Body 範例（選了大盤雞）：{ "cartId": 7, "memberId": 3,"selectedGiftProductId": 101 }
 	 */
 
-	@PostMapping("gift")
+	@PostMapping("/gift")
 	public CartViewRes selectGift(@Valid @RequestBody CartSelectGiftReq req) {
 		return cartService.selectGift(req);
 	}
@@ -88,7 +88,7 @@ public class CartController {
 	 * 前端 Body 範例：{ "cartId": 7, "memberId": 3 }
 	 */
 
-	@DeleteMapping("clear")
+	@DeleteMapping("/clear")
 	public CartViewRes clearCart(@Valid @RequestBody CartClearReq req) {
 		return cartService.clearCart(req);
 	}
@@ -108,10 +108,8 @@ public class CartController {
 // ================================
 // 二、路由與跨網域設定
 // ================================
-
 // @RequestMapping
 // 定義 URL 路由的「基礎路徑」。
-
 // @CrossOrigin(origins = "http://localhost:4200")
 // 允許特定網域呼叫你的後端 API。
 // "http://localhost:4200"：Angular 開發環境預設網址。
@@ -120,37 +118,24 @@ public class CartController {
 // ================================
 // 三、URL 參數取得方式 (RESTful API 傳參規範)
 // ================================
-
 // @PathVariable（路徑參數）
 // URL 範例：/api/products/101
-//
 // 參數位置：URL 路徑的一部分（例如：101）
-//
 // 核心作用：「唯一性定位」用來找尋特定、唯一的資源（Identify）。
-//
 // 語義比喻：這是這筆資料的「身分證字號」，直接刻在網址裡。
-//
 // 預設狀態：必填（少了它網址就不完整，會報 404）。
-//
 // 使用時機：取得（GET）、修改（PUT/PATCH）或刪除（DELETE）特定 ID 的資料。
-
 // @RequestParam（請求參數）
 // URL 範例：/api/products?category=food&price=500
-//
 // 參數位置：URL 問號 (?) 後面的鍵值對
-//
 // 核心作用：「條件性篩選」 用來對結果進行過濾、排序或分頁（Filter / Sort / Paginate）。
-//
 // 語義比喻：這是查詢時的「篩選標籤」，網址主體不變，但內容因標籤而異。
-//
 // 預設狀態：必填（但常用 required=false 設為非必填，或搭配 defaultValue 提供預設值）。
-//
 // 使用時機：搜尋關鍵字、分頁處理（page=1）、或是不適合放在路徑中的非唯一性參數。
 
 // ================================
 // 四、HTTP 方法對應
 // ================================
-
 // 常見 Mapping：
 //
 // @GetMapping("/{cartId}")
@@ -168,12 +153,10 @@ public class CartController {
 // ================================
 // 五、依賴注入與驗證
 // ================================
-
 // @Autowired（請大腦進場）
 // 依賴注入（Dependency Injection）
 //
 // 讓 Spring 自動把：已建立好的 CartService（大腦）注入到這個變數中，不需要自己 new。
-
 // @Valid
 // 作用：檢查傳入的 Request DTO是否符合規則，
 // 例如：
