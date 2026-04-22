@@ -20,13 +20,13 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	// 2. 【隱形功能】繼承來的 .findById(id)
 	// 用途：修改商品前，先撈出舊資料。
 
-	// 3. 依區域搜尋商品的方法 (自動命名)
-	public List<Products> findByRegionCountry(String regionCountry);
-
-	// 4. 給前台看的菜單方法 (手寫 SQL)
-	@Query(value = "SELECT * FROM products WHERE region_country = ?1 AND "//
-			+ "is_active = 1 AND deleted_at IS NULL", nativeQuery = true)
-	public List<Products> getMenu(String regionCountry);
+//	// 3. 依區域搜尋商品的方法 (自動命名)
+//	public List<Products> findByRegionsId(String regionCountry);
+//
+//	// 4. 給前台看的菜單方法 (手寫 SQL)
+//	@Query(value = "SELECT * FROM products WHERE region_country = ?1 AND "//
+//			+ "is_active = 1 AND deleted_at IS NULL", nativeQuery = true)
+//	public List<Products> getMenu(String regionCountry);
 
 	// 5. 軟刪除方法 (手寫 SQL)
 	@Modifying

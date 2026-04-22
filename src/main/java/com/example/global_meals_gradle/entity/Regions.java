@@ -79,7 +79,7 @@ public class Regions {
 	public void setCountryCode(String countryCode) {
 		this.countryCode = countryCode;
 	}
-
+	
 	public BigDecimal getTaxRate() {
 		return taxRate;
 	}
