@@ -28,5 +28,4 @@ public class DeleteGlobalAreaReq {
 		this.globalAreaIdList = globalAreaIdList;
 	}
 	
-	
 }

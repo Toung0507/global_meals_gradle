@@ -1,5 +1,7 @@
 package com.example.global_meals_gradle.controller;
 
+import java.time.LocalTime;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,6 +44,12 @@ public class MembersController {
 	// 會員登入
 	@PostMapping("members/login")
 	public MembersRes login(@Valid @RequestBody LoginMembersReq req, HttpSession session) {
+		/* 修改 session_id 的存活時間： 預設時間是 30 分鐘，
+		 * 在有效的活時間內持續有跟 server 溝通，相同的 session_id 就不會失效 */
+		// withNano(0) 是把毫秒的部分 取消掉
+		session.setMaxInactiveInterval(7200); // 兩小時
+		System.out.println(LocalTime.now().withNano(0) + " -- " //
+				+ req.getPhone() + "：" + session.getId());
 		MembersRes res = membersService.login(req);
 		if(res.getCode() == ReplyMessage.SUCCESS.getCode()) {
 			session.setAttribute(ATTRIBUTE_KEY, res);

@@ -5,8 +5,11 @@ public enum ReplyMessage {
 	// 昱文
 	// Service RegionsService
 	REGIONS_ID_ERROR(400, "Regions Id Error!!"),//
+	REGIONS_ID_NOT_FOUND(404, "Regions Id Not Found!!"),//
+	TAX_TYPE_ERROR(400, "Tax Type Error!!"), //
 	// Service GlobalAreaService
 	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
+	GLOBAL_AREA_ID_NOT_FOUND(404, "Global Area Id Not Found!!"),//
 	// Service MembersService
 	PHONE_ERROR(400, "Phone Error!!"), //
 	PHONE_HAS_EXISTED(400, "Phone Has Existed!!"), // 電話號碼已存在
@@ -16,7 +19,7 @@ public enum ReplyMessage {
 	PHONE_OR_PASSWORD_ERROR(400, "Phone Or Password Error!!"), //
 	UPDATE_FAILED(400, "Update Failed!!"), //
 	GUEST_CANT_UPDATE(400, "Guest Cant Update!!"), // 訪客無法更新
-	
+
 	/* 劭頴 */
 	SUCCESS(200, "Success!!"), //
 	ORDER_NOT_FOUND(400, "Order Not Found!!"), //
@@ -47,6 +50,12 @@ public enum ReplyMessage {
 	NOT_REACH_FULLAMOUNT(400, "Not Reach fullamount!"), //
 	GIFT_SEND_LIGHT(400, "Gift Send light!!"), //
 	CART_NOT_FOUND(404, "Cart Not Found!!"),
+	/* 購物車*/
+	// 已結帳的購物車不允許再修改（removeItem / clearCart / syncItem 分支B 用）
+	CART_ALREADY_CHECKED_OUT(400, "Cart Already Checked Out!!"),
+	// operationType 傳了非法值（不在 OperationType 枚舉裡的字串）
+	INVALID_OPERATION_TYPE(400, "Invalid Operation Type!!"),
+	
 	
 	/*景翔*/
 	// 基本欄位錯誤
@@ -68,9 +77,9 @@ public enum ReplyMessage {
 	// 副店長相關
 	DEPUTY_OPERATE_ERROR(403, "Deputy Operate Error"), //翻譯:副店長無法執行此操作
 	TARGET_NOT_STAFF(400, "Target Not Staff"), //目標人物必須是員工
-	TARGET_NOT_DEPUTY(400, "Target Not Deputy"), //目標人物不是副店長
+	TARGET_NOT_DEPUTY(400, "Target Not Deputy"); //目標人物不是副店長
 	PROMOTE_TARGET_ERROR(400, "Promote Target Error"), //提升目標錯誤
-	;
+
 	
 
 	private int code;
