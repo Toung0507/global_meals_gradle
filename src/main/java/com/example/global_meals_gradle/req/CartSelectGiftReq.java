@@ -19,6 +19,7 @@ public class CartSelectGiftReq {
     // 優點：從這一個 ID 可以查到規則裡的 giftProductId、fullAmount、quantity、promotionsId
     //       完全不需要前端另外再傳 selectedGiftProductId 或 promotionId
     //       避免兩個活動都送同一個贈品時，不知道扣哪個活動名額的問題
+    @Min(value = 1, message = ValidationMsg.GIFTRULE_ID_MUST_BE_POSITIVE)
     private int giftRuleId;
 
     public int getCartId() {
