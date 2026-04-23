@@ -1,8 +1,8 @@
-package com.example.global_meals_gradle.res;
+package com.example.global_meals_gradle.vo;
 
 import java.math.BigDecimal;
 
-public class RevenueData {
+public class RevenueDataVo {
 
 	private String branchName;
 	

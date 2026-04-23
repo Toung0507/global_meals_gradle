@@ -1,12 +1,8 @@
 package com.example.global_meals_gradle.entity;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import com.example.global_meals_gradle.constants.ValidationMsg;
-
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
 
 @Entity
 @Table(name = "products")

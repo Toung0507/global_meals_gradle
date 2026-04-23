@@ -21,7 +21,7 @@ public interface OrderCartDetailsDao extends JpaRepository<OrderCartDetails, Int
 	@Query(value = "SELECT * FROM order_cart_details WHERE order_cart_id = ?1", nativeQuery = true)
 	public List<OrderCartDetails> findAllByCartId(int orderCartId);
 
-	// 把 7 號車裡標記為『贈品(is_gift=1)』的東西全刪了
+	// 把 7 號車裡標記為『贈品(is_gift = 1)』的東西全刪了
 	@Modifying
 	@Transactional
 	@Query(value = "DELETE FROM order_cart_details WHERE order_cart_id = ?1 AND is_gift = 1", nativeQuery = true)
@@ -33,9 +33,7 @@ public interface OrderCartDetailsDao extends JpaRepository<OrderCartDetails, Int
 	@Query(value = "DELETE FROM order_cart_details WHERE order_cart_id = ?1 AND product_id = ?2", nativeQuery = true)
 	public void deleteByCartIdAndProductId(int orderCartId, int productId);
 
-	/*
-	 * 清空購物車
-	 */
+	/* 清空購物車 */
 	@Modifying
 	@Transactional
 	@Query(value = "DELETE FROM order_cart_details WHERE order_cart_id = ?1", nativeQuery = true)

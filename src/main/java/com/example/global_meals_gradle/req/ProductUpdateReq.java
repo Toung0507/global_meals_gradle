@@ -1,16 +1,19 @@
 package com.example.global_meals_gradle.req;
 
-import jakarta.validation.constraints.NotNull;
+import com.example.global_meals_gradle.constants.ValidationMsg;
+
+import jakarta.validation.constraints.Min;
 
 public class ProductUpdateReq extends ProductCreateReq {
-	@NotNull(message = "更新時必須提供 ID")
-	private Integer id;
+	
+	@Min(value = 1, message = ValidationMsg.PRODUCT_ID_MUST_BE_POSITIVE)
+	private int id;
 
-	public Integer getId() {
+	public int getId() {
 		return id;
 	}
 
-	public void setId(Integer id) {
+	public void setId(int id) {
 		this.id = id;
 	}
 

@@ -36,15 +36,15 @@ import com.example.global_meals_gradle.entity.Regions;
 import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
-import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.req.PayReq;
+import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
 import com.example.global_meals_gradle.res.GetOrdersByPhoneRes;
-import com.example.global_meals_gradle.res.GetOrdersDetailVo;
-import com.example.global_meals_gradle.res.GetOrdersVo;
 import com.example.global_meals_gradle.res.MembersRes;
+import com.example.global_meals_gradle.vo.GetOrdersDetailVo;
+import com.example.global_meals_gradle.vo.GetOrdersVo;
 
 import jakarta.servlet.http.HttpSession;
 

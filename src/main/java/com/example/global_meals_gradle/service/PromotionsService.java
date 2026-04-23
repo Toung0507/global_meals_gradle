@@ -1,19 +1,24 @@
 package com.example.global_meals_gradle.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.dao.MemberTempDao;
+import com.example.global_meals_gradle.dao.ProductsDao;
+import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
+import com.example.global_meals_gradle.dao.RegionsDao;
+import com.example.global_meals_gradle.entity.Members;
+import com.example.global_meals_gradle.entity.PromotionsGifts;
 import com.example.global_meals_gradle.req.PromotionsReq;
 import com.example.global_meals_gradle.res.PromotionsRes;
-import com.example.global_meals_gradle.res.GiftItem;
-import com.example.global_meals_gradle.dao.*;
-import com.example.global_meals_gradle.entity.*;
+import com.example.global_meals_gradle.vo.GiftItemVo;
 
 @Service
 public class PromotionsService {
@@ -28,7 +33,7 @@ public class PromotionsService {
 
 	// 查詢 products 表，用來抓贈品的商品名稱（避免拉到 MEDIUMBLOB 圖片欄位）
 	@Autowired
-	private ProductsTempDao productTempDao;
+	private ProductsDao productsDao;
 
 	// 查詢 regions 表，用來確認國家是否合法並取得該國折扣上限
 	@Autowired
@@ -59,7 +64,7 @@ public class PromotionsService {
 
 		// 準備收集：觸發贈品的活動 ID、贈品清單
 		List<Integer> appliedPromotionIds = new ArrayList<>();
-		List<GiftItem> receivedGifts = new ArrayList<>();
+		List<GiftItemVo> receivedGifts = new ArrayList<>();
 
 		// currentTotal 是會隨折扣變動的金額，初始值等於原始金額
 		// 贈品判斷不用這個，折扣才用這個
@@ -93,10 +98,10 @@ public class PromotionsService {
 
 			// 用 gift_product_id 去 products 表查商品名稱
 			// 使用 ProductsTempDao 是為了避免把 MEDIUMBLOB（圖片）也一起撈出來
-			String productName = productTempDao.findNameById(selectedGift.getGiftProductId());
+			String productName = productsDao.findNameById(selectedGift.getGiftProductId());
 
 			// 組成 GiftItem 放進回傳清單
-			GiftItem item = new GiftItem();
+			GiftItemVo item = new GiftItemVo();
 			item.setPromotionsGiftsId(selectedGift.getId());
 			item.setProductId(selectedGift.getGiftProductId());
 
@@ -189,19 +194,19 @@ public class PromotionsService {
 	 * @param originalAmount 當下的消費金額
 	 * @return 所有達標的贈品清單，依門檻金額由高到低排序
 	 */
-	public List<GiftItem> getAvailableGifts(BigDecimal originalAmount) {
+	public List<GiftItemVo> getAvailableGifts(BigDecimal originalAmount) {
 
 		// 查出所有達標的贈品（活動啟用、在時間範圍內、還有庫存）
 		List<PromotionsGifts> qualifiedGifts = promotionsGiftsDao.findAllQualifiedGifts(originalAmount);
 
 		// 逐一組成 GiftItem 回傳給前端
-		List<GiftItem> result = new ArrayList<>();
+		List<GiftItemVo> result = new ArrayList<>();
 		for (PromotionsGifts gift : qualifiedGifts) {
 
 			// 查商品名稱，避免拉到 MEDIUMBLOB
-			String productName = productTempDao.findNameById(gift.getGiftProductId());
+			String productName = productsDao.findNameById(gift.getGiftProductId());
 
-			GiftItem item = new GiftItem();
+			GiftItemVo item = new GiftItemVo();
 			item.setPromotionsGiftsId(gift.getId());
 			item.setProductId(gift.getGiftProductId());
 			item.setProductName(productName != null ? productName : "活動贈品");

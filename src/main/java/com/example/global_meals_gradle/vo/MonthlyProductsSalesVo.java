@@ -1,4 +1,4 @@
-package com.example.global_meals_gradle.res;
+package com.example.global_meals_gradle.vo;
 
 public class MonthlyProductsSalesVo {
 	private String productName; // 商品名稱（從 products 表撈）

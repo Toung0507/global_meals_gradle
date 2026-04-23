@@ -1,11 +1,11 @@
-package com.example.global_meals_gradle.res;
+package com.example.global_meals_gradle.vo;
 
 /**
  * 單一贈品項目
  * 放在 PromotionsRes.receivedGifts 和查詢可選贈品清單的回傳裡
  * 每一筆代表一個可選或已選的贈品
  */
-public class GiftItem {
+public class GiftItemVo {
 
 	// promotions_gifts 表的 id
 	// 前端顯示可選清單後，使用者選好要帶這個 id 回來告訴 Service 選了哪一筆

@@ -2,9 +2,11 @@ package com.example.global_meals_gradle.res;
 
 import java.util.List;
 
+import com.example.global_meals_gradle.vo.RevenueDataVo;
+
 public class RevenueQueryRes extends BasicRes {
 	
-	private List<RevenueData> revenueData;
+	private List<RevenueDataVo> revenueData;
 
 	public RevenueQueryRes() {
 		super();
@@ -14,16 +16,16 @@ public class RevenueQueryRes extends BasicRes {
 		super(code, message);
 	}
 
-	public RevenueQueryRes(int code, String message, List<RevenueData> revenueData) {
+	public RevenueQueryRes(int code, String message, List<RevenueDataVo> revenueData) {
 		super(code, message);
 		this.revenueData = revenueData;
 	}
 
-	public List<RevenueData> getRevenueData() {
+	public List<RevenueDataVo> getRevenueData() {
 		return revenueData;
 	}
 
-	public void setRevenueData(List<RevenueData> revenueData) {
+	public void setRevenueData(List<RevenueDataVo> revenueData) {
 		this.revenueData = revenueData;
 	}
 	

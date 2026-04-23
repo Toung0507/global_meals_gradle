@@ -19,11 +19,11 @@ import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.req.PromotionsManageReq;
 import com.example.global_meals_gradle.req.PromotionsReq;
 import com.example.global_meals_gradle.res.BasicRes;
-import com.example.global_meals_gradle.res.GiftItem;
 import com.example.global_meals_gradle.res.PromotionsListRes;
 import com.example.global_meals_gradle.res.PromotionsRes;
 import com.example.global_meals_gradle.service.PromotionsManageService;
 import com.example.global_meals_gradle.service.PromotionsService;
+import com.example.global_meals_gradle.vo.GiftItemVo;
 
 import jakarta.validation.Valid;
 
@@ -58,7 +58,7 @@ public class PromotionsManageController {
 
 	/* 查詢可選贈品清單：傳入消費金額，回傳所有達標的贈品讓使用者選一個 */
 	@PostMapping("/promotions/getAvailableGifts")
-	public List<GiftItem> getAvailableGifts(@RequestBody BigDecimal amount) {
+	public List<GiftItemVo> getAvailableGifts(@RequestBody BigDecimal amount) {
 		return promotionsService.getAvailableGifts(amount);
 	}
 

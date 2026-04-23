@@ -3,8 +3,8 @@ package com.example.global_meals_gradle.constants;
 public class ValidationMsg {
 
 	/* 定義成 static (全域)，可以直接透過 ValidationMsg.TITLE_ERROR 來呼叫使用 */
-	
-	// 昱文
+
+	/* 昱文 */
 	// Entity Products
 	public static final String QUANTITY_CANT_BE_NEGATIVE = "Quantity Cant Be Negative!!";
 	public static final String MAX_ORDER_QUANTITY = "Max Order Quantity One At Least!!";
@@ -31,48 +31,46 @@ public class ValidationMsg {
 	public static final String COUNTRY_CODE_CANT_BE_EMPTY = "Country Code Cant Be Empty!!";
 	// Req UpdatePasswordReq
 	public static final String MEMBERS_ID_ERROR = "Members Id Error!!";
-	
-	// 劭穎
-	/* 訂單 */
+
+	/* 劭穎 */
 	public static final String ORDER_DATE_ID_ERROR = "Order Date Id Error";
-
 	public static final String ID_ERROR = "Id Error"; // 訂單id錯誤
-
 	public static final String STATUS_ERROR = "Status Error"; // 訂單狀態錯誤
-
 	public static final String PAYMENT_METHID_ERROR = "PaymentMethod Error";
-
 	public static final String TRANSACTION_ID_ERROR = "TransactionId Error";
-
 	public static final String ORDER_CART_ID_ERROR = "OrderCartId Error";
-
 	public static final String PHONE_ERROR = "Phone Error";
-
 	public static final String ORDER_CART_DETAILS_NOT_EMPTY = "Order Cart Details Not Empty";
-	/* 購物車（艷羽） */
+
+	/* 艷羽 */
+	// 購物車
 	public static final String CART_ID_MUST_BE_POSITIVE = "CartId Must Be Positive";
 	public static final String PRODUCT_ID_MUST_BE_POSITIVE = "ProductId Must Be Positive ";
 	public static final String MEMBER_ID_MUST_BE_POSITIVE = "MemberId Must Be Positive";
 	public static final String GIFTRULE_ID_MUST_BE_POSITIVE = "GiftRuleId Must Be Positive";
-	public static final String STAFF_ID_MUST_BE_POSITIVE ="StaffId Must Be Positive";
+	public static final String STAFF_ID_MUST_BE_POSITIVE = "StaffId Must Be Positive";
 	/* 購物車建立驗證 */
 	public static final String GLOBAL_AREA_ID_MUST_BE_POSITIVE = "GlobalAreaId Must Be Positive!!";
 	public static final String OPERATION_TYPE_CANNOT_BE_BLANK = "OperationType Cannot Be Blank!!";
-	/*查看商品銷售量req的驗證:*/
-	public static final String YEAR_REQUIRED = "Year is required"; 
-    public static final String MONTH_REQUIRED = "Month is required"; 
-    public static final String MONTH_RANGE = "Month must be between 1 and 12";
-	
-	/* 景翔 */
-	/* 職員 */
-	public static final String ACCOUNT_ERROR = "Account Error";
-	
-	public static final String ROLE_ERROR = "Role Error";
-	
-	public static final String OLD_PASSWORD_ERROR = "Old Password Error";
+	/* 查看商品銷售量req的驗證: */
+	public static final String YEAR_REQUIRED = "Year is required";
+	public static final String MONTH_REQUIRED = "Month is required";
+	public static final String MONTH_RANGE = "Month must be between 1 and 12";
 
+	/* 景翔 */
+	// 職員
+	public static final String ACCOUNT_ERROR = "Account Error";
+	public static final String ROLE_ERROR = "Role Error";
+	public static final String OLD_PASSWORD_ERROR = "Old Password Error";
 	public static final String NEW_PASSWORD_ERROR = "New Password Error";
 
-	
+	/* 思云 */
+	// 商品
+	public static final String PRODUCT_NAME_EMPTY = "Product Name cannot be empty";
+	public static final String PRODUCT_CATEGORY_EMPTY = "Product Category cannot be empty";
+	public static final String PRODUCT_AREA_ID_INVALID = "Global Area Id must be at least 1";
+	public static final String PRODUCT_PRICE_INVALID = "Price must be greater than 0";
+	public static final String PRODUCT_DESCRIPTION_EMPTY = "Description cannot be empty";
+	public static final String PRODUCT_ID_EMPTY = "Product ID cannot be empty";
 
 }
