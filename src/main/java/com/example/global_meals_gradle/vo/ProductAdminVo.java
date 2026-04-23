@@ -1,22 +1,20 @@
-package com.example.global_meals_gradle.req;
+package com.example.global_meals_gradle.vo;
 
-import com.example.global_meals_gradle.constants.ValidationMsg;
-
-import jakarta.validation.constraints.NotBlank;
-
-public class ProductCreateReq {
-
-	@NotBlank(message = ValidationMsg.PRODUCT_NAME_EMPTY)
+public class ProductAdminVo {
+	private int id;
 	private String name;
-
-	@NotBlank(message = ValidationMsg.PRODUCT_CATEGORY_EMPTY)
 	private String category;
-
-	@NotBlank(message = ValidationMsg.PRODUCT_DESCRIPTION_EMPTY)
 	private String description;
+	private boolean active;
+	private String foodImgBase64; // 這裡是關鍵！轉成 String
 
-	// 讓你可以決定是否直接上架，預設可以給 false (先建好再手動上架)
-	private boolean active = false;
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
 
 	public String getName() {
 		return name;
@@ -48,6 +46,14 @@ public class ProductCreateReq {
 
 	public void setActive(boolean active) {
 		this.active = active;
+	}
+
+	public String getFoodImgBase64() {
+		return foodImgBase64;
+	}
+
+	public void setFoodImgBase64(String foodImgBase64) {
+		this.foodImgBase64 = foodImgBase64;
 	}
 
 }

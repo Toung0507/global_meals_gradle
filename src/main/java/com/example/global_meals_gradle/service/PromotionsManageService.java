@@ -1,24 +1,25 @@
 package com.example.global_meals_gradle.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.dao.PromotionsDao;
 import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
-import com.example.global_meals_gradle.dao.ProductsTempDao;
 import com.example.global_meals_gradle.entity.Promotions;
 import com.example.global_meals_gradle.entity.PromotionsGifts;
 import com.example.global_meals_gradle.req.PromotionsManageReq;
-import com.example.global_meals_gradle.res.GiftDetailVo;
-import com.example.global_meals_gradle.res.PromotionDetailVo;
 import com.example.global_meals_gradle.res.PromotionsListRes;
+import com.example.global_meals_gradle.vo.GiftDetailVo;
+import com.example.global_meals_gradle.vo.PromotionDetailVo;
 
 @Service
 public class PromotionsManageService {
@@ -33,7 +34,7 @@ public class PromotionsManageService {
 
 	// 查詢 products 表：確認 gift_product_id 是否有對應的商品存在
 	@Autowired
-	private ProductsTempDao productsTempDao;
+	private ProductsDao productsDao;
 
 	// =============================================
 	// 方法零：查詢所有促銷活動（含各自的贈品清單）
@@ -109,7 +110,7 @@ public class PromotionsManageService {
 
 				// 用 gift_product_id 查商品名稱（避免把 MEDIUMBLOB 圖片也撈出來）
 				// findNameById 查不到時回傳 null，給預設值 "活動贈品"
-				String name = productsTempDao.findNameById(g.getGiftProductId());
+				String name = productsDao.findNameById(g.getGiftProductId());
 				gvo.setProductName(name != null ? name : "活動贈品");
 
 				gvo.setActive(g.isActive()); // 是否還有效（庫存耗盡時為 false）
@@ -176,7 +177,7 @@ public class PromotionsManageService {
 
 		// 驗證 giftProductId 在 products 表中有對應的商品名稱
 		// findNameById 查不到時回傳 null
-		String productName = productsTempDao.findNameById(req.getGiftProductId());
+		String productName = productsDao.findNameById(req.getGiftProductId());
 		if (productName == null) {
 			throw new RuntimeException(ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
 		}
@@ -419,7 +420,7 @@ public class PromotionsManageService {
 
 			// 確認 giftProductId 在 products 表中有對應的商品名稱
 			// findNameById 查不到時回傳 null
-			String productName = productsTempDao.findNameById(req.getGiftProductId());
+			String productName = productsDao.findNameById(req.getGiftProductId());
 			if (productName == null) {
 				throw new RuntimeException(ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
 			}

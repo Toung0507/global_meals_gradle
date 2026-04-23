@@ -1,8 +1,8 @@
-package com.example.global_meals_gradle.res;
+package com.example.global_meals_gradle.vo;
 
 import java.math.BigDecimal;
 
-public class MonthlyReportDetail {
+public class MonthlyReportDetailVo {
 
 	private String reportDate;
 	

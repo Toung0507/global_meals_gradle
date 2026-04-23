@@ -20,20 +20,21 @@ public enum TaxType {
 	public void setTaxType(String taxType) {
 		this.taxType = taxType;
 	}
-	
+
 	// 參數檢查
 	public static boolean check(String input) {
-		
-		if(!StringUtils.hasText(input)) {
+
+		if (!StringUtils.hasText(input)) {
 			return false;
 		}
-		for(TaxType type : values()) {
-			if(input.equalsIgnoreCase(type.getTaxType())) {
+
+		for (TaxType type : values()) {
+			if (input.equalsIgnoreCase(type.getTaxType())) {
 				return true;
 			}
 		}
+
 		return false;
 	}
-	
 
 }

@@ -29,52 +29,41 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	// 用途：處理「新增」與「修改」的所有情況。
 	// 優點：自動處理 byte[] 圖片，不管是新商品還是改舊商品，通通丟進去就對了。
 
-	// 2. 【隱形功能】繼承來的 .findById(id)
-	// 用途：修改商品前，先撈出舊資料。
+	// 2. 修改商品基本資訊 - 透過 .save 讓 JPA 自己去判斷，但先留著備註
+	// @Modifying
+	// @Transactional
+	// @Query(value = "UPDATE products SET name = ?1, category = ?2, description = ?3, "//
+	//	 	+ "food_img = ?4 WHERE id = ?5", nativeQuery = true)
+	// public int updateProductInfo(String name, String category, String description, byte[] img, int id);
 
-	// 3. 依區域搜尋商品的方法 (自動命名)
-	public List<Products> findByRegionCountry(String regionCountry);
-
-	// 4. 給前台看的菜單方法 (手寫 SQL)
-	@Query(value = "SELECT * FROM products WHERE region_country = ?1 AND "//
-			+ "is_active = 1 AND deleted_at IS NULL", nativeQuery = true)
-	public List<Products> getMenu(String regionCountry);
-
-	// 5. 軟刪除方法 (手寫 SQL)
+	// 3. 軟刪除商品
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE products SET deleted_at = NOW() , is_active = 0 WHERE id = ?1 ", nativeQuery = true)
-	public int softDeleteProduct(int productsId);
+	@Query(value = "UPDATE products SET deleted_at = NOW(), is_active = 0 WHERE id = ?1", //
+			nativeQuery = true)
+	public int softDeleteProduct(int id);
 
-	// 6. 扣庫存的方法 (手動實作樂觀鎖) -- > 到時候合併邵穎的寫法
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE products SET stock_quantity = ?2, version = version + 1 "
-			+ "WHERE id = ?1 AND version = ?3", nativeQuery = true)
-	public int updateStockWithOptimisticLock(int productsId, int newStock, int currentVersion);
+	// 4. 查詢商品名稱 (贈品顯示用)
+	@Query(value = "SELECT name FROM products WHERE id = :id", nativeQuery = true)
+	public String findNameById(@Param("id") int id);
 
-  	//邵穎用在雙層迴圈，改成用 JOIN 先註解不使用
-	@Query(value = "select name from products where id = ?1", nativeQuery = true)
-	public String getProductsNameById(int id);
-	
-	/*  用於訂單成立 */
-	@Query(value = "select * from products where id = ?1", nativeQuery = true)
+	// 5. 取得特定 ID 商品 ==> 只可以看到商品名稱 & 圖片 (艷羽有使用)
+	@Query(value = "SELECT * FROM products WHERE id = ?1", nativeQuery = true)
 	public Products findById(int id);
+
+	// 6. 檢查名稱是否存在 (自動產生 SELECT COUNT(*) ...)
+	public boolean existsByName(String name);
+
+	// 7. 更新時檢查名稱是否存在
+	@Query(value = "SELECT COUNT(*) > 0 FROM products WHERE name = :name AND id <> :id", //
+			nativeQuery = true)
+	public boolean existsByNameAndIdNot(@Param("name") String name, @Param("id") int id);
 	
-	/*  用於訂單成立中各分店庫存查詢 */
-	@Query(value = "select * from products where id = ?1 AND　region_country　＝　？２", nativeQuery = true)
-	public Products findByIdAndRegionCountry(int id, String regionCountry);
+	// 8. 查詢所有「未刪除」的商品 (管理者清單頁)
+    @Query(value = "SELECT * FROM products WHERE deleted_at IS NULL", nativeQuery = true)
+    public List<Products> findByDeletedAtIsNull();
 
-	/* 庫存減少 */
-	// stock_quantity >= ?2: 防止「沒鎖好」的意外
-	@Modifying
-	@Transactional
-	@Query(value = "update products set stock_quantity = stock_quantity - ?2 where id = ?1 and stock_quantity >= ?2", nativeQuery = true)
-	public int upDateStock(int id, int stockQuantity);
-
-	// 7. 前台實時確認庫存 (只抓數字，不抓整張表，效能最快)
-	@Query(value = "SELECT stock_quantity FROM products WHERE id = ?1 AND deleted_at IS NULL", nativeQuery = true)
-	public Integer getStockById(int productsId);
-
-
+    // 9. 查詢所有「已刪除」的商品 (垃圾桶頁面)
+    @Query(value = "SELECT * FROM products WHERE deleted_at IS NOT NULL", nativeQuery = true)
+    public List<Products> findByDeletedAtIsNotNull();
 }

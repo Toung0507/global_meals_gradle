@@ -2,11 +2,13 @@ package com.example.global_meals_gradle.res;
 
 import java.util.List;
 
+import com.example.global_meals_gradle.vo.MonthlyReportDetailVo;
+
 public class MonthlyReportRes extends BasicRes {
 
-	private List<MonthlyReportDetail> currentData;
+	private List<MonthlyReportDetailVo> currentData;
 	
-	private List<MonthlyReportDetail> lastData;
+	private List<MonthlyReportDetailVo> lastData;
 
 	public MonthlyReportRes() {
 		super();
@@ -16,26 +18,26 @@ public class MonthlyReportRes extends BasicRes {
 		super(code, message);
 	}
 
-	public MonthlyReportRes(int code, String message, List<MonthlyReportDetail> currentData,
-			List<MonthlyReportDetail> lastData) {
+	public MonthlyReportRes(int code, String message, List<MonthlyReportDetailVo> currentData,
+			List<MonthlyReportDetailVo> lastData) {
 		super(code, message);
 		this.currentData = currentData;
 		this.lastData = lastData;
 	}
 
-	public List<MonthlyReportDetail> getCurrentData() {
+	public List<MonthlyReportDetailVo> getCurrentData() {
 		return currentData;
 	}
 
-	public void setCurrentData(List<MonthlyReportDetail> currentData) {
+	public void setCurrentData(List<MonthlyReportDetailVo> currentData) {
 		this.currentData = currentData;
 	}
 
-	public List<MonthlyReportDetail> getLastData() {
+	public List<MonthlyReportDetailVo> getLastData() {
 		return lastData;
 	}
 
-	public void setLastData(List<MonthlyReportDetail> lastData) {
+	public void setLastData(List<MonthlyReportDetailVo> lastData) {
 		this.lastData = lastData;
 	}
 	

@@ -2,6 +2,8 @@ package com.example.global_meals_gradle.res;
 
 import java.util.List;
 
+import com.example.global_meals_gradle.vo.PromotionDetailVo;
+
 /**
  * GET /promotions/list 的回傳物件
  *

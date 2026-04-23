@@ -2,15 +2,13 @@ package com.example.global_meals_gradle.dao;
 
 import java.math.BigDecimal;
 import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
 import com.example.global_meals_gradle.entity.PromotionsGifts;
-
-import jakarta.transaction.Transactional;
-
-
 
 public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integer> {
 
@@ -129,8 +127,6 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 		   nativeQuery = true)
 	List<PromotionsGifts> findByPromotionsId(@Param("promotionsId") int promotionsId);
 
-	
-	
 	/* 核心邏輯：取得所有目前上架的有效期內的活動的上架中的贈品門檻 /規則*/
 	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
 		    + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
@@ -139,8 +135,6 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 		    + "AND prom.start_time <= CURRENT_DATE "
 		    + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
 	public List<PromotionsGifts> findAllActiveGifts();
-
-	
 
 	/*
     
@@ -176,7 +170,6 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
             + "AND prom.end_time >= CURRENT_DATE",
             nativeQuery = true)
     PromotionsGifts findActiveRuleByGiftRuleId(int giftRuleId);
-
     
     /* 更新贈品兌換次數(用於兌換贈品，數量-1)，庫存歸零時下架邏輯由 OrdersService 處理 */
     @Modifying

@@ -1,24 +1,21 @@
 package com.example.global_meals_gradle.service;
 
-import com.example.global_meals_gradle.dao.*;
-import com.example.global_meals_gradle.entity.*;
-import com.example.global_meals_gradle.req.*;
-import com.example.global_meals_gradle.res.*;
-
-import com.example.global_meals_gradle.constants.OperationType;
-import com.example.global_meals_gradle.constants.ReplyMessage;
-import com.example.global_meals_gradle.constants.TaxType;
-
-import org.springframework.beans.factory.annotation.Autowired;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.global_meals_gradle.dao.*;
+import com.example.global_meals_gradle.entity.*;
+import com.example.global_meals_gradle.req.*;
+import com.example.global_meals_gradle.res.*;
+import com.example.global_meals_gradle.constants.*;
+import com.example.global_meals_gradle.vo.*;
 
 @Service
 public class CartService {
@@ -231,7 +228,7 @@ public class CartService {
 		// 🛡️ 防禦：確認購物車存在
 		OrderCart cart = orderCartDao.findById(req.getCartId());
 		if (cart == null) {
-			//從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
+			// 從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
 			return buildError(ReplyMessage.CART_NOT_FOUND); // code=404
 		}
 
@@ -244,7 +241,7 @@ public class CartService {
 		// 🛡️ 防禦：只有 CUSTOMER 模式才驗擁有者
 		// STAFF 模式：員工代替客人點餐，員工天然有操作權限，不需要 memberId 比對
 		if (cart.getOperationType() == OperationType.CUSTOMER && cart.getOperation() != req.getMemberId()) {
-			//從 throw 改成 return buildError
+			// 從 throw 改成 return buildError
 			return buildError(ReplyMessage.OPERATE_ERROR); // code=403
 		}
 
@@ -330,7 +327,7 @@ public class CartService {
 //			 未來 getCartView() 重驗時，就能用這個 ID 精準找回同一條規則，
 //			 如果用product_id 反查時，出現不同規則同樣的贈品就會恰好撈到另一個活動的規則的風險，
 //			導致促銷稽核時會出現「看似合法但扣錯活動名額」問題。
-			giftDetail.setPromotionsGiftsId(giftRuleId); 
+			giftDetail.setPromotionsGiftsId(giftRuleId);
 			orderCartDetailsDao.save(giftDetail); // INSERT 進資料庫
 		}
 
@@ -424,7 +421,7 @@ public class CartService {
 		CartViewRes res = new CartViewRes();
 		res.setCartId(cartId);
 		List<String> warningMessages = new ArrayList<>(); // 警告訊息（調價/下架）
-		List<CartItemVO> voList = new ArrayList<>(); // 商品明細清單
+		List<CartItemVo> voList = new ArrayList<>(); // 商品明細清單
 		BigDecimal subtotal = BigDecimal.ZERO; // 稅前小計，從 0 開始
 
 //	         ── 步驟 1：確認購物車存在，並驗證擁有者身份 ──
@@ -456,7 +453,7 @@ public class CartService {
 		// 修改十一：把「組裝單一商品 VO」的複雜邏輯委託給私有方法 buildNormalItemVO
 		// for 迴圈從原來的 5 層巢狀縮排簡化到只剩 3 行，可讀性大幅提升
 		for (OrderCartDetails detail : normalItems) {
-			CartItemVO vo = buildNormalItemVO(detail, cart, warningMessages); // 商品狀態驗證 + VO 組裝
+			CartItemVo vo = buildNormalItemVo(detail, cart, warningMessages); // 商品狀態驗證 + VO 組裝
 			voList.add(vo); // 不管是否缺貨，都要顯示在畫面讓用戶知道
 			// 所有情況的 lineTotal：error 時是 BigDecimal.ZERO，正常時是 price × qty
 			// 累加 ZERO 不影響結果，所以不需要 if 判斷就能直接加
@@ -480,15 +477,15 @@ public class CartService {
 //		     修改後：從 existingGift.getPromotionsGiftsId() 取出「當初存進去的規則ID」
 //		             用 findActiveRuleByGiftRuleId() 主鍵精準定位，語意完全正確
 			PromotionsGifts giftRule = null;
-			    Integer savedGiftRuleId = existingGift.getPromotionsGiftsId(); // 取出存入時記錄的規則ID
-			    if (savedGiftRuleId != null && savedGiftRuleId > 0) {
-			        // 正常路徑：promotionsGiftsId 有值，用主鍵精準查（新資料走這裡）
-			        giftRule = promotionsGiftsDao.findActiveRuleByGiftRuleId(savedGiftRuleId);
-			    } else {
-			        // 容錯路徑：promotionsGiftsId 是 NULL（舊資料/欄位新增前的資料），
-			        // 退回用 productId 反查，行為與原本一致，不破壞現有資料
-			        giftRule = promotionsGiftsDao.findActiveRuleByGiftProductId(existingGift.getProductId());
-			    }
+			Integer savedGiftRuleId = existingGift.getPromotionsGiftsId(); // 取出存入時記錄的規則ID
+			if (savedGiftRuleId != null && savedGiftRuleId > 0) {
+				// 正常路徑：promotionsGiftsId 有值，用主鍵精準查（新資料走這裡）
+				giftRule = promotionsGiftsDao.findActiveRuleByGiftRuleId(savedGiftRuleId);
+			} else {
+				// 容錯路徑：promotionsGiftsId 是 NULL（舊資料/欄位新增前的資料），
+				// 退回用 productId 反查，行為與原本一致，不破壞現有資料
+				giftRule = promotionsGiftsDao.findActiveRuleByGiftProductId(existingGift.getProductId());
+			}
 
 //			 先查這個贈品在本分店的實體庫存
 //			 cart 物件在步驟1已查好，這裡可以直接使用
@@ -505,8 +502,8 @@ public class CartService {
 					&& subtotal.compareTo(giftRule.getFullAmount()) >= 0; // 條件6：消費金額達標
 // ✅ 現在：行銷名額 + 實體庫存 兩層都確認才算有效
 			if (giftStillValid) {
-//	            CartItemVO的清單voList贈品部分：     有效：把贈品 VO 加入CartItemVO的清單voList中顯示在購物車界面
-				CartItemVO giftVO = new CartItemVO();
+//	            CartItemVo的清單voList贈品部分：     有效：把贈品 VO 加入CartItemVo的清單voList中顯示在購物車界面
+				CartItemVo giftVO = new CartItemVo();
 				giftVO.setDetailId(existingGift.getId());
 				giftVO.setProductId(existingGift.getProductId());
 				giftVO.setProductName(giftProduct.getName()); // 展示贈品名稱（如「大盤雞」）
@@ -527,7 +524,7 @@ public class CartService {
 //		 外層清單：裝「使用者有資格參加的活動」
 //		 最後這個清單會被設定進 res.setAvailablePromotions()
 //		 空清單代表消費未達任何活動門檻，前端不顯示「選擇活動」按鈕
-		List<AvailablePromotionVO> availablePromotions = new ArrayList<>();
+		List<AvailablePromotionVo> availablePromotions = new ArrayList<>();
 
 //		去資料庫撈出所有目前上架且在有效時間範圍內的活動（完整物件，含 id 和 name）
 		List<Promotions> activePromotions = promotionsDao.findActivePromotions();
@@ -588,7 +585,7 @@ public class CartService {
 
 //			── 使用者達到這個活動的最低門檻！開始組裝這個活動底下的贈品清單 ──
 //			內層清單：裝「這個活動底下每個贈品選項的狀況」
-			List<AvailableGiftVO> giftsVoList = new ArrayList<>();
+			List<AvailableGiftVo> giftsVoList = new ArrayList<>();
 
 //			 逐一審查這個活動底下的每條贈品規則
 			for (PromotionsGifts rule : giftsInThisPromotion) {
@@ -601,7 +598,7 @@ public class CartService {
 				}
 
 //				 消費達到這條規則！開始組裝這個贈品的 VO
-				AvailableGiftVO option = new AvailableGiftVO();
+				AvailableGiftVo option = new AvailableGiftVo();
 				option.setGiftRuleId(rule.getId()); // promotions_gifts 主鍵
 				option.setGiftProductId(rule.getGiftProductId()); // 贈品的商品 ID
 				option.setFullAmount(rule.getFullAmount()); // 這條規則的消費門檻
@@ -653,7 +650,7 @@ public class CartService {
 			}
 
 //			 組裝這個活動的外層 VO
-			AvailablePromotionVO promotionVO = new AvailablePromotionVO();
+			AvailablePromotionVo promotionVO = new AvailablePromotionVo();
 			promotionVO.setPromotionId(promotion.getId()); // 活動 ID
 			promotionVO.setPromotionName(promotion.getName()); // 活動名稱（前端下拉顯示）
 			promotionVO.setFullAmount(minFullAmount); // 這個活動的最低消費門檻
@@ -664,7 +661,7 @@ public class CartService {
 		}
 
 //	         ── 步驟 5：查稅務設定並計算稅額 ──
-		TaxInfoVO taxInfo = new TaxInfoVO();
+		TaxInfoVo taxInfo = new TaxInfoVo();
 		BigDecimal totalAmount = subtotal; // 預設（無稅設定時/內含稅）：總計 = 小計
 		Regions region = regionsDao.findByGlobalAreaId(cart.getGlobalAreaId());
 		if (region == null) {
@@ -691,7 +688,6 @@ public class CartService {
 			}
 			// taxType 為 null → 完全跳過稅務計算，totalAmount 保持等於 subtotal（無稅）
 
-
 		}
 //        ── 步驟 6：打包所有結果回傳 ──
 		/*
@@ -707,23 +703,23 @@ public class CartService {
 		res.setTaxInfo(taxInfo);
 		res.setTotalAmount(totalAmount);
 		res.setWarningMessages(warningMessages);
-		
+
 		res.setCode(ReplyMessage.SUCCESS.getCode());
 		res.setMessage(ReplyMessage.SUCCESS.getMessage());
 		return res;
 	}
 
 	/**
-	 * 私有工具方法：組裝單一「一般商品」的 CartItemVO 抽出這個方法的目的：讓 getCartView 的 for 迴圈從 5
-	 * 層巢狀縮排降至 1 層，大幅提升可讀性 使用 Guard Clause（守門人模式）：遇到問題就提前 return，不用繼續往下執行
+	 * 私有工具方法：組裝單一「一般商品」的 CartItemVo 抽出這個方法的目的：讓 getCartView 的 for 迴圈從 5 層巢狀縮排降至 1
+	 * 層，大幅提升可讀性 使用 Guard Clause（守門人模式）：遇到問題就提前 return，不用繼續往下執行
 	 *
 	 * @param detail          購物車明細（單一商品那列）
 	 * @param cart            購物車主表（需要裡面的 globalAreaId）
 	 * @param warningMessages 警告訊息清單（共用引用，方法內部直接往裡 add）
-	 * @return 組裝好的 CartItemVO（lineTotal = ZERO 代表不計入小計；有值代表正常商品）
+	 * @return 組裝好的 CartItemVo（lineTotal = ZERO 代表不計入小計；有值代表正常商品）
 	 */
-	private CartItemVO buildNormalItemVO(OrderCartDetails detail, OrderCart cart, List<String> warningMessages) {
-		CartItemVO vo = new CartItemVO();
+	private CartItemVo buildNormalItemVo(OrderCartDetails detail, OrderCart cart, List<String> warningMessages) {
+		CartItemVo vo = new CartItemVo();
 
 		// 先查這個商品目前的狀態（是否存在、是否上架）
 		Products product = productsDao.findById(detail.getProductId());

@@ -1,5 +1,6 @@
 package com.example.global_meals_gradle.service;
 
+import org.hibernate.validator.internal.util.stereotypes.Lazy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,13 +19,17 @@ import com.example.global_meals_gradle.utils.PhoneValidatorUtils;
 
 @Service
 public class GlobalAreaService {
-	
+
 	@Autowired
 	private GlobalAreaDao globalAreaDao;
+
+	@Autowired
+	@Lazy
+	private BranchInventoryService branchInventoryService;
 	
 	@Autowired
 	private RegionsDao regionsDao;
-	
+
 	// 新增分店
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes create(CreateGlobalAreaReq req) {
@@ -45,13 +50,16 @@ public class GlobalAreaService {
 			// 電話標準化
 			String normalizedPhone = PhoneValidatorUtils.toE164Format(req.getPhone(), countryCode);
 			globalAreaDao.insert(req.getRegionsId(), req.getBranch(), req.getAddress(), normalizedPhone);
+			// 新增分店後，要初始化庫存
+			int newBranchId = globalAreaDao.findLastId();
+			branchInventoryService.initInventoryForNewBranch(newBranchId);
 		} catch (Exception e) {
 			throw e;
 		}
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage());
 	}
-	
+
 	// 更新分店
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes update(UpdateGlobalAreaReq req) {
@@ -79,18 +87,18 @@ public class GlobalAreaService {
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage());
 	}
-	
+
 	// 取得分店清單
 	public GlobalAreaRes getAllBranch() {
 		return new GlobalAreaRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage(), globalAreaDao.getAll());
 	}
-	
+
 	// 刪除多個分店
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes delete(DeleteGlobalAreaReq req) {
-		for(int id : req.getGlobalAreaIdList()) {
-			if(id <= 0) {
+		for (int id : req.getGlobalAreaIdList()) {
+			if (id <= 0) {
 				return new BasicRes(ReplyMessage.GLOBAL_AREA_ID_ERROR.getCode(), //
 						ReplyMessage.GLOBAL_AREA_ID_ERROR.getMessage());
 			}

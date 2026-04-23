@@ -1,4 +1,4 @@
-package com.example.global_meals_gradle.res;
+package com.example.global_meals_gradle.vo;
 
 import java.time.LocalDate;
 import java.util.List;

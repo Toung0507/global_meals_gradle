@@ -1,0 +1,143 @@
+07:16:28.866 INFO  [restartedMain]c.e.g.GlobalMealsGradleApplication - Starting GlobalMealsGradleApplication using Java 21.0.9 with PID 21348 (C:\Users\USER\Desktop\all_project\2026_project\global_meals_gradle\bin\main started by Toung in C:\Users\USER\Desktop\all_project\2026_project\global_meals_gradle)
+07:16:28.866 INFO  [restartedMain]c.e.g.GlobalMealsGradleApplication - The following 1 profile is active: "secrets"
+07:16:29.057 INFO  [restartedMain]o.s.d.r.config.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+07:16:29.101 INFO  [restartedMain]o.s.d.r.config.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 42 ms. Found 15 JPA repository interfaces.
+07:16:29.172 INFO  [restartedMain]org.springframework.boot.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+07:16:29.175 INFO  [restartedMain]org.apache.catalina.core.StandardService - Starting service [Tomcat]
+07:16:29.175 INFO  [restartedMain]org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/11.0.18]
+07:16:29.201 INFO  [restartedMain]o.s.b.w.c.servlet.WebApplicationContextInitializer - Root WebApplicationContext: initialization completed in 332 ms
+07:16:29.227 INFO  [restartedMain]com.zaxxer.hikari.HikariDataSource - HikariPool-23 - Starting...
+07:16:29.236 INFO  [restartedMain]com.zaxxer.hikari.pool.HikariPool - HikariPool-23 - Added connection com.mysql.cj.jdbc.ConnectionImpl@729be26b
+07:16:29.236 INFO  [restartedMain]com.zaxxer.hikari.HikariDataSource - HikariPool-23 - Start completed.
+07:16:29.237 INFO  [restartedMain]org.hibernate.orm.jpa - HHH008540: Processing PersistenceUnitInfo [name: default]
+07:16:29.264 INFO  [restartedMain]o.s.o.j.persistenceunit.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+07:16:29.268 INFO  [restartedMain]org.hibernate.orm.connections.pooling - HHH10001005: Database info:
+	Database JDBC URL [jdbc:mysql://localhost:3306/global_meals?serverTimezone=GMT%2B8&useSSL=false&rewriteBatchedStatements=true]
+	Database driver: MySQL Connector/J
+	Database dialect: MySQLDialect
+	Database version: 8.0.45
+	Default catalog/schema: global_meals/undefined
+	Autocommit mode: undefined/unknown
+	Isolation level: REPEATABLE_READ [default REPEATABLE_READ]
+	JDBC fetch size: none
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+07:16:29.329 WARN  [restartedMain]org.hibernate.orm.core - HHH000038: Composite id class does not override equals(): com.example.global_meals_gradle.entity.OrdersId
+07:16:29.415 ERROR [restartedMain]o.s.orm.jpa.LocalContainerEntityManagerFactoryBean - Failed to initialize JPA EntityManagerFactory: Unable to build Hibernate SessionFactory  [persistence unit: default] ; nested exception is org.hibernate.InstantiationException: Could not instantiate entity 'com.example.global_meals_gradle.entity.BranchInventory' due to: null
+07:16:29.416 WARN  [restartedMain]o.s.b.w.s.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/hibernate/autoconfigure/HibernateJpaConfiguration.class]: Unable to build Hibernate SessionFactory  [persistence unit: default] ; nested exception is org.hibernate.InstantiationException: Could not instantiate entity 'com.example.global_meals_gradle.entity.BranchInventory' due to: null
+07:16:29.416 INFO  [restartedMain]com.zaxxer.hikari.HikariDataSource - HikariPool-23 - Shutdown initiated...
+07:16:29.437 INFO  [restartedMain]com.zaxxer.hikari.HikariDataSource - HikariPool-23 - Shutdown completed.
+07:16:29.438 INFO  [restartedMain]org.apache.catalina.core.StandardService - Stopping service [Tomcat]
+07:16:29.441 INFO  [restartedMain]o.s.b.a.logging.ConditionEvaluationReportLogger - 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+07:16:29.442 ERROR [restartedMain]org.springframework.boot.SpringApplication - Application run failed
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/hibernate/autoconfigure/HibernateJpaConfiguration.class]: Unable to build Hibernate SessionFactory  [persistence unit: default] ; nested exception is org.hibernate.InstantiationException: Could not instantiate entity 'com.example.global_meals_gradle.entity.BranchInventory' due to: null
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1817)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:603)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:525)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:333)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:371)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:331)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:201)
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:977)
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:621)
+	at org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:143)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:756)
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:445)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:321)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1365)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1354)
+	at com.example.global_meals_gradle.GlobalMealsGradleApplication.main(GlobalMealsGradleApplication.java:15)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:52)
+Caused by: jakarta.persistence.PersistenceException: Unable to build Hibernate SessionFactory  [persistence unit: default] ; nested exception is org.hibernate.InstantiationException: Could not instantiate entity 'com.example.global_meals_gradle.entity.BranchInventory' due to: null
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:448)
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:411)
+	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.afterPropertiesSet(LocalContainerEntityManagerFactoryBean.java:419)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1864)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1813)
+	... 18 common frames omitted
+Caused by: org.hibernate.InstantiationException: Could not instantiate entity 'com.example.global_meals_gradle.entity.BranchInventory' due to: null
+	at org.hibernate.metamodel.internal.EntityInstantiatorPojoStandard.instantiate(EntityInstantiatorPojoStandard.java:101)
+	at org.hibernate.engine.internal.UnsavedValueFactory.inferUnsavedIdentifierValue(UnsavedValueFactory.java:54)
+	at org.hibernate.engine.internal.UnsavedValueFactory.getUnsavedIdentifierValue(UnsavedValueFactory.java:39)
+	at org.hibernate.metamodel.mapping.internal.BasicEntityIdentifierMappingImpl.<init>(BasicEntityIdentifierMappingImpl.java:148)
+	at org.hibernate.persister.entity.AbstractEntityPersister.generateIdentifierMapping(AbstractEntityPersister.java:5173)
+	at org.hibernate.persister.entity.AbstractEntityPersister.lambda$prepareMappingModel$0(AbstractEntityPersister.java:4821)
+	at org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess.processSubPart(MappingModelCreationProcess.java:170)
+	at org.hibernate.persister.entity.AbstractEntityPersister.prepareMappingModel(AbstractEntityPersister.java:4820)
+	at org.hibernate.persister.entity.AbstractEntityPersister.initializeSpecialAttributeMappings(AbstractEntityPersister.java:4682)
+	at org.hibernate.persister.entity.AbstractEntityPersister.prepareMappings(AbstractEntityPersister.java:4663)
+	at org.hibernate.persister.entity.AbstractEntityPersister.prepareMappingModel(AbstractEntityPersister.java:4631)
+	at org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess.execute(MappingModelCreationProcess.java:88)
+	at org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess.process(MappingModelCreationProcess.java:43)
+	at org.hibernate.metamodel.model.domain.internal.MappingMetamodelImpl.finishInitialization(MappingMetamodelImpl.java:167)
+	at org.hibernate.internal.SessionFactoryImpl.<init>(SessionFactoryImpl.java:283)
+	at org.hibernate.internal.SessionFactoryRegistry.instantiateSessionFactory(SessionFactoryRegistry.java:64)
+	at org.hibernate.boot.internal.SessionFactoryBuilderImpl.build(SessionFactoryBuilderImpl.java:437)
+	at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.build(EntityManagerFactoryBuilderImpl.java:1456)
+	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:93)
+	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:443)
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:436)
+	... 22 common frames omitted
+Caused by: java.lang.reflect.InvocationTargetException
+	at java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:74)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:502)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at org.hibernate.metamodel.internal.EntityInstantiatorPojoStandard.instantiate(EntityInstantiatorPojoStandard.java:98)
+	... 42 common frames omitted
+Caused by: java.lang.Error: Unresolved compilation problems: 
+	Syntax error, insert "}" to complete MethodBody
+	Syntax error, insert "}" to complete ClassBody
+
+	at com.example.global_meals_gradle.entity.BranchInventory.<init>(BranchInventory.java:112)
+	at java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62)
+	... 45 common frames omitted
+08:03:42.050 INFO  [restartedMain]c.e.g.GlobalMealsGradleApplication - Starting GlobalMealsGradleApplication using Java 21.0.9 with PID 22288 (C:\Users\USER\Desktop\all_project\2026_project\global_meals_gradle\bin\main started by Toung in C:\Users\USER\Desktop\all_project\2026_project\global_meals_gradle)
+08:03:42.055 INFO  [restartedMain]c.e.g.GlobalMealsGradleApplication - The following 1 profile is active: "secrets"
+08:03:42.124 INFO  [restartedMain]o.s.b.d.env.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+08:03:42.124 INFO  [restartedMain]o.s.b.d.env.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+08:03:42.438 INFO  [background-preinit]org.hibernate.validator.internal.util.Version - HV000001: Hibernate Validator 9.0.1.Final
+08:03:43.299 INFO  [restartedMain]o.s.d.r.config.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+08:03:43.433 INFO  [restartedMain]o.s.d.r.config.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 122 ms. Found 15 JPA repository interfaces.
+08:03:44.298 INFO  [restartedMain]org.springframework.boot.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+08:03:44.329 INFO  [restartedMain]org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+08:03:44.332 INFO  [restartedMain]org.apache.catalina.core.StandardService - Starting service [Tomcat]
+08:03:44.334 INFO  [restartedMain]org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/11.0.18]
+08:03:44.424 INFO  [restartedMain]o.s.b.w.c.servlet.WebApplicationContextInitializer - Root WebApplicationContext: initialization completed in 2298 ms
+08:03:44.749 INFO  [restartedMain]com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+08:03:44.984 INFO  [restartedMain]com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@c45d96e
+08:03:44.987 INFO  [restartedMain]com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+08:03:45.018 INFO  [restartedMain]org.hibernate.orm.jpa - HHH008540: Processing PersistenceUnitInfo [name: default]
+08:03:45.087 INFO  [restartedMain]org.hibernate.orm.core - HHH000001: Hibernate ORM core version 7.2.7.Final
+08:03:45.653 INFO  [restartedMain]o.s.o.j.persistenceunit.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+08:03:45.770 INFO  [restartedMain]org.hibernate.orm.connections.pooling - HHH10001005: Database info:
+	Database JDBC URL [jdbc:mysql://localhost:3306/global_meals?serverTimezone=GMT%2B8&useSSL=false&rewriteBatchedStatements=true]
+	Database driver: MySQL Connector/J
+	Database dialect: MySQLDialect
+	Database version: 8.0.45
+	Default catalog/schema: global_meals/undefined
+	Autocommit mode: undefined/unknown
+	Isolation level: REPEATABLE_READ [default REPEATABLE_READ]
+	JDBC fetch size: none
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+08:03:46.249 WARN  [restartedMain]org.hibernate.orm.core - HHH000038: Composite id class does not override equals(): com.example.global_meals_gradle.entity.OrdersId
+08:03:47.084 INFO  [restartedMain]org.hibernate.orm.core - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+08:03:47.093 INFO  [restartedMain]o.s.orm.jpa.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+08:03:47.214 INFO  [restartedMain]o.s.d.jpa.repository.query.QueryEnhancerFactories - Hibernate is in classpath; If applicable, HQL parser will be used.
+08:03:48.363 DEBUG [restartedMain]org.springframework.web.client.DefaultRestClient - Reading to [java.util.Map<java.lang.String, java.lang.Object>]
+08:03:48.934 WARN  [restartedMain]o.s.b.j.a.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+08:03:49.216 DEBUG [restartedMain]o.s.w.s.m.m.a.RequestMappingHandlerMapping - 68 mappings in 'requestMappingHandlerMapping'
+08:03:49.269 DEBUG [restartedMain]o.s.web.servlet.handler.SimpleUrlHandlerMapping - Patterns [/webjars/**, /**, /swagger-ui/**, /swagger-ui/*swagger-initializer.js, /webjars/*swagger-ui/**, /webjars/*swagger-ui/*swagger-initializer.js, /webjars/*swagger-ui/5.32.0/*swagger-initializer.js] in 'resourceHandlerMapping'
+08:03:49.323 DEBUG [restartedMain]o.s.w.s.m.m.a.RequestMappingHandlerAdapter - ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 2 RequestBodyAdvice, 1 ResponseBodyAdvice
+08:03:49.420 DEBUG [restartedMain]o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - ControllerAdvice beans: 1 @ExceptionHandler, 1 ResponseBodyAdvice
+08:03:49.821 INFO  [restartedMain]org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+08:03:49.844 INFO  [restartedMain]org.springframework.boot.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+08:03:49.865 INFO  [restartedMain]c.e.g.GlobalMealsGradleApplication - Started GlobalMealsGradleApplication in 8.543 seconds (process running for 9.194)
+08:03:49.877 WARN  [restartedMain]org.springdoc.core.events.SpringDocAppInitializer - SpringDoc /v3/api-docs endpoint is enabled by default. To disable it in production, set the property 'springdoc.api-docs.enabled=false'
+08:03:49.878 WARN  [restartedMain]org.springdoc.core.events.SpringDocAppInitializer - SpringDoc /swagger-ui.html endpoint is enabled by default. To disable it in production, set the property 'springdoc.swagger-ui.enabled=false'

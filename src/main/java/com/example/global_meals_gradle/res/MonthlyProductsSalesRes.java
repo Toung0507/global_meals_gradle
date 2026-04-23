@@ -2,6 +2,8 @@ package com.example.global_meals_gradle.res;
 
 import java.util.List;
 
+import com.example.global_meals_gradle.vo.MonthlyProductsSalesVo;
+
 // 回傳給前端的最外層包裝，固定格式：code + message + 資料
 	public class MonthlyProductsSalesRes  extends BasicRes {
 	    private List<MonthlyProductsSalesVo> salesList; // 裡面裝了這個月所有商品的銷售清單

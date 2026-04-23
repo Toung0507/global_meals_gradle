@@ -37,19 +37,19 @@ import com.example.global_meals_gradle.entity.Regions;
 import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
-import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.req.KitchenStatusReq;
 import com.example.global_meals_gradle.req.PayReq;
+import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
 import com.example.global_meals_gradle.res.GetOrdersByPhoneRes;
-import com.example.global_meals_gradle.res.GetOrdersDetailVo;
-import com.example.global_meals_gradle.res.GetOrdersVo;
 import com.example.global_meals_gradle.res.GetTodayOrdersRes;
 import com.example.global_meals_gradle.res.MembersRes;
 import com.example.global_meals_gradle.res.TodayOrderDetailVo;
 import com.example.global_meals_gradle.res.TodayOrderVo;
+import com.example.global_meals_gradle.vo.GetOrdersDetailVo;
+import com.example.global_meals_gradle.vo.GetOrdersVo;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -644,9 +644,7 @@ public class OrdersService {
 				order.getId(), order.getOrderDateId(), order.getTotalAmount(), order.getStatus());
 	}
 
-	/* POS 看板：取得今日所有已付款訂單（含品項與廚房狀態）
-	 * 查詢今天日期下所有 COMPLETED 的訂單，並把購物車明細組裝進來
-	 */
+	/* POS 看板：取得今日所有已付款訂單（含品項與廚房狀態）*/
 	public GetTodayOrdersRes getTodayOrders() {
 		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 		List<Orders> todayOrders = ordersDao.getTodayCompletedOrders(todayStr);
@@ -659,13 +657,11 @@ public class OrdersService {
 			vo.setTotalAmount(order.getTotalAmount());
 			vo.setKitchenStatus(order.getKitchenStatus() != null ? order.getKitchenStatus() : "WAITING");
 			vo.setPhone(order.getPhone());
-			vo.setPaymentStatus(order.getStatus().toString()); // COMPLETED 或 PENDING_CASH
+			vo.setPaymentStatus(order.getStatus().toString());
 
-			// 從 order_cart_details 取出該訂單的商品明細
 			List<TodayOrderDetailVo> items = new ArrayList<>();
 			orderCartDetailsDao.findAllByCartId(order.getOrderCartId()).forEach(detail -> {
 				TodayOrderDetailVo detailVo = new TodayOrderDetailVo();
-				// 取商品名稱（products 表）
 				Products _p = productsDao.findById(detail.getProductId());
 				if (_p != null) detailVo.setProductName(_p.getName());
 				detailVo.setQuantity(detail.getQuantity());
@@ -682,7 +678,6 @@ public class OrdersService {
 	@Transactional
 	public BasicRes updateKitchenStatus(KitchenStatusReq req) {
 		String status = req.getKitchenStatus();
-		// 只允許合法的廚房狀態值
 		if (!status.equals("WAITING") && !status.equals("COOKING") && !status.equals("READY")) {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "廚房狀態值無效，請傳入 WAITING / COOKING / READY");
 		}
@@ -699,11 +694,9 @@ public class OrdersService {
 		if (order == null) {
 			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), "找不到對應訂單");
 		}
-		// 現金待付款：回傳特殊狀態讓前端顯示「請前往櫃台付款」
 		if (OrdersStatus.PENDING_CASH.equals(order.getStatus())) {
 			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "PENDING_CASH");
 		}
-		// 已付款但廚房狀態尚未設定時，預設 WAITING
 		String kitchenStatus = order.getKitchenStatus() != null ? order.getKitchenStatus() : "WAITING";
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), kitchenStatus);
 	}

@@ -27,10 +27,10 @@ import com.example.global_meals_gradle.req.MonthRangeReportsReq;
 import com.example.global_meals_gradle.req.MonthlyReportReq;
 import com.example.global_meals_gradle.req.RevenueQueryReq;
 import com.example.global_meals_gradle.res.MonthRangeReportsRes;
-import com.example.global_meals_gradle.res.MonthlyReportDetail;
 import com.example.global_meals_gradle.res.MonthlyReportRes;
-import com.example.global_meals_gradle.res.RevenueData;
 import com.example.global_meals_gradle.res.RevenueQueryRes;
+import com.example.global_meals_gradle.vo.MonthlyReportDetailVo;
+import com.example.global_meals_gradle.vo.RevenueDataVo;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -138,8 +138,8 @@ public class MonthlyFinancialReportsService {
 		// rawData.stream(): 把這個清單(rawData) 變成一個「流（Stream）」，準備一個一個加工
 		// .map(result -> { ... }): 舊的東西轉成新的東西
 		// resule: 這是一個 Object[] 陣列，裡面裝著 [店名, 國家名, 金額]
-		List<RevenueData> dataList = rawData.stream().map(result -> {
-			RevenueData data = new RevenueData();
+		List<RevenueDataVo> dataList = rawData.stream().map(result -> {
+			RevenueDataVo data = new RevenueDataVo();
 			data.setBranchName((String) result[0]);
 			data.setRegionsName((String) result[1]);
 			data.setTotalAmount((BigDecimal) result[2]);
@@ -178,13 +178,13 @@ public class MonthlyFinancialReportsService {
 					ReplyMessage.REPORTS_NOT_FOUND.getMessage());
 		}
 
-		List<MonthlyReportDetail> currentData = new ArrayList<>();
-		List<MonthlyReportDetail> lastData = new ArrayList<>();
+		List<MonthlyReportDetailVo> currentData = new ArrayList<>();
+		List<MonthlyReportDetailVo> lastData = new ArrayList<>();
 
 		rawData.forEach(result -> {
 			String reportDate = (String) result[0];
 
-			MonthlyReportDetail data = new MonthlyReportDetail();
+			MonthlyReportDetailVo data = new MonthlyReportDetailVo();
 			data.setReportDate(reportDate);
 			data.setBranchName((String) result[1]);
 			data.setRegionsName((String) result[2]);
@@ -226,10 +226,10 @@ public class MonthlyFinancialReportsService {
 					ReplyMessage.REPORTS_NOT_FOUND.getMessage());
 		}
 
-		List<MonthlyReportDetail> currentMonth = new ArrayList<>();
+		List<MonthlyReportDetailVo> currentMonth = new ArrayList<>();
 
 		rawData.forEach(result -> { // 把陣列資料轉換
-			MonthlyReportDetail data = new MonthlyReportDetail();
+			MonthlyReportDetailVo data = new MonthlyReportDetailVo();
 			data.setReportDate((String) result[0]);
 			data.setBranchName((String) result[1]);
 			data.setRegionsName((String) result[2]);
