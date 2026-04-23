@@ -19,7 +19,7 @@ import com.example.global_meals_gradle.service.ProductService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("lazybaobao/products")
+@RequestMapping("/products")
 public class ProductController {
 
 	@Autowired

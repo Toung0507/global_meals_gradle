@@ -8,11 +8,8 @@ import jakarta.validation.constraints.NotBlank;
 /** 同步購物車商品（加入商品 / 更改數量（包括刪除單一商品） */
 public class CartSyncReq {
 
-	// 如果前端沒有傳這個值給我，值是null,表示新建購物車
-	// 如果某天你們的商品 ID 剛好允許 0，這個驗證就報廢了。所以業界統一規定：只要是可能沒傳的欄位，
-	// 一律用大寫 Integer 配 @NotNull
-	// 如果用int,用0撈資料庫回傳Null，那後續很容易出現空指針錯誤
-	@Min(value = 1, message = ValidationMsg.CART_ID_MUST_BE_POSITIVE)
+	// null 表示新建購物車，有值表示已有購物車 id（後端 CartService 依此判斷）
+	// 不加 @Min，因為合法狀態就是 null（新建）或正整數（已有）
 	private Integer cartId;
 
 	/*

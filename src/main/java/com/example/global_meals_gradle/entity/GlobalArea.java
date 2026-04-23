@@ -21,6 +21,29 @@ public class GlobalArea {
 
 	@Column(name = "phone")
 	private String phone;
+	
+	// 在 GlobalArea.java 加上這兩個欄位和對應的 getter/setter
+	@Column(name = "country")
+	private String country;
+
+	public String getCountry() {
+		return country;
+	}
+
+	public void setCountry(String country) {
+		this.country = country;
+	}
+
+	public String getCountryCode() {
+		return countryCode;
+	}
+
+	public void setCountryCode(String countryCode) {
+		this.countryCode = countryCode;
+	}
+
+	@Column(name = "country_code")
+	private String countryCode;
 
 	public int getId() {
 		return id;

@@ -36,6 +36,7 @@ HELP.md
 
 # API Key 設定檔
 src/main/resources/application-secrets.properties
+src/main/resources/application.properties
 
 # 忽略所有副檔名為 .log 的檔案
 *.log

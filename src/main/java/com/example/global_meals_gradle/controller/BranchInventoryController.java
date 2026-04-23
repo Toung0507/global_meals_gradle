@@ -19,36 +19,34 @@ import com.example.global_meals_gradle.service.BranchInventoryService;
 import jakarta.servlet.http.HttpSession;
 
 @RestController
-//全局設定此模組的開頭都是 inventory
-@RequestMapping("/inventory")
+@RequestMapping("/branch_inventory") // WebConfig 自動補 /lazybaobao，最終為 /lazybaobao/branch_inventory
 public class BranchInventoryController {
+
 	@Autowired
 	private BranchInventoryService branchInventoryService;
 
-	// 1. 處理庫存批次更新
+	// POST /lazybaobao/branch_inventory/update
 	@PostMapping("/update")
 	public BranchInventoryRes updateInventory(@Validated @RequestBody List<BranchInventoryUpdateReq> reqList) {
 		return branchInventoryService.updateInventory(reqList);
 	}
 
-	// 2. 用分店 ID 查該店所有商品庫存
-	// URL: /inventory/branch/5
-	@GetMapping("/branch/{globalAreaId}")
-	public BranchInventoryRes getInventoryByArea(@PathVariable int globalAreaId, HttpSession session) {
+	// GET /lazybaobao/branch_inventory/{globalAreaId}
+	@GetMapping("/{globalAreaId}")
+	public BranchInventoryRes getInventoryByArea(@PathVariable("globalAreaId") int globalAreaId, HttpSession session) {
 		return branchInventoryService.getInventoryByGlobalAreaId(globalAreaId, session);
 	}
 
-	// 3. 用商品 ID 查該商品在所有分店的庫存
-	// URL: /inventory/product/101
+	// GET /lazybaobao/branch_inventory/product/{productId}
 	@GetMapping("/product/{productId}")
-	public BranchInventoryRes getInventoryByProduct(@PathVariable int productId, HttpSession session) {
+	public BranchInventoryRes getInventoryByProduct(@PathVariable("productId") int productId, HttpSession session) {
 		return branchInventoryService.getInventoryByProductId(productId, session);
 	}
 
-	// 4. 分店取得菜單 (假設這個方法不需要 Session 驗證)
-	// URL: /inventory/menu/5
+	// GET /lazybaobao/branch_inventory/menu/{globalAreaId}
+	// ⚠️ 加上 /menu/ 前綴，避免與 /{globalAreaId} 路徑衝突
 	@GetMapping("/menu/{globalAreaId}")
-	public MenuListRes getMenuByArea(@PathVariable int globalAreaId) {
+	public MenuListRes getMenuByArea(@PathVariable("globalAreaId") int globalAreaId) {
 		return branchInventoryService.getMenuByArea(globalAreaId);
 	}
 }

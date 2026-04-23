@@ -294,6 +294,35 @@ public class PromotionsManageService {
 		promotionsDao.save(p);
 	}
 
+	
+	// =============================================
+	// 方法三點七：更新活動基本資訊（名稱、日期）
+	// =============================================
+	@Transactional
+	public void updatePromotionBasic(PromotionsManageReq req) {
+
+	    Promotions p = promotionsDao.findById(req.getPromotionsId())
+	            .orElseThrow(() -> new RuntimeException(ReplyMessage.PROMOTION_NOT_FOUND.getMessage()));
+
+	    // 名稱不能為空
+	    if (req.getName() == null || req.getName().isBlank()) {
+	        throw new RuntimeException(ReplyMessage.PROMOTION_NAME_ERROR.getMessage());
+	    }
+
+	    // 結束日期必須晚於開始日期
+	    if (req.getStartTime() != null && req.getEndTime() != null
+	            && !req.getEndTime().isAfter(req.getStartTime())) {
+	        throw new RuntimeException(ReplyMessage.PROMOTION_DATE_ERROR.getMessage());
+	    }
+
+	    p.setName(req.getName());
+	    if (req.getStartTime() != null) p.setStartTime(req.getStartTime());
+	    if (req.getEndTime() != null)   p.setEndTime(req.getEndTime());
+
+	    promotionsDao.save(p);
+	}
+	
+	
 	// =============================================
 	// 方法四：一次建立促銷活動 + 贈品規則（POST /promotions/create 使用）
 	// =============================================
@@ -363,7 +392,7 @@ public class PromotionsManageService {
 	// =============================================
 
 	@Transactional
-	public void createPromotionWithGift(PromotionsManageReq req) {
+	public int createPromotionWithGift(PromotionsManageReq req) {
 
 		// ── 步驟一：驗證並建立促銷活動 ──
 
@@ -436,6 +465,7 @@ public class PromotionsManageService {
 			// 寫入 promotions_gifts 表，id 由 @GeneratedValue 自動產生
 			promotionsGiftsDao.save(gift);
 		}
+		 return saved.getId(); // ← 新增這行
 	}
 
 }

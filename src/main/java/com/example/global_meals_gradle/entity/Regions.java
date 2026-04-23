@@ -21,9 +21,6 @@ public class Regions {
 	@Column(name = "currency_code") // 國家匯率代碼(TWD，JPY、KRW....)
 	private String currencyCode;
 	
-	@Column(name = "country_code") // 國家代碼(TW、JP、KR....)
-	private String countryCode;
-
 	@Column(name = "country_code", length = 3) // 國家代碼(TW、JP、KR....)
 	private String countryCode;
 
@@ -70,14 +67,6 @@ public class Regions {
 		this.currencyCode = currencyCode;
 	}
 	
-	public String getCountryCode() {
-		return countryCode;
-	}
-
-	public void setCountryCode(String countryCode) {
-		this.countryCode = countryCode;
-	}
-
 	public String getCountryCode() {
 		return countryCode;
 	}

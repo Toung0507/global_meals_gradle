@@ -104,7 +104,7 @@ public class BranchInventoryService {
 			inventory.setProductId(p.getId());
 			inventory.setGlobalAreaId(branchId); // 傳入新分店的 ID
 			inventory.setBasePrice(BigDecimal.ZERO);
-			inventory.setMaxOrderQuantity(0);
+			inventory.setMaxOrderQuantity(1);
 			inventory.setStockQuantity(0); // 初始化為 0
 			inventory.setUpdatedAt(LocalDateTime.now());
 			inventory.setVersion(1);

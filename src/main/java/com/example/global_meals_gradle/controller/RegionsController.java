@@ -17,7 +17,7 @@ import com.example.global_meals_gradle.service.RegionsService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/lazybaobao")
+@RequestMapping("/regions")   // 合併進來
 @CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true") // 允許 Angular 跨域呼叫
 public class RegionsController {
 	
@@ -25,19 +25,19 @@ public class RegionsController {
 	private RegionsService regionsService;
 	
 	// 新增/修改國家稅值
-	@PostMapping("regions/upsert")
+	@PostMapping("/upsert")
 	public BasicRes upsert(@Valid @RequestBody UpsertRegionsTaxReq req) {
 		return regionsService.upsert(req);
 	}
 	
 	// 更改國家稅值
-	@PostMapping("regions/update_usage_cap")
+	@PostMapping("/update_usage_cap")
 	public BasicRes updateUsageCap(@Valid @RequestBody UpdateRegionsUsageCapReq req) {
 		return regionsService.updateUsageCap(req);
 	}
 	
 	// 取得各國稅率清單
-	@GetMapping("regions/get_all_tax")
+	@GetMapping("/get_all_tax")
 	public RegionsRes getAllTax() {
 		return regionsService.getAllTax();
 	}

@@ -134,9 +134,9 @@ public class OrdersService {
 	@Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
 	public GetAllOrdersRes getAllOrders(HistoricalOrdersReq req, HttpSession httpSession) {
 		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		Staff staff = (Staff) httpSession.getAttribute("loginStaff");
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute("check_result");
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		if (staff != null) { // 代表是員工操作 // MemberId是設Integer，如果是int就要判斷是否 ==0
 			if (req.getMemberId() == null || membersDao.findById(req.getMemberId()) == null) {
@@ -147,7 +147,7 @@ public class OrdersService {
 			req.setMemberId(member.getId());
 		} else {
 			// 既不是員工也不是會員 -> 攔截
-			throw new RuntimeException("請先登入以查詢歷史訂單");
+			return new GetAllOrdersRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage());
 		}
 		List<Object[]> rawData = ordersDao.getFullOrderHistory(req.getMemberId());
 		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
@@ -203,9 +203,9 @@ public class OrdersService {
 	// 這個方法「不加」@Transactional，這樣裡面的 try-catch 才能重複執行。
 	public CreateOrdersRes createOrders(CreateOrdersReq req, HttpSession httpSession) {
 		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		Staff staff = (Staff) httpSession.getAttribute("loginStaff");
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute("check_result");
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		if (staff != null) { // 代表是員工操作
 			if (req.getMemberId() == 0 || membersDao.findById(req.getMemberId()) == null) {
@@ -231,7 +231,7 @@ public class OrdersService {
 				throw new RuntimeException("無優惠可使用");
 			}
 		}
-		if (ordersDao.existsByOrderCartId(req.getOrderCartId())) {
+		if (ordersDao.existsByOrderCartId(Integer.parseInt(req.getOrderCartId()))) {
 			throw new RuntimeException("該購物車已轉換為訂單，請勿重複提交");
 		}
 
@@ -251,7 +251,7 @@ public class OrdersService {
 				// 判斷是否為「可重試」的異常
 				String msg = e.getMessage();
 				// 購物車Id在資料庫有設UQ，所以如果連續點擊，會有錯誤訊息，到這裡就會傳送錯誤訊息給前端
-				if (msg != null && msg.contains("order_cart_id")) {
+				if (msg != null && msg.contains("Duplicate") && msg.contains("order_cart_id")) {
 					throw new RuntimeException("該購物車已轉換為訂單，請勿重複提交");
 				}
 				// 只有當訊息包含「衝突」(樂觀鎖失敗) 或 「Duplicate」(序號重複) 時才進入重試
@@ -562,9 +562,9 @@ public class OrdersService {
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes ordersStatus(RefundedReq req, HttpSession httpSession) {
 		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		Staff staff = (Staff) httpSession.getAttribute("loginStaff");
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute("check_result");
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());

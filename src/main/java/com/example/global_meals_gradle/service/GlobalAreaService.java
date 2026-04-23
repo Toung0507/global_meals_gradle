@@ -49,8 +49,8 @@ public class GlobalAreaService {
 			}
 			// 電話標準化
 			String normalizedPhone = PhoneValidatorUtils.toE164Format(req.getPhone(), countryCode);
-			globalAreaDao.insert(req.getRegionsId(), req.getBranch(), req.getAddress(), normalizedPhone);
-			// 新增分店後，要初始化庫存
+			globalAreaDao.insert(req.getRegionsId(), req.getBranch(), req.getAddress(), normalizedPhone,
+			        regions.getCountry(), regions.getCountryCode());			// 新增分店後，要初始化庫存
 			int newBranchId = globalAreaDao.findLastId();
 			branchInventoryService.initInventoryForNewBranch(newBranchId);
 		} catch (Exception e) {
@@ -80,7 +80,7 @@ public class GlobalAreaService {
 						ReplyMessage.PHONE_ERROR.getMessage());
 			}
 			String normalizedPhone = PhoneValidatorUtils.toE164Format(req.getPhone(), countryCode);
-			globalAreaDao.update(req.getId(), req.getBranch(), req.getAddress(), normalizedPhone);
+			globalAreaDao.update(req.getId(), req.getBranch(), req.getAddress(), normalizedPhone, regions.getCountry(), regions.getCountryCode(), req.getRegionsId());
 		} catch (Exception e) {
 			throw e;
 		}

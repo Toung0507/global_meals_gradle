@@ -29,11 +29,15 @@ import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.MonthlyProductsSalesReq;
 import com.example.global_meals_gradle.req.ProductCreateReq;
 import com.example.global_meals_gradle.req.ProductUpdateReq;
+import com.example.global_meals_gradle.req.ToggleProductReq;
 import com.example.global_meals_gradle.res.AdminProductRes;
+import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.MonthlyProductsSalesRes;
+import com.example.global_meals_gradle.res.ProductsRes;
 import com.example.global_meals_gradle.vo.InventoryDetailVo;
 import com.example.global_meals_gradle.vo.MonthlyProductsSalesVo;
 import com.example.global_meals_gradle.vo.ProductAdminVo;
+import com.example.global_meals_gradle.vo.ProductVO;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -514,5 +518,90 @@ public class ProductService {
 	        salesList.add(vo);
 	    }
 	    return salesList; // 回傳裝好的清單
+	}
+
+	// ── 以下為 ProductController (/lazybaobao/products) 使用的公開方法 ──
+
+	public ProductsRes getActiveProducts(int globalAreaId) {
+		List<BranchInventory> inventories = branchInventoryDao.findByGlobalAreaId(globalAreaId);
+		List<ProductVO> voList = new ArrayList<>();
+		for (BranchInventory inv : inventories) {
+			Products product = productsDao.findById(inv.getProductId());
+			if (product == null || !product.isActive() || product.getDeletedAt() != null) continue;
+			voList.add(toProductVO(product, inv));
+		}
+		return new ProductsRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), voList);
+	}
+
+	public ProductsRes getAllProducts(int globalAreaId) {
+		List<BranchInventory> inventories = branchInventoryDao.findByGlobalAreaId(globalAreaId);
+		List<ProductVO> voList = new ArrayList<>();
+		for (BranchInventory inv : inventories) {
+			Products product = productsDao.findById(inv.getProductId());
+			if (product == null || product.getDeletedAt() != null) continue;
+			voList.add(toProductVO(product, inv));
+		}
+		return new ProductsRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), voList);
+	}
+
+	public String getProductImage(int id) {
+		Products product = productsDao.findById(id);
+		if (product == null || product.getFoodImg() == null) return "";
+		return Base64.getEncoder().encodeToString(product.getFoodImg());
+	}
+
+	@Transactional(rollbackFor = Exception.class)
+	public BasicRes createProduct(ProductCreateReq req) {
+		if (productsDao.existsByName(req.getName())) {
+			return new BasicRes(ReplyMessage.PRODUCT_EXISTS.getCode(), ReplyMessage.PRODUCT_EXISTS.getMessage());
+		}
+		Products product = new Products();
+		product.setName(req.getName());
+		product.setCategory(req.getCategory());
+		product.setDescription(req.getDescription());
+		product.setActive(req.isActive());
+		productsDao.save(product);
+		return new BasicRes(ReplyMessage.PRODUCT_CREATE_SUCCESS.getCode(), ReplyMessage.PRODUCT_CREATE_SUCCESS.getMessage());
+	}
+
+	@Transactional(rollbackFor = Exception.class)
+	public BasicRes updateProduct(ProductUpdateReq req) {
+		Products product = productsDao.findById(req.getId());
+		if (product == null) {
+			return new BasicRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(), ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
+		}
+		if (productsDao.existsByNameAndIdNot(req.getName(), req.getId())) {
+			return new BasicRes(ReplyMessage.PRODUCT_EXISTS.getCode(), ReplyMessage.PRODUCT_EXISTS.getMessage());
+		}
+		product.setName(req.getName());
+		product.setCategory(req.getCategory());
+		product.setDescription(req.getDescription());
+		product.setActive(req.isActive());
+		productsDao.save(product);
+		return new BasicRes(ReplyMessage.PRODUCT_UPDATE_SUCCESS.getCode(), ReplyMessage.PRODUCT_UPDATE_SUCCESS.getMessage());
+	}
+
+	@Transactional(rollbackFor = Exception.class)
+	public BasicRes toggleProduct(ToggleProductReq req) {
+		Products product = productsDao.findById(req.getId().intValue());
+		if (product == null) {
+			return new BasicRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(), ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
+		}
+		product.setActive(req.isActive());
+		productsDao.save(product);
+		return new BasicRes(ReplyMessage.PRODUCT_UPDATE_SUCCESS.getCode(), ReplyMessage.PRODUCT_UPDATE_SUCCESS.getMessage());
+	}
+
+	private ProductVO toProductVO(Products product, BranchInventory inv) {
+		ProductVO vo = new ProductVO();
+		vo.setId(product.getId());
+		vo.setName(product.getName());
+		vo.setCategory(product.getCategory());
+		vo.setDescription(product.getDescription());
+		vo.setActive(product.isActive());
+		vo.setBasePrice(inv.getBasePrice());
+		vo.setStockQuantity(inv.getStockQuantity());
+		vo.setMaxOrderQuantity(inv.getMaxOrderQuantity());
+		return vo;
 	}
 }

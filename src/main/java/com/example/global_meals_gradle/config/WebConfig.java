@@ -58,13 +58,10 @@ public class WebConfig implements WebMvcConfigurer {
 				// 1. 攔截哪些路徑？
 				// "/**" 代表攔截這個路徑下的所有 API
 				// 根據你的 Controller，需要權限的都是 /api/admin 開頭的
-				.addPathPatterns("/api/admin/**") //
-				.addPathPatterns("/api/staff/**")
+				.addPathPatterns("/lazybaobao/api/admin/**") //
+				.addPathPatterns("/lazybaobao/api/staff/**")
 
 				// 2. 排除哪些路徑？(不查票的白名單)
-				// 登入和登出本來就不需要登入就能按，所以絕對要排除！
-				// (雖然我們上面只攔截了 /api/admin，登入是 /api/auth，
-				// 但實務上還是習慣明確寫出來，未來擴充才不會亂)
-				.excludePathPatterns("/api/auth/login", "/api/auth/logout");
+				.excludePathPatterns("/lazybaobao/api/auth/login", "/lazybaobao/api/auth/logout");
 	}
 }

@@ -68,22 +68,25 @@ public class StaffService {
 			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
 		}
 
-		// 4. 產生帳號與防撞號
-		String autoAccount = generateAccount(targetRole);
+		// 4. 產生帳號（前端傳空字串 → 後端自動產生；有傳值則直接用）與防撞號
+		String autoAccount = (req.getAccount() == null || req.getAccount().isBlank())
+				? generateAccount(targetRole)
+				: req.getAccount();
+
 		if (staffDao.findByAccount(autoAccount) != null) {
 			return new StaffSearchRes(ReplyMessage.REPEAT_ERROR.getCode(), ReplyMessage.REPEAT_ERROR.getMessage());
 		}
-		try {
-			// 5. 寫入資料庫 (移除多餘的 try-catch)
-			staffDao.insert(
-					req.getName(), 
-					autoAccount, 
-					encoder.encode(req.getPassword()), 
-					targetRole.name(),
-					req.getGlobalAreaId());
-		} catch (Exception e) {
-			throw e;
-		}
+
+		// 5. 寫入資料庫
+		staffDao.insert(
+				req.getName(),
+				autoAccount,
+				encoder.encode(req.getPassword()),
+				targetRole.name(),
+				req.getGlobalAreaId()
+		);
+
+		// 6. 回傳新建立的員工資料
 		Staff newStaff = staffDao.findByAccount(autoAccount);
 		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), List.of(newStaff));
 	}
@@ -105,7 +108,7 @@ public class StaffService {
 		}
 
 		targetStaff.setPassword(encoder.encode(req.getNewPassword()));
-		staffDao.save(targetStaff); // 移除多餘的 try-catch
+		staffDao.save(targetStaff);
 
 		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
@@ -113,25 +116,26 @@ public class StaffService {
 	// 修改自己的密碼
 	@Transactional(rollbackFor = Exception.class)
 	public StaffSearchRes selfChangePassword(UpdateStaffPasswordReq req, Staff operator) {
-	    
-	    // 1. 從資料庫重新抓取目前的員工資料（確保資料是最新的）
-	    Staff staff = staffDao.findById(operator.getId()).orElse(null);
-	    if (staff == null) {
-	        return new StaffSearchRes(ReplyMessage.STAFF_ID_NOT_FOUND.getCode(), ReplyMessage.STAFF_ID_NOT_FOUND.getMessage());
-	    }
 
-	    // 2. 核心檢查：驗證舊密碼是否正確
-	    // 注意：資料庫存的是加密後的密碼，必須用 encoder.matches 比對
-	    if (!encoder.matches(req.getOldPassword(), staff.getPassword())) {
-	        return new StaffSearchRes(ReplyMessage.OLDPASSWORD_ERROR.getCode(), ReplyMessage.OLDPASSWORD_ERROR.getMessage());
-	    }
+		// 1. 從資料庫重新抓取目前的員工資料（確保資料是最新的）
+		Staff staff = staffDao.findById(operator.getId()).orElse(null);
+		if (staff == null) {
+			return new StaffSearchRes(ReplyMessage.STAFF_ID_NOT_FOUND.getCode(), ReplyMessage.STAFF_ID_NOT_FOUND.getMessage());
+		}
 
-	    // 3. 執行修改：加密新密碼並存檔
-	    staff.setPassword(encoder.encode(req.getNewPassword()));
-	    staffDao.save(staff);
+		// 2. 核心檢查：驗證舊密碼是否正確
+		// 注意：資料庫存的是加密後的密碼，必須用 encoder.matches 比對
+		if (!encoder.matches(req.getOldPassword(), staff.getPassword())) {
+			return new StaffSearchRes(ReplyMessage.OLDPASSWORD_ERROR.getCode(), ReplyMessage.OLDPASSWORD_ERROR.getMessage());
+		}
 
-	    return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+		// 3. 執行修改：加密新密碼並存檔
+		staff.setPassword(encoder.encode(req.getNewPassword()));
+		staffDao.save(staff);
+
+		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
+
 	/* =====================================================
 	 * 主功能 3：【停權 / 復權】
 	 * ===================================================== */
@@ -148,7 +152,7 @@ public class StaffService {
 			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
 		}
 
-		staffDao.updateStatus(targetId, req.isNewStatus()); // 移除多餘的 try-catch
+		staffDao.updateStatus(targetId, req.isNewStatus());
 
 		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
@@ -196,10 +200,10 @@ public class StaffService {
 	 * ===================================================== */
 	@Transactional(rollbackFor = Exception.class)
 	public StaffSearchRes promoteToManagerAgent(int targetId, Staff operator) {
-		
+
 		// 1. 權限檢查：只有正牌店長 (RM) 或是 老闆 (ADMIN) 可以提拔人
 		if (operator.getRole() != StaffRole.REGION_MANAGER && operator.getRole() != StaffRole.ADMIN) {
-			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), //
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(),
 					ReplyMessage.OPERATE_ERROR.getMessage());
 		}
 
@@ -210,15 +214,15 @@ public class StaffService {
 		}
 
 		// 3. 區域檢查：RM 只能提拔自己分店的人（ADMIN 無區域限制）
-		if (operator.getRole() == StaffRole.REGION_MANAGER && 
+		if (operator.getRole() == StaffRole.REGION_MANAGER &&
 			targetStaff.getGlobalAreaId() != operator.getGlobalAreaId()) {
-			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), //
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(),
 					ReplyMessage.OPERATE_ERROR.getMessage());
 		}
 
 		// 4. 狀態檢查：只有目前的 STAFF 才能晉升為 MA
 		if (targetStaff.getRole() != StaffRole.STAFF) {
-			return new StaffSearchRes(ReplyMessage.PROMOTE_TARGET_ERROR.getCode(), //
+			return new StaffSearchRes(ReplyMessage.PROMOTE_TARGET_ERROR.getCode(),
 					ReplyMessage.PROMOTE_TARGET_ERROR.getMessage());
 		}
 
@@ -227,18 +231,17 @@ public class StaffService {
 		targetStaff.setRole(StaffRole.MANAGER_AGENT);
 
 		// (2) 手動變更帳號前綴 (例：ST0168 -> MA0168)
-		// 這裡利用 replace 將第一個遇到的 ST 換成 MA
 		String oldAccount = targetStaff.getAccount();
-//		String newAccount = oldAccount.replace("ST", "MA");//只替換第一個出現的 "ST"
-		String newAccount = "MA" + oldAccount.substring(2);//直接加上 "MA"，然後把舊帳號從第 2 個字元開始擷取
+		String newAccount = "MA" + oldAccount.substring(2); // 直接加上 "MA"，然後把舊帳號從第 2 個字元開始擷取
 		targetStaff.setAccount(newAccount);
 
 		// 6. 存檔：JPA save 會執行 UPDATE
 		staffDao.save(targetStaff);
 
-		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), //
+		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(),
 				ReplyMessage.SUCCESS.getMessage(), List.of(targetStaff));
 	}
+
 	/*
 	 * =============================================================================
 	 * ============ ⬇️⬇️⬇️ 以下是私有輔助方法 (工具箱) ⬇️⬇️⬇️
@@ -247,18 +250,16 @@ public class StaffService {
 
 	/*
 	 * 【帳號自動產生器】暫時先用這個方法 規則：角色前綴 + 四位流水號 範例：RM0001、ST0042
-	 * 
 	 */
 	private String generateAccount(StaffRole targetRole) {
 
-		// 決定前綴是 "RM" 還是 "ST"
 		// 根據角色決定前綴
-				String prefix = "ST"; // 預設給 ST
-				if (targetRole == StaffRole.REGION_MANAGER) {
-					prefix = "RM";
-				} else if (targetRole == StaffRole.MANAGER_AGENT) {
-					prefix = "MA"; // 判斷如果是副店長，前綴給 MA
-				}
+		String prefix = "ST"; // 預設給 ST
+		if (targetRole == StaffRole.REGION_MANAGER) {
+			prefix = "RM";
+		} else if (targetRole == StaffRole.MANAGER_AGENT) {
+			prefix = "MA"; // 判斷如果是副店長，前綴給 MA
+		}
 
 		// 去資料庫問這個角色目前最後一個帳號（例如 "RM0015"）
 		String lastAccount = staffDao.findLastAccountByRole(targetRole.name());
@@ -307,10 +308,10 @@ public class StaffService {
 		}
 
 		// 規則 3：RM 可以動自己區域的 ST「以及」MA (副店長)
-				if (operatorRole == StaffRole.REGION_MANAGER) {
-					boolean isTargetValid = (targetRole == StaffRole.STAFF || targetRole == StaffRole.MANAGER_AGENT);
-					return isTargetValid && targetStaff.getGlobalAreaId() == operator.getGlobalAreaId();
-				}
+		if (operatorRole == StaffRole.REGION_MANAGER) {
+			boolean isTargetValid = (targetRole == StaffRole.STAFF || targetRole == StaffRole.MANAGER_AGENT);
+			return isTargetValid && targetStaff.getGlobalAreaId() == operator.getGlobalAreaId();
+		}
 
 		// ST 沒權限
 		return false;

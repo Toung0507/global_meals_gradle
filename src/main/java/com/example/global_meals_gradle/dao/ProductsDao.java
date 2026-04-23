@@ -15,12 +15,6 @@ import com.example.global_meals_gradle.entity.Products;
 @Repository
 public interface ProductsDao extends JpaRepository<Products, Integer> {
 
-	boolean existsByName(String name);
-
-	boolean existsByNameAndIdNot(String name, int id);
-
-	List<Products> findByDeletedAtIsNull();
-
 	List<Products> findByActiveIsTrueAndDeletedAtIsNull();
 
 	Optional<Products> findByIdAndDeletedAtIsNull(int id);

@@ -18,16 +18,15 @@ public interface GlobalAreaDao extends JpaRepository<GlobalArea, Integer> {
 	// 新增分店
 	@Modifying
 	@Transactional
-	@Query(value = "INSERT INTO global_area (regions_id, branch, address, phone) "
-			+ " values (?1, ?2, ?3, ?4)", nativeQuery = true)
-	public void insert(int regionsId, String branch, String address, String phone);
+	@Query(value = "INSERT INTO global_area (regions_id, branch, address, phone, country, country_code) "
+	        + " values (?1, ?2, ?3, ?4, ?5, ?6)", nativeQuery = true)
+	public void insert(int regionsId, String branch, String address, String phone, String country, String countryCode);
 
 	// 更新分店
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE global_area SET branch = ?2, address = ?3, phone = ?4 WHERE id = ?1", nativeQuery = true)
-	public void update(int id, String branch, String address, String phone);
-
+	@Query(value = "UPDATE global_area SET branch = ?2, address = ?3, phone = ?4, country = ?5, country_code = ?6, regions_id = ?7 WHERE id = ?1", nativeQuery = true)
+	public void update(int id, String branch, String address, String phone, String country, String countryCode, int regionsId);
 	// 取得分店清單
 	@Query(value = "SELECT * FROM global_area", nativeQuery = true)
 	public List<GlobalArea> getAll();

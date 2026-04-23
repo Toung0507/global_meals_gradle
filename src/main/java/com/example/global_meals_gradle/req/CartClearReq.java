@@ -6,8 +6,8 @@ import jakarta.validation.constraints.Min;
 
 public class CartClearReq {
 
-	@Min(value = 1, message = ValidationMsg.CART_ID_MUST_BE_POSITIVE)
-	private int cartId;
+	// 用 Integer（可 null）代替 primitive int，避免 JSON null 被反序列化為 0 觸發 @Min
+	private Integer cartId;
 
 	@Min(value = 1, message = ValidationMsg.MEMBER_ID_MUST_BE_POSITIVE)
 	private int memberId;

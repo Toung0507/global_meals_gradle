@@ -99,9 +99,9 @@ public class CartService {
 			newCart.setOperation(
 					"STAFF".equals(req.getOperationType().toUpperCase()) ? req.getStaffId() : req.getMemberId());
 
-//			A-3:用DAO將塞滿req資料的OrderCart存到資料庫，save()完 DB 自動產生的 ID 會回填到 newCart.getId()
-			orderCartDao.save(newCart);
-			currentCartId = newCart.getId(); // 至此新購物車的 id 就已經知道了
+//			A-3:用DAO將塞滿req資料的OrderCart存到資料庫，必須用回傳值取得 DB 產生的 ID
+			OrderCart savedCart = orderCartDao.save(newCart);
+			currentCartId = savedCart.getId(); // 至此新購物車的 id 就已經知道了
 
 		} else {
 //			 劇本分支 B：已經有車了，id 沿用

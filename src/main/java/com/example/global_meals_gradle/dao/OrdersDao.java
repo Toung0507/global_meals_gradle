@@ -78,7 +78,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	/* 訂單狀態更新（用於退款或取消訂單）*/
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND order_date_id = :orderDateId AND status = 'COMPLETED'", nativeQuery = true)
+	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND order_date_id = :orderDateId", nativeQuery = true)
 	public int updateOrderStatus(@Param("status") String status,
 			@Param("id") String id, @Param("orderDateId") String orderDateId);
 
@@ -152,4 +152,29 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ "AND o.status = 'COMPLETED' "
 			+ "GROUP BY g.branch, r.country", nativeQuery = true)
 	public List<Object[]> findRevenue(LocalDateTime beginTime, LocalDateTime endTime);
+
+	/* 確認購物車 ID 是否已對應到某筆訂單（防止重複提交）*/
+	boolean existsByOrderCartId(int orderCartId);
+
+	/* 查詢指定分店在指定月份的商品銷售量（分店長月報表用，yearMonth 例如 "202604%"）*/
+	@Query(value = "SELECT p.name, SUM(d.quantity) "
+			+ "FROM orders o "
+			+ "JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+			+ "JOIN products p ON d.product_id = p.id "
+			+ "WHERE o.order_date_id LIKE ?1 AND o.global_area_id = ?2 AND o.status = 'COMPLETED' "
+			+ "GROUP BY p.id, p.name "
+			+ "ORDER BY SUM(d.quantity) DESC", nativeQuery = true)
+	public List<Object[]> getMonthlySalesByBranch(String yearMonth, int globalAreaId);
+
+	/* 查詢指定國家在指定月份銷售前5名商品（老闆月報表用）*/
+	@Query(value = "SELECT p.name, SUM(d.quantity) "
+			+ "FROM orders o "
+			+ "JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+			+ "JOIN products p ON d.product_id = p.id "
+			+ "JOIN global_area g ON o.global_area_id = g.id "
+			+ "WHERE o.order_date_id LIKE ?1 AND g.regions_id = ?2 AND o.status = 'COMPLETED' "
+			+ "GROUP BY p.id, p.name "
+			+ "ORDER BY SUM(d.quantity) DESC "
+			+ "LIMIT 5", nativeQuery = true)
+	public List<Object[]> getTop5MonthlySalesByRegion(String yearMonth, Integer regionId);
 }

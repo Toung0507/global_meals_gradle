@@ -54,7 +54,7 @@ public class AiService {
 	                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
 
 	        List<Map<String, Object>> models = (List<Map<String, Object>>) response.get("models");
-	        
+
 	        // 修正邏輯：優先尋找 gemini-2.5-flash (你清單中的第一個)
 	        this.validModelName = models.stream()
 	                .map(m -> (String) m.get("name"))
@@ -82,7 +82,7 @@ public class AiService {
 			    "2. 風格：誘人、簡潔、直接描述口感與風味，不要寫過多的推銷廢話。\n" +
 			    "3. 輸出：直接給出描述內容，不要包含任何開場白（例如：好的，這是一段...）。\n\n" +
 			    "商品名稱：%s\n" +
-			    "商品類別：%s", 
+			    "商品類別：%s",
 			    req.getProductName(), req.getCategory()
 			);
 
@@ -145,46 +145,25 @@ public class AiService {
 
 	// 呼叫純文字 API
 	private String callAiApi(String prompt) {
-		// 1. 組建請求目標 URL，將 API Key 拼接在路徑參數中，告訴 Google 我們是誰 ==> 這個在哪邊可以看到相關文件
 		String url = "https://generativelanguage.googleapis.com/v1beta/" + validModelName //
 				+ ":generateContent?key=" + productKey;
 
-		// 2. 建立一個 Map 來存放 JSON 資料
-		// Gemini API 規定的 JSON 格式是 {"contents": [{"parts": [{"text": "你的問題"}]}]}
-		// Map.of 是 Java 9 之後提供的快速產生不可變 Map 的語法
 		Map<String, Object> requestBody = Map.of("contents", //
 				List.of(Map.of("parts", List.of(Map.of("text", prompt)))));
 
-		// 3. 開始發送 POST 請求
-		// restClient.post()：建立一個 POST 方法的請求物件
-		// .uri(url)：設定發送目的地
-		// .body(requestBody)：將上面的 Map 自動序列化為 JSON 字串並塞入 Request Body
-		// .retrieve()：正式啟動 HTTP 請求
-		// .body(...)：這是關鍵，將回傳的 JSON 反序列化回 Java 物件
-		// ParameterizedTypeReference 的用途是 類型擦除 (Type Erasure)
 		Map<String, Object> response = restClient.post().uri(url).body(requestBody).retrieve()
-				// 關鍵點：ParameterizedTypeReference<Map<String, Object>>() {}
-				// 這是一個匿名類別的實例，用來保存泛型資訊，避免 Java 發生類型擦除
 				.body(new ParameterizedTypeReference<Map<String, Object>>() {
 				});
 
-		// 4. 將取得的 Map 傳入解析方法，取出裡面的文字內容
 		return extractTextFromResponse(response);
 	}
 
 	// 呼叫 AI (用圖片 + 文字)
 	private String callAiApiWithImage(String prompt, byte[] imageBytes, String mimeType) {
-		// 1. 設定 API 端點 (與純文字 API 相同)
 		String url = "https://generativelanguage.googleapis.com/v1beta/" + validModelName //
 				+ ":generateContent?key=" + promoKey;
-		// 2. Base64 編碼
-		// JSON 本身是文字格式，無法直接承載「二進位 (Binary)」的圖片原始資料
-		// 因此必須將圖片轉成 Base64 字串，才能安全地放入 JSON 中傳輸
 		String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
 
-		// 3. 組裝多模態 (Multimodal) JSON Payload
-		// Gemini API 的格式規定：在 parts 陣列中，可以同時存在 text 物件與 inline_data 物件
-		// 這就是為什麼我們把 prompt 和 圖片數據放在同一個 List 裡面
 		Map<String, Object> requestBody = Map.of("contents", //
 				List.of(Map.of("parts", List.of(Map.of("text", prompt), // 文字部分
 						Map.of("inline_data", Map.of("mime_type", //
@@ -192,44 +171,29 @@ public class AiService {
 								"data", base64Image // 剛才轉好的 Base64 字串
 						))))));
 
-		// 4. 發送請求並接收回應 (同樣使用 ParameterizedTypeReference 確保型別安全)
 		Map<String, Object> response = restClient.post().uri(url).body(requestBody).retrieve()
 				.body(new ParameterizedTypeReference<Map<String, Object>>() {
 				});
 
-		// 5. 解析回應
 		return extractTextFromResponse(response);
 	}
 
-	// 確認解析狀況
-	@SuppressWarnings("unchecked") // 告訴編譯器：我清楚這裡在做 Map 強制轉型，這不是錯誤
+	@SuppressWarnings("unchecked")
 	private String extractTextFromResponse(Map<String, Object> response) {
 		try {
-			// 1. 取得 "candidates" 列表 (AI 可能會回傳多個候選答案，通常 index 0 就是最佳答案)
 			List<Map<String, Object>> candidates = //
 					(List<Map<String, Object>>) response.get("candidates");
 
-			// 2. 防呆檢查：如果 API 回傳沒有候選內容，直接回報錯誤，避免程式崩潰
 			if (candidates == null || candidates.isEmpty()) {
 				return "AI 回應異常 (無內容回傳)";
 			}
 
-			// 3. 取得 candidates[0] 裡面的 "content" 物件 (這層包含了角色與內容)
 			Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
 
-			// 4. 取得 "parts" 列表 (Gemini 的設計中，一個回應可以包含多個部分，例如文字 + 圖片資訊)
 			List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
 
-			// 5. 取出 parts[0] 中的 "text" 欄位，這就是 AI 生成的純文字結果
 			return (String) parts.get(0).get("text");
-			/*
-			 * response：拿到整個巨大包裹（整個 JSON）。 .get("candidates")：打開外包裝，拿出候選清單（List）。
-			 * .get(0)：取出第一個最優質的回應（Map）。 .get("content")：拿出內容層（Map）。
-			 * .get("parts")：取出組件清單（List）。 .get(0)：拿出第一個組件（通常就是我們的純文字）。
-			 * .get("text")：最後這一步，才終於取出了你心心念念的那一行文字！
-			 */
 		} catch (Exception e) {
-			// 6. 萬一上面的取值過程中發生任何錯誤 (例如結構改變、取值為 null 等)，統一在此攔截
 			return "AI 解析錯誤: " + e.getMessage();
 		}
 	}

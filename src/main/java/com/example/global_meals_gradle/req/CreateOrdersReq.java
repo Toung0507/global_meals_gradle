@@ -6,6 +6,7 @@ import java.util.List;
 import com.example.global_meals_gradle.constants.ValidationMsg;
 import com.example.global_meals_gradle.entity.OrderCartDetails;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -29,8 +30,9 @@ public class CreateOrdersReq {
 
 	private BigDecimal totalAmount;
 	
+	@JsonProperty("orderCartDetailsList") // 欄位名大寫 O 與 camelCase 衝突，明確指定 JSON key
 	@NotEmpty(message = ValidationMsg.ORDER_CART_DETAILS_NOT_EMPTY)
-	@Valid // 這樣才會去檢查 OrderCartDetails 類別裡面的標註
+	@Valid
 	private List<OrderCartDetails> OrderCartDetailsList;
 	
 	private boolean useDiscount;   // 判斷有無使用優惠劵

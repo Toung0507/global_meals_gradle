@@ -97,7 +97,7 @@ public class StaffController {
 	public StaffSearchRes register(@Valid @RequestBody RegisterStaffReq req, HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
-		
+	    if (operator == null) return notLoginRes(); // ← 補這行
 		return staffService.register(req, operator);
 	}
 
@@ -110,7 +110,7 @@ public class StaffController {
 	public StaffSearchRes getStaffList(HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
-
+	    if (operator == null) return notLoginRes(); // ← 補這行
 		return staffService.getStaffList(operator);
 	}
 
