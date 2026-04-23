@@ -19,11 +19,13 @@ import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
+import com.example.global_meals_gradle.res.GetOrdersByPhoneRes;
 import com.example.global_meals_gradle.res.GetTodayOrdersRes;
 import com.example.global_meals_gradle.service.EcpayService;
 import com.example.global_meals_gradle.service.LinePayService;
 import com.example.global_meals_gradle.service.OrdersService;
 
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 @RestController
@@ -39,25 +41,20 @@ public class OrdersController {
 	@Autowired
 	private LinePayService linePayService;
 
-	/* 取得該會員的歷史訂單
-	 * 路徑從 orders/get_all_orders_list 改為 orders/get_all_orders，對應前端 api.config.ts
-	 */
+	/* 取得該會員的歷史訂單（前端 api.config.ts 路徑） */
 	@PostMapping("orders/get_all_orders")
-	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req) {
-		return ordersService.getAllOrders(req);
+	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req,
+			HttpSession httpSession) {
+		return ordersService.getAllOrders(req, httpSession);
 	}
 
-	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED
-	 * 路徑從 orders/orders_status 改為 orders/update_status，對應前端 api.config.ts
-	 */
+	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED */
 	@PostMapping("orders/update_status")
-	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req) {
-		return ordersService.ordersStatus(req);
+	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req, HttpSession httpSession) {
+		return ordersService.ordersStatus(req, httpSession);
 	}
 
-	/* 成立訂單（未結帳）
-	 * 路徑從 orders/create_orders 改為 orders/create_order，對應前端 api.config.ts
-	 */
+	/* 成立訂單（未結帳）*/
 	@PostMapping("orders/create_order")
 	public CreateOrdersRes createOrdersRes(@Valid @RequestBody CreateOrdersReq req) {
 		return ordersService.createOrders(req);
@@ -71,7 +68,7 @@ public class OrdersController {
 
 	/* 報電話號碼取餐（今天）*/
 	@GetMapping("orders/get_order_by_phone")
-	public CreateOrdersRes getOrderByPhone(@RequestParam("phone") String phone) {
+	public GetOrdersByPhoneRes getOrderByPhone(@RequestParam("phone") String phone) {
 		return ordersService.getOrderByPhone(phone);
 	}
 
@@ -103,7 +100,8 @@ public class OrdersController {
 	
 	// 前端點擊「前往付款」時請求的 API
 	@GetMapping("/goPay")
-	public String goPay(@RequestParam("orderDateId") String orderDateId, @RequestParam("id") String id, @RequestParam("way") String way) {
+	public String goPay(@RequestParam("orderDateId") String orderDateId,
+			@RequestParam("id") String id, @RequestParam("way") String way) {
 		// 判斷付款方式是否為綠界 (ECPAY) 還是LINE Pay
 		if ("ECPAY".equalsIgnoreCase(way)) {
             // 執行綠界刷卡

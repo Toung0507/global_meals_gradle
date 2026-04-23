@@ -25,9 +25,10 @@ public class ValidationMsg {
 	public static final String GLOBAL_AREA_ID_LIST_ERROR = "Global Area Id List Error!!";
 	// Req ExchangeRatesReq
 	public static final String DATE_TIME_ERROR = "Date Time Error!!";
-	// Req MembersReq
+	// Req RegisterMembersReq
 	public static final String NAME_ERROR = "Name Error!!";
 	public static final String PASSWORD_ERROR = "Password Error!!";
+	public static final String COUNTRY_CODE_CANT_BE_EMPTY = "Country Code Cant Be Empty!!";
 	// Req UpdatePasswordReq
 	public static final String MEMBERS_ID_ERROR = "Members Id Error!!";
 	
@@ -52,6 +53,15 @@ public class ValidationMsg {
 	public static final String CART_ID_MUST_BE_POSITIVE = "CartId Must Be Positive";
 	public static final String PRODUCT_ID_MUST_BE_POSITIVE = "ProductId Must Be Positive ";
 	public static final String MEMBER_ID_MUST_BE_POSITIVE = "MemberId Must Be Positive";
+	public static final String GIFTRULE_ID_MUST_BE_POSITIVE = "GiftRuleId Must Be Positive";
+	public static final String STAFF_ID_MUST_BE_POSITIVE ="StaffId Must Be Positive";
+	/* 購物車建立驗證 */
+	public static final String GLOBAL_AREA_ID_MUST_BE_POSITIVE = "GlobalAreaId Must Be Positive!!";
+	public static final String OPERATION_TYPE_CANNOT_BE_BLANK = "OperationType Cannot Be Blank!!";
+	/*查看商品銷售量req的驗證:*/
+	public static final String YEAR_REQUIRED = "Year is required"; 
+    public static final String MONTH_REQUIRED = "Month is required"; 
+    public static final String MONTH_RANGE = "Month must be between 1 and 12";
 	
 	/* 景翔 */
 	/* 職員 */

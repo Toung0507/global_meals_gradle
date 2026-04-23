@@ -31,6 +31,20 @@ public class OrderCartDetails {
 
 	@Column(name = "discount_note")
 	private String discountNote;
+//	記錄使用者選贈品時對應的 promotions_gifts 規則主鍵
+//	 NULL = 這筆明細是一般商品（非贈品），不涉及活動規則
+//	 > 0  = 這筆明細是贈品，記錄當時選的是哪條規則（精準對應活動名額，解決多活動漂移問題）
+//	 使用 Integer（包裝型別）而非 int，原因：DB 設計為 NULL
+	@Column(name = "promotions_gifts_id")
+	private Integer promotionsGiftsId;
+
+	public Integer getPromotionsGiftsId() {
+		return promotionsGiftsId;
+	}
+
+	public void setPromotionsGiftsId(Integer promotionsGiftsId) {
+		this.promotionsGiftsId = promotionsGiftsId;
+	}
 
 	public int getId() {
 		return id;

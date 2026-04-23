@@ -22,6 +22,10 @@ public class GetOrdersVo {
 
 	private List<GetOrdersDetailVo> GetOrdersDetailVoList;
 
+	public GetOrdersVo() {
+		super();
+	}
+
 	public String getId() {
 		return id;
 	}

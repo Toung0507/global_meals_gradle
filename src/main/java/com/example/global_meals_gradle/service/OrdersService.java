@@ -3,6 +3,7 @@ package com.example.global_meals_gradle.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +34,7 @@ import com.example.global_meals_gradle.entity.OrderCartDetails;
 import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.entity.Regions;
+import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
 import com.example.global_meals_gradle.req.RefundedReq;
@@ -41,11 +43,15 @@ import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
+import com.example.global_meals_gradle.res.GetOrdersByPhoneRes;
 import com.example.global_meals_gradle.res.GetOrdersDetailVo;
 import com.example.global_meals_gradle.res.GetOrdersVo;
 import com.example.global_meals_gradle.res.GetTodayOrdersRes;
+import com.example.global_meals_gradle.res.MembersRes;
 import com.example.global_meals_gradle.res.TodayOrderDetailVo;
 import com.example.global_meals_gradle.res.TodayOrderVo;
+
+import jakarta.servlet.http.HttpSession;
 
 /*	待做:
  * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額
@@ -53,6 +59,9 @@ import com.example.global_meals_gradle.res.TodayOrderVo;
 
 @Service
 public class OrdersService {
+
+	private static final org.slf4j.Logger log = org.slf4j //
+			.LoggerFactory.getLogger(OrdersService.class);
 
 	@Autowired
 	private OrdersDao ordersDao;
@@ -121,14 +130,24 @@ public class OrdersService {
 	// }
 	// }
 
-	/* 查詢歷史訂單 */
+	/* 查詢歷史訂單(有分員工或會員查詢) */
 	@Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
-	public GetAllOrdersRes getAllOrders(HistoricalOrdersReq req) {
-		// 會員id檢查，如果是null，就是id有誤
-		Members member = membersDao.findById(req.getMemberId());
-		if (member == null) {
-			return new GetAllOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
-					ReplyMessage.MEMBER_NOT_FOUND.getMessage());
+	public GetAllOrdersRes getAllOrders(HistoricalOrdersReq req, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		Members member = (membersRes != null) ? membersRes.getMembers() : null;
+		if (staff != null) { // 代表是員工操作 // MemberId是設Integer，如果是int就要判斷是否 ==0
+			if (req.getMemberId() == null || membersDao.findById(req.getMemberId()) == null) {
+				return new GetAllOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
+						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
+			}
+		} else if (member != null) { // 代表會員操作，只能查自己的歷史訂單紀錄
+			req.setMemberId(member.getId());
+		} else {
+			// 既不是員工也不是會員 -> 攔截
+			throw new RuntimeException("請先登入以查詢歷史訂單");
 		}
 		List<Object[]> rawData = ordersDao.getFullOrderHistory(req.getMemberId());
 		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
@@ -157,6 +176,7 @@ public class OrdersService {
 				newVo.setGlobalAreaId((Integer) row[2]); // o.global_area_id
 				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
 				newVo.setStatus(row[4].toString()); // o.status
+				newVo.setCompletedAt((LocalDateTime) row[5]);
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -164,11 +184,11 @@ public class OrdersService {
 			// 建立明細並塞入該訂單的 List
 			GetOrdersDetailVo detail = new GetOrdersDetailVo();
 			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
-			detail.setQuantity(((Number) row[3]).intValue());
-			detail.setPrice((BigDecimal) row[4]);
-			detail.setGift((Boolean) row[5]);
-			detail.setDiscountNote((String) row[6]);
-			detail.setName((String) row[7]); // 產品名稱已經在 SQL 抓好了
+			detail.setQuantity(((Number) row[6]).intValue());
+			detail.setPrice((BigDecimal) row[7]);
+			detail.setGift((Boolean) row[8]);
+			detail.setDiscountNote((String) row[9]);
+			detail.setName((String) row[10]); // 產品名稱已經在 SQL 抓好了
 
 			vo.getGetOrdersDetailVoList().add(detail);
 		}
@@ -181,14 +201,40 @@ public class OrdersService {
 
 	/* 成立訂單: 外部呼叫的主入口：負責「高併發重試流程」 */
 	// 這個方法「不加」@Transactional，這樣裡面的 try-catch 才能重複執行。
-	public CreateOrdersRes createOrders(CreateOrdersReq req) {
-		// 參數檢查(庫存檢查、金額檢查)
+	public CreateOrdersRes createOrders(CreateOrdersReq req, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		Members member = (membersRes != null) ? membersRes.getMembers() : null;
+		if (staff != null) { // 代表是員工操作
+			if (req.getMemberId() == 0 || membersDao.findById(req.getMemberId()) == null) {
+				return new CreateOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
+						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
+			}
+		} else if (member != null) { // 代表會員操作
+			req.setMemberId(member.getId());
+		} else { // 代表是遊客
+			if(req.getMemberId() >1) {  // 可能是會員，但session失效(登出)
+				throw new RuntimeException("連線已逾時，請重新登入後再結帳");
+			}
+			req.setMemberId(1);
+		}
+
+		// [DEBUG] 記錄請求進入，方便追蹤
+		log.debug("【訂單請求】收到購物車 ID: {}, 會員 ID: {}", req.getOrderCartId(), req.getMemberId());
+
 		if (req.isUseDiscount()) {
-			Members member = membersDao.findById(req.getMemberId());
-			if (!member.isDiscount()) {
+			if (!membersDao.findById(req.getMemberId()).isDiscount()) {
+				// [WARN] 記錄異常的折扣請求（可能是前端繞過或邏輯錯誤）
+				log.warn("【訂單攔截】會員 {} 嘗試使用折扣但資格不符", req.getMemberId());
 				throw new RuntimeException("無優惠可使用");
 			}
 		}
+		if (ordersDao.existsByOrderCartId(req.getOrderCartId())) {
+			throw new RuntimeException("該購物車已轉換為訂單，請勿重複提交");
+		}
+
 		// 取得今天的日期字串，例如 "20260328"
 		// DateTimeFormatter.ofPattern("yyyyMMdd"): 定義日期格式 .format(...):
 		// 把得到的日期轉換成前面定義的格式
@@ -204,12 +250,20 @@ public class OrdersService {
 			} catch (RuntimeException e) {
 				// 判斷是否為「可重試」的異常
 				String msg = e.getMessage();
+				// 購物車Id在資料庫有設UQ，所以如果連續點擊，會有錯誤訊息，到這裡就會傳送錯誤訊息給前端
+				if (msg != null && msg.contains("order_cart_id")) {
+					throw new RuntimeException("該購物車已轉換為訂單，請勿重複提交");
+				}
 				// 只有當訊息包含「衝突」(樂觀鎖失敗) 或 「Duplicate」(序號重複) 時才進入重試
 				if (msg != null && (msg.contains("衝突") || msg.contains("Duplicate")//
 						|| msg.contains("Primary"))) {
+					log.info("【訂單重試】購物車 ID: {} 發生衝突，準備進行第 {} 次重試... 原因: {}", req.getOrderCartId(), i + 1, msg);
 					// 如果還沒超過重試次數，就繼續跑下一輪 for 迴圈。
 					if (i == maxRetries - 1) {
 						// 如果重試了 5 次都還是失敗，才拋出錯誤。
+						// [ERROR] 記錄重試耗盡，這代表系統併發極高，可能需要優化
+						log.error("【訂單失敗】購物車 ID: {} 重試 {} 次後仍失敗", //
+								req.getOrderCartId(), maxRetries);
 						throw new RuntimeException("系統繁忙，請重新結帳");
 					}
 
@@ -274,8 +328,6 @@ public class OrdersService {
 		// 將 Map 的 Key 轉成 List 並排序，防止不同執行緒因鎖定順序不同而死結 (Deadlock)
 		List<Integer> sortedProductIds = new ArrayList<>(stockToReduceMap.keySet());
 		Collections.sort(sortedProductIds);
-		// 初始化未稅總金額 (使用 BigDecimal.ZERO 確保精準度)
-		BigDecimal subtotal = BigDecimal.ZERO;
 		// 迴圈計算總額時，順便把「所有的贈品 ID」存進這個清單
 		List<Integer> giftProductIds = new ArrayList<>();
 		// 取得該分店所屬國家的稅務設定
@@ -285,15 +337,19 @@ public class OrdersService {
 		}
 		BigDecimal taxRate = region.getTaxRate(); // 稅率
 		String taxType = region.getTaxType().name(); // 稅制
+		// 初始化未稅金額 (使用 BigDecimal.ZERO 確保精準度)
+		BigDecimal subtotal = BigDecimal.ZERO;
+		BigDecimal finalSubtotal = BigDecimal.ZERO; // 最終未稅金額
 		BigDecimal taxAmount = BigDecimal.ZERO; // 稅額
 		BigDecimal afterTax = BigDecimal.ZERO; // 含稅
+		// 取的該分店的所在國家的折扣金額上限
+		BigDecimal highestDiscountAmount = BigDecimal.valueOf(region.getUsageCap());
+		BigDecimal discountOff = BigDecimal.ZERO; // 最終實際折掉的金額
 
 		// ====== 金額計算/贈品id儲存 ======
 		// 不是贈品的才要計算金額 / 贈品的Id要存進贈品清單
 		for (OrderCartDetails detail : cartDetailsList) {
 			if (!detail.isGift()) {
-				// 這裡還是需要查一次價格來算總帳
-				Products p = productsDao.findById(detail.getProductId());
 				// 取的該商品在該分店的價格(未稅)
 				BranchInventory inv = branchInventoryDao
 						.findByProductIdAndGlobalAreaId(detail.getProductId(), req.getGlobalAreaId())
@@ -308,38 +364,46 @@ public class OrdersService {
 					subtotal = subtotal.add(priceWithTax.multiply(qty));
 				} else {
 					// --- 外加稅：直接用未稅單價累加 ---
-					subtotal = subtotal.add(p.getBasePrice().multiply(qty));
+					subtotal = subtotal.add(inv.getBasePrice().multiply(qty));
 				}
 
 			} else {
 				giftProductIds.add(detail.getProductId());
 			}
 		}
-		BigDecimal finalSubtotal; // 未稅小計
-		if (taxType.equals("EXCLUSIVE")) { // 外加稅：總金額 = 小計 * (1 * 稅率)
-			afterTax = subtotal.multiply(BigDecimal.ONE.add(taxRate));
-			if (req.isUseDiscount()) {
-				afterTax = afterTax.multiply(new BigDecimal("0.8"));
-			}
-			afterTax = afterTax.setScale(0, RoundingMode.UP); // 稅後實收總金額(無條件進位)
-			// 處理稅額: 總額 - 小計
-			finalSubtotal = subtotal;
-			if (req.isUseDiscount()) {
-				finalSubtotal = finalSubtotal //
-						.multiply(new BigDecimal("0.8")).setScale(0, RoundingMode.UP); // 小計
-			}
-			taxAmount = afterTax.subtract(finalSubtotal);
-		} else { // 內含稅：總金額 = 小計，稅額 = 小計 - (小計 / (1 + 稅率))
-			afterTax = subtotal;   // 含稅額
-			if (req.isUseDiscount()) {
-				afterTax = afterTax.multiply(new BigDecimal("0.8")).setScale(0, RoundingMode.UP);
-			}
-			// 稅額: 總計 - (總計 / (1 + 稅率))
-			// 總計 / (1 + 稅率)
-			BigDecimal beforeTax = afterTax.divide(BigDecimal.ONE.add(taxRate), 4, RoundingMode.HALF_UP);
-			taxAmount = afterTax.subtract(beforeTax).setScale(0, RoundingMode.UP);
-			finalSubtotal = afterTax.subtract(taxAmount);
+
+		// 計算初始含稅總金額
+		BigDecimal initialTotal; // 初始含稅總金額
+		if ("INCLUSIVE".equals(taxType)) { // 內含稅本身就是含稅金額
+			initialTotal = subtotal;
+		} else { // 外加稅須把未稅總金額*(1+稅率)
+			initialTotal = subtotal.multiply(BigDecimal.ONE.add(taxRate));
 		}
+
+		// --- 統一計算折扣 (以含稅總額為基準，最公平) ---
+		if (req.isUseDiscount()) {
+			BigDecimal discountMultiplier = new BigDecimal("0.1"); // 折扣掉 10%
+			BigDecimal potentialDiscount = initialTotal.multiply(discountMultiplier); // 取的折扣金額
+
+			// 檢查折扣是否超過上限(最高折扣金額/折扣金額) // BigDecimal 需使用 compareTo 來比較
+			discountOff = potentialDiscount.compareTo(highestDiscountAmount) > 0 ? highestDiscountAmount
+					: potentialDiscount;
+		}
+
+		// --- 算出最終實收金額 ---
+		afterTax = initialTotal.subtract(discountOff).setScale(0, RoundingMode.UP);
+
+		// --- 反推稅額與未稅小計 ---
+		// 公式：稅額 = 總額 - (總額 / (1 + 稅率))
+		// 反推「未稅金額」(總額 / (1 + 稅率))
+		BigDecimal beforeTax = afterTax.divide(BigDecimal.ONE.add(taxRate), 4, RoundingMode.HALF_UP);
+		// 稅額 = 總共付的錢 - 原始餐點的錢
+		taxAmount = afterTax.subtract(beforeTax).setScale(0, RoundingMode.UP);
+		// 定義「最終未稅小計」
+		finalSubtotal = afterTax.subtract(taxAmount);
+		// [DEBUG] 記錄金額計算結果，這在對帳出錯時非常重要
+		log.debug("【金額計算】購物車: {} -> 最終未稅: {}, 稅額: {}, 含稅: {}, 折扣: {}", req.getOrderCartId(), finalSubtotal, taxAmount,
+				afterTax, discountOff);
 
 		// ====== 贈品門檻檢查 ======
 		if (!giftProductIds.isEmpty()) { // 判斷贈品清單有沒有資料
@@ -350,7 +414,10 @@ public class OrdersService {
 
 				if (giftRule != null) { // 如果有取得金額
 					// 2. 直接拿 total 跟這個金額比
-					if (subtotal.compareTo(giftRule) < 0) { // compareTo：這是 BigDecimal 比較大小的標準寫法
+					if (initialTotal.compareTo(giftRule) < 0) { // compareTo：這是 BigDecimal 比較大小的標準寫法
+						// [WARN] 記錄未達標的贈品領取嘗試
+						log.warn("【贈品攔截】購物車: {} 金額 {} 未達門檻 {}", //
+								req.getOrderCartId(), initialTotal, giftRule);
 						throw new RuntimeException("金額未達門檻 " + giftRule + "，無法領取贈品 ID: " + giftId);
 					}
 				}
@@ -359,16 +426,6 @@ public class OrdersService {
 
 		String newId = ""; // 先宣告變數
 		try {
-			// ====== 產生新訂單編號 (悲觀鎖排隊入口) ======
-			// 去資料庫找今天最後一筆訂單 (DAO 裡面要有 ORDER BY id DESC LIMIT 1)
-			Optional<Orders> lastOrder = ordersDao.getOrderByOrderDateId(todayStr);
-			int nextSeq = 1; // 預設從 1 開始
-			if (lastOrder.isPresent()) {
-				// 如果今天有訂單，把最大的序號轉成數字並 +1
-				nextSeq = Integer.parseInt(lastOrder.get().getId()) + 1;
-			}
-			// 將數字格式化為 4 位字串，例如 1 變成 "0001"
-			newId = String.format("%04d", nextSeq);
 
 			// ====== 執行庫存扣除 ======
 			// 依照排序後的 ID 逐一處理，每個產品 ID 只會執行一次資料庫更新
@@ -412,18 +469,30 @@ public class OrdersService {
 				}
 			}
 
+			// ====== 產生新訂單編號 (悲觀鎖排隊入口) ======
+			// 去資料庫找今天最後一筆訂單 (DAO 裡面要有 ORDER BY id DESC LIMIT 1)
+			Optional<Orders> lastOrder = ordersDao.getOrderByOrderDateId(todayStr);
+			int nextSeq = 1; // 預設從 1 開始
+			if (lastOrder.isPresent()) {
+				// 如果今天有訂單，把最大的序號轉成數字並 +1
+				nextSeq = Integer.parseInt(lastOrder.get().getId()) + 1;
+			}
+			// 將數字格式化為 4 位字串，例如 1 變成 "0001"
+			newId = String.format("%04d", nextSeq);
+
 			// ====== 執行新增主訂單 ======
 			// 客戶端傳 paymentMethod=CASH 時，建立 PENDING_CASH（等現場收款）；其他一律 UNPAID
 			String initialStatus = "CASH".equalsIgnoreCase(req.getPaymentMethod()) ? "PENDING_CASH" : "UNPAID";
 			ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
 					req.getPhone(), finalSubtotal, taxAmount, afterTax, initialStatus, req.isUseDiscount());
+			log.info("【產單成功】購物車: {} -> 訂單編號: {}-{}", req.getOrderCartId(), todayStr, newId);
 
 			// 成功後回傳結果
 			return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
 					newId, todayStr, afterTax);
 		} catch (Exception e) {
-			// --- 錯誤紀錄 ---
-			// logger.error(e.getMessage());
+			// [ERROR] 記錄詳細的資料庫操作失敗原因
+			log.error("【資料庫異常】訂單寫入失敗，購物車 ID: {}, 錯誤: {}", req.getOrderCartId(), e.getMessage());
 			System.out.println("executeInsert 執行失敗，準備回滾並交由外層判斷: " + e.getMessage());
 			throw e;
 		}
@@ -491,17 +560,39 @@ public class OrdersService {
 
 	/* 訂單狀態: 退款或取消 */
 	@Transactional(rollbackFor = Exception.class)
-	public BasicRes ordersStatus(RefundedReq req) {
-		// 參數檢查(在req有做自動檢查)
-		try {
-			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-			// 找不到該筆訂單
-			if (order == null) { // 找不到該筆訂單
-				return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
-						ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+	public BasicRes ordersStatus(RefundedReq req, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		Members member = (membersRes != null) ? membersRes.getMembers() : null;
+		
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+		// 找不到該筆訂單
+		if (order == null) { // 找不到該筆訂單
+			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
+					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+		}
+		
+		if(staff != null) {  // 員工操作
+			member = membersDao.findById(order.getMemberId());
+			if (member == null) {
+				return new BasicRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(), //
+						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
 			}
+		}else if(member != null) {  // 會員操作
+			if(member.getId() != order.getMemberId()) {  // 如果與該訂單的會員ID不相符
+				return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(),
+						ReplyMessage.MEMBER_ERROR.getMessage());
+			}
+		}else {  // 遊客操作
+			throw new RuntimeException("請先登入或請找員工處理");
+		}
+		
+		try {
+			
 			String oldStatus = order.getStatus().toString(); // 目前狀態
-			String targetStatus = req.getStatus().toString(); // 目標狀態
+			String targetStatus = req.getStatus().toString(); // 目標狀態(之後要更新的狀態)
 			// 防呆：只有 COMPLETED 才能退款；只有 UNPAID 才能取消
 			if (targetStatus.equalsIgnoreCase("REFUNDED") && !oldStatus.equals("COMPLETED")) {
 				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
@@ -520,10 +611,6 @@ public class OrdersService {
 				if (targetStatus.equalsIgnoreCase("REFUNDED")) {
 					// 如果是會員，次數扣回
 					if (order.getMemberId() > 1) {
-						Members member = membersDao.findById(order.getMemberId());
-						if (member == null) {
-							throw new RuntimeException("退款失敗：查無會員資料");
-						}
 						if (order.isUseDiscount()) {
 							// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
 							membersDao.restoreCouponAndPoints(order.getMemberId());
@@ -549,11 +636,12 @@ public class OrdersService {
 	}
 
 	/* 報電話號碼查詢今天的訂單 */
-	public CreateOrdersRes getOrderByPhone(String phone) {
+	public GetOrdersByPhoneRes getOrderByPhone(String phone) {
 		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 		GetOrdersVo order = ordersDao.getOrderByPhone(todayStr, phone);
-		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(),
-				order.getId(), order.getOrderDateId(), order.getTotalAmount());
+
+		return new GetOrdersByPhoneRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
+				order.getId(), order.getOrderDateId(), order.getTotalAmount(), order.getStatus());
 	}
 
 	/* POS 看板：取得今日所有已付款訂單（含品項與廚房狀態）

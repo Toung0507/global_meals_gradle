@@ -5,7 +5,7 @@
 
 	<!-- 日誌輸出的編碼方式 ,中文就使用UTF8 -->
 	<property name="Charset" value="UTF-8" />
-	<property name="FileName" value="quiz" />
+	<property name="FileName" value="global_meals_gradle" />
 	<!--定義日誌檔案的儲存地址-->
 	<property name="LogsLocation" value="logs" />
 	<!--格式化輸出：%d表示日期，%-5level：級別(在第38行)從左顯示5個字元寬度，%thread表示執行緒名，%msg：日誌訊息，%n是換行符-->
