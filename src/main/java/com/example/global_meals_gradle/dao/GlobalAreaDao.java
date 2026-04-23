@@ -18,9 +18,9 @@ public interface GlobalAreaDao extends JpaRepository<GlobalArea, Integer> {
 	// 新增分店
 	@Modifying
 	@Transactional
-	@Query(value = "INSERT INTO global_area (country, branch, address, phone) "
+	@Query(value = "INSERT INTO global_area (regions_id, branch, address, phone) "
 			+ " values (?1, ?2, ?3, ?4)", nativeQuery = true)
-	public void insert(String country, String branch, String address, String phone);
+	public void insert(int regionsId, String branch, String address, String phone);
 
 	// 更新分店
 	@Modifying
@@ -39,6 +39,7 @@ public interface GlobalAreaDao extends JpaRepository<GlobalArea, Integer> {
 	public void delete(List<Integer> idList);
 
 	// 根據分店 ID 查詢分店資訊,用途：從 order_cart.global_area_id → 找到分店所在國家 → 查稅務
+	// 建新車，驗證GlobalArea的時候不用這個方法用內建的，因為用舊車的時候，這個GlobalAreaId傳進來就是Null
 	@Query(value = "SELECT * FROM global_area WHERE id = ?1", nativeQuery = true)
 	GlobalArea findById(int id);
 
@@ -47,7 +48,7 @@ public interface GlobalAreaDao extends JpaRepository<GlobalArea, Integer> {
 	public int findLastId();
 
 	/**
-	 * 取得分店 ID 與名稱的對照表 (Map)。 <br>
+	 * 思云新增 取得分店 ID 與名稱的對照表 (Map)。 <br>
 	 * 設計目的： <br>
 	 * 將資料轉換為 Map，讓後續的 service 可以透過 ID 以 O(1) 的時間複雜度， <br>
 	 * 快速查詢到分店名稱，避免在迴圈中重複呼叫資料庫 (N+1 問題)。 <br>

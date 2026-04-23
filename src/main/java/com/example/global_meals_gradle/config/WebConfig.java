@@ -1,11 +1,15 @@
 package com.example.global_meals_gradle.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.HandlerTypePredicate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import com.example.global_meals_gradle.Interceptor.LoginInterceptor;
 
 /**
  * 全域網路配置類別 <br>
@@ -34,12 +38,33 @@ public class WebConfig implements WebMvcConfigurer {
 				.allowCredentials(true);
 	}
 
-	//  配置路徑匹配規則 可以在這裡幫所有標註 @RestController 的 API 加上統一的 URL 前綴
+	// 配置路徑匹配規則 可以在這裡幫所有標註 @RestController 的 API 加上統一的 URL 前綴
 
 	@Override
 	public void configurePathMatch(PathMatchConfigurer configurer) {
 		// 統一為所有 API 加上 /lazybaobao 前綴
 		// 網址會變成：http://localhost:8080/lazybaobao/各模組
 		configurer.addPathPrefix("/lazybaobao", HandlerTypePredicate.forAnnotation(RestController.class));
+	}
+
+	@Autowired
+	private LoginInterceptor loginInterceptor; // 把剛剛寫的保全請過來
+
+	@Override
+	public void addInterceptors(InterceptorRegistry registry) {
+
+		// 把保全註冊進去
+		registry.addInterceptor(loginInterceptor)
+				// 1. 攔截哪些路徑？
+				// "/**" 代表攔截這個路徑下的所有 API
+				// 根據你的 Controller，需要權限的都是 /api/admin 開頭的
+				.addPathPatterns("/api/admin/**") //
+				.addPathPatterns("/api/staff/**")
+
+				// 2. 排除哪些路徑？(不查票的白名單)
+				// 登入和登出本來就不需要登入就能按，所以絕對要排除！
+				// (雖然我們上面只攔截了 /api/admin，登入是 /api/auth，
+				// 但實務上還是習慣明確寫出來，未來擴充才不會亂)
+				.excludePathPatterns("/api/auth/login", "/api/auth/logout");
 	}
 }

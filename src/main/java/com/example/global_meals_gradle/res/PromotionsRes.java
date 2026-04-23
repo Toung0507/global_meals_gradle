@@ -3,6 +3,8 @@ package com.example.global_meals_gradle.res;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.example.global_meals_gradle.vo.GiftItemVo;
+
 /**
  * 促銷活動回傳結果
  * Service 計算完畢後封裝成這個物件回給前端
@@ -33,7 +35,7 @@ public class PromotionsRes {
 
 	// 贈品清單：每個 GiftItem 包含贈品商品 ID、名稱、數量
 	// 若沒有任何贈品達標，這裡是空 List
-	private List<GiftItem> receivedGifts;
+	private List<GiftItemVo> receivedGifts;
 
 	public int getCartId() {
 		return cartId;
@@ -75,11 +77,11 @@ public class PromotionsRes {
 		this.finalAmount = finalAmount;
 	}
 
-	public List<GiftItem> getReceivedGifts() {
+	public List<GiftItemVo> getReceivedGifts() {
 		return receivedGifts;
 	}
 
-	public void setReceivedGifts(List<GiftItem> receivedGifts) {
+	public void setReceivedGifts(List<GiftItemVo> receivedGifts) {
 		this.receivedGifts = receivedGifts;
 	}
 

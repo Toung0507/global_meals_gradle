@@ -34,6 +34,8 @@ dependencies {
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
 	// Gson 依賴: 用來處理 JSON(用於LinePay)
 	implementation 'com.google.code.gson:gson:2.10.1'
+	// Google 提供的全球電話號碼解析與驗證工具
+    implementation 'com.googlecode.libphonenumber:libphonenumber:8.13.31'
 	//在修改程式碼並儲存後,Devtools 會自動偵測變更並觸發應用程式的快速重啟
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
     

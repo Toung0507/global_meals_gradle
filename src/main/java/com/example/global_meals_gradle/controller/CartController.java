@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.global_meals_gradle.req.CartClearReq;
 import com.example.global_meals_gradle.req.CartRemoveReq;
 import com.example.global_meals_gradle.req.CartSelectGiftReq;
+import com.example.global_meals_gradle.req.CartSwitchBranchReq;
 import com.example.global_meals_gradle.req.CartSyncReq;
 import com.example.global_meals_gradle.res.CartViewRes;
 import com.example.global_meals_gradle.service.CartService;
@@ -92,6 +93,18 @@ public class CartController {
 	public CartViewRes clearCart(@Valid @RequestBody CartClearReq req) {
 		return cartService.clearCart(req);
 	}
+
+	/**
+	 * API 6：切換分店 <br>
+	 * HTTP Method：POST<br>
+	 * URL：/cart/switch-branch <br>
+	 * 前端傳：舊的 cartId + 新的 globalAreaId + memberId 後端回：一台空的新購物車（屬於新分店）
+	 */
+	@PostMapping("cart/switch-branch")
+	public CartViewRes switchBranch(@Valid @RequestBody CartSwitchBranchReq req) {
+		return cartService.switchBranch(req.getOldCartId(), req.getNewGlobalAreaId(), req.getMemberId());
+	}
+
 }
 
 // ================================

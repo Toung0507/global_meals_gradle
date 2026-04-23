@@ -7,11 +7,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.dao.GlobalAreaDao;
+import com.example.global_meals_gradle.dao.RegionsDao;
+import com.example.global_meals_gradle.entity.GlobalArea;
+import com.example.global_meals_gradle.entity.Regions;
 import com.example.global_meals_gradle.req.CreateGlobalAreaReq;
 import com.example.global_meals_gradle.req.DeleteGlobalAreaReq;
 import com.example.global_meals_gradle.req.UpdateGlobalAreaReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.GlobalAreaRes;
+import com.example.global_meals_gradle.utils.PhoneValidatorUtils;
 
 @Service
 public class GlobalAreaService {
@@ -22,19 +26,32 @@ public class GlobalAreaService {
 	@Autowired
 	@Lazy
 	private BranchInventoryService branchInventoryService;
+	
+	@Autowired
+	private RegionsDao regionsDao;
 
 	// 新增分店
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes create(CreateGlobalAreaReq req) {
 		/* 參數檢查:使用@Valid */
+		// 根據 regionsId 撈取區域資訊
+		Regions regions = regionsDao.getById(req.getRegionsId());
+		if (regions == null) {
+			return new BasicRes(ReplyMessage.REGIONS_ID_NOT_FOUND.getCode(), //
+					ReplyMessage.REGIONS_ID_NOT_FOUND.getMessage());
+		}
 		try {
-			// 1. 原有的 insert 保持不動
-			globalAreaDao.insert(req.getCountry(), req.getBranch(), req.getAddress(), req.getPhone());
-
-			// 2. 最小幅度：馬上查出剛才新增的 ID (建議在 DAO 層加一個 findLastId 方法)
+			String countryCode = regions.getCountryCode();
+			// 電話驗證
+			if (!PhoneValidatorUtils.isValid(req.getPhone(), countryCode)) {
+				return new BasicRes(ReplyMessage.PHONE_ERROR.getCode(), //
+						ReplyMessage.PHONE_ERROR.getMessage());
+			}
+			// 電話標準化
+			String normalizedPhone = PhoneValidatorUtils.toE164Format(req.getPhone(), countryCode);
+			globalAreaDao.insert(req.getRegionsId(), req.getBranch(), req.getAddress(), normalizedPhone);
+			// 新增分店後，要初始化庫存
 			int newBranchId = globalAreaDao.findLastId();
-
-			// 3. 呼叫你的庫存初始化
 			branchInventoryService.initInventoryForNewBranch(newBranchId);
 		} catch (Exception e) {
 			throw e;
@@ -46,8 +63,24 @@ public class GlobalAreaService {
 	// 更新分店
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes update(UpdateGlobalAreaReq req) {
+		// GlobalArea globalArea = globalAreaDao.findById(req.getId());
+		Regions regions = regionsDao.getById(req.getRegionsId());
+		if (globalAreaDao.findById(req.getId()) == null) {
+			return new BasicRes(ReplyMessage.GLOBAL_AREA_NOT_FOUND.getCode(), //
+					ReplyMessage.GLOBAL_AREA_NOT_FOUND.getMessage());
+		}
+		if (regions == null) {
+			return new BasicRes(ReplyMessage.REGIONS_ID_NOT_FOUND.getCode(), //
+					ReplyMessage.REGIONS_ID_NOT_FOUND.getMessage());
+		}
 		try {
-			globalAreaDao.update(req.getId(), req.getBranch(), req.getAddress(), req.getPhone());
+			String countryCode = regions.getCountryCode();
+			if (!PhoneValidatorUtils.isValid(req.getPhone(), countryCode)) {
+				return new BasicRes(ReplyMessage.PHONE_ERROR.getCode(), //
+						ReplyMessage.PHONE_ERROR.getMessage());
+			}
+			String normalizedPhone = PhoneValidatorUtils.toE164Format(req.getPhone(), countryCode);
+			globalAreaDao.update(req.getId(), req.getBranch(), req.getAddress(), normalizedPhone);
 		} catch (Exception e) {
 			throw e;
 		}

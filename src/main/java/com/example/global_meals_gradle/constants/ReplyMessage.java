@@ -5,8 +5,11 @@ public enum ReplyMessage {
 	/* 昱文 */
 	// Service RegionsService
 	REGIONS_ID_ERROR(400, "Regions Id Error!!"), //
+	REGIONS_ID_NOT_FOUND(404, "Regions Id Not Found!!"), //
+	TAX_TYPE_ERROR(400, "Tax Type Error!!"), //
 	// Service GlobalAreaService
 	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
+	GLOBAL_AREA_ID_NOT_FOUND(404, "Global Area Id Not Found!!"), //
 	// Service MembersService
 	PHONE_ERROR(400, "Phone Error!!"), //
 	PHONE_HAS_EXISTED(400, "Phone Has Existed!!"), // 電話號碼已存在
@@ -19,16 +22,17 @@ public enum ReplyMessage {
 
 	/* 劭頴 */
 	SUCCESS(200, "Success!!"), //
-	ORDER_NOT_FOUND(400, "Order Not Found!!"), //
+	ORDER_NOT_FOUND(404, "Order Not Found!!"), //
 	STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"), //
-	PRODUCT_NOT_FOUND(400, "Product Not Found!!"), //
-	MEMBER_NOT_FOUND(400, "Member Not Found!!"), //
-	ORDER_NUMBER_NOT_FOUND(400, "Order Number Not Found!!"), //
+	PRODUCT_NOT_FOUND(404, "Product Not Found!!"), //
+	MEMBER_NOT_FOUND(404, "Member Not Found!!"), //
+	ORDER_NUMBER_NOT_FOUND(404, "Order Number Not Found!!"), //
 	ORDERS_STATUS_ERROR(400, "Orders Status Error!!"), //
 	DISCOUNT_ERROR(400, "Disscount Error!!"), //
 	MEMBER_ERROR(400, "Member ERROR!!"), //
 	TOTAL_AMOUNT_ERROR(400, "Total Amount ERROR!!"), //
 	NOT_DISCOUNT_ERROR(400, "Not Discount ERROR!!"), //
+	REPORTS_NOT_FOUND(404, "Reports Not Found!!"), //
 
 	/* 致遠 */
 	// 促銷活動相關錯誤
@@ -47,6 +51,13 @@ public enum ReplyMessage {
 	NOT_REACH_FULLAMOUNT(400, "Not Reach fullamount!"), //
 	GIFT_SEND_LIGHT(400, "Gift Send light!!"), //
 	CART_NOT_FOUND(404, "Cart Not Found!!"),
+	// 購物車
+	// 已結帳的購物車不允許再修改（removeItem / clearCart / syncItem 分支B 用）
+	CART_ALREADY_CHECKED_OUT(400, "Cart Already Checked Out!!"),
+	// operationType 傳了非法值（不在 OperationType 枚舉裡的字串）
+	INVALID_OPERATION_TYPE(400, "Invalid Operation Type!!"),
+
+	/* 景翔 */
 
 	/* 景翔 */
 	// 基本欄位錯誤
@@ -69,6 +80,7 @@ public enum ReplyMessage {
 	DEPUTY_OPERATE_ERROR(403, "Deputy Operate Error"), // 翻譯:副店長無法執行此操作
 	TARGET_NOT_STAFF(400, "Target Not Staff"), // 目標人物必須是員工
 	TARGET_NOT_DEPUTY(400, "Target Not Deputy"), // 目標人物不是副店長
+	PROMOTE_TARGET_ERROR(400, "Promote Target Error"), // 提升目標錯誤
 
 	/* 思云 */
 	// 商品表 & 庫存表

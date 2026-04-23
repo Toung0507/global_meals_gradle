@@ -34,5 +34,11 @@ out/
 # 系統檔案
 HELP.md
 
-# Rate API Key 設定檔
+# API Key 設定檔
 src/main/resources/application-secrets.properties
+
+# 忽略所有副檔名為 .log 的檔案
+*.log
+
+# 忽略 logs 這個資料夾
+logs/

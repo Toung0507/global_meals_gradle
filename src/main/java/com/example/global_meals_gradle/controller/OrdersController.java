@@ -17,10 +17,12 @@ import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
+import com.example.global_meals_gradle.res.GetOrdersByPhoneRes;
 import com.example.global_meals_gradle.service.EcpayService;
 import com.example.global_meals_gradle.service.LinePayService;
 import com.example.global_meals_gradle.service.OrdersService;
 
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 //@CrossOrigin(origins = "http://localhost:4200")
@@ -38,20 +40,22 @@ public class OrdersController {
 
 	/* 取的該會員的歷史訂單 */
 	@PostMapping("orders/get_all_orders_list")
-	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req) {
-		return ordersService.getAllOrders(req);
+	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req, //
+			HttpSession httpSession) {
+		return ordersService.getAllOrders(req, httpSession);
 	}
 
 	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED */
 	@PostMapping("orders/orders_status")
-	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req) {
-		return ordersService.ordersStatus(req);
+	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req, HttpSession httpSession) {
+		return ordersService.ordersStatus(req, httpSession);
 	}
 
 	/* 成立訂單(未結帳) */
 	@PostMapping("orders/create_orders")
-	public CreateOrdersRes createOrdersRes(@Valid @RequestBody CreateOrdersReq req) {
-		return ordersService.createOrders(req);
+	public CreateOrdersRes createOrders(@Valid @RequestBody CreateOrdersReq req, //
+			HttpSession httpSession) {
+		return ordersService.createOrders(req, httpSession);
 	}
 
 	/* 現金付款成功 */
@@ -62,13 +66,14 @@ public class OrdersController {
 
 	/* 報電話號碼取餐(今天) */
 	@GetMapping("orders/get_order_by_phone")
-	public CreateOrdersRes getOrderByPhone(@RequestParam("phone") String phone) {
+	public GetOrdersByPhoneRes getOrderByPhone(@RequestParam("phone") String phone) {
 		return ordersService.getOrderByPhone(phone);
 	}
 	
 	// 前端點擊「前往付款」時請求的 API
 	@GetMapping("/goPay")
-	public String goPay(@RequestParam String orderDateId, @RequestParam String id, @RequestParam String way) {
+	public String goPay(@RequestParam String orderDateId, @RequestParam String id, //
+			@RequestParam String way) {
 		// 判斷付款方式是否為綠界 (ECPAY) 還是LINE Pay
 		if ("ECPAY".equalsIgnoreCase(way)) {
             // 執行綠界刷卡
