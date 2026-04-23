@@ -1,6 +1,7 @@
 package com.example.global_meals_gradle.dao;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -74,17 +75,81 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
 	public List<Object[]> getFullOrderHistory(int memberId);
 
-	/* 訂單狀態更新(用於退款或取消訂單) */
+	/* 訂單狀態更新（用於退款或取消訂單）*/
 	@Modifying
 	@Transactional
 	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND order_date_id = :orderDateId AND status = 'COMPLETED'", nativeQuery = true)
-	public int updateOrderStatus(@Param("status") String status, // AI 是說要字串型態，我有說資料庫是設ENUM
+	public int updateOrderStatus(@Param("status") String status,
 			@Param("id") String id, @Param("orderDateId") String orderDateId);
-	
+
 	/* 更改總金額 */
-	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
+	@Query(value = "UPDATE orders SET total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
 	public void upDateTotalAmount(String id, String orderDateId, BigDecimal totalAmount);
+
+	/* 取得今日所有已付款或待付款現金訂單（POS 看板用）
+	 * COMPLETED = 已付款；PENDING_CASH = 客戶端現金訂單等待現場收款
+	 */
+	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND status IN ('COMPLETED', 'PENDING_CASH') ORDER BY id ASC", nativeQuery = true)
+	public List<Orders> getTodayCompletedOrders(String orderDateId);
+
+	/* 付款確認：允許 UNPAID 或 PENDING_CASH 的訂單轉為 COMPLETED */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1 "
+			+ " AND order_date_id = ?2 AND status IN ('UNPAID', 'PENDING_CASH')", nativeQuery = true)
+	public int updatePayAnyPending(String id, String orderDateId, String paymentMethod, String transactionId,
+			String status);
+
+	/* 更新廚房狀態（WAITING / COOKING / READY）*/
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET kitchen_status = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
+	public int updateKitchenStatus(String id, String orderDateId, String kitchenStatus);
+
+	/* 查詢單筆訂單的廚房狀態（客戶端輪詢用）*/
+	@Query(value = "SELECT kitchen_status FROM orders WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
+	public String findKitchenStatus(String id, String orderDateId);
+
+	/* ── 月報表排程：統計各店月營收（MonthlyFinancialReportsService 使用）── */
+
+	/* 加總特定分店在指定時間區間內已付款訂單的總金額 */
+	@Query(value = "SELECT COALESCE(SUM(total_amount), 0) FROM orders "
+			+ "WHERE global_area_id = ?1 AND completed_at BETWEEN ?2 AND ?3 "
+			+ "AND status = 'COMPLETED'", nativeQuery = true)
+	public BigDecimal findTotalAmountByGlobalAreaId(int globalAreaId, LocalDateTime start, LocalDateTime end);
+
+	/* 查詢單店在時間區間內的日營收（[店名, 國家名, 金額]，for RevenueQueryRes）*/
+	@Query(value = "SELECT g.branch AS branchName, r.country AS regionsName, "
+			+ "COALESCE(SUM(o.total_amount), 0) AS totalAmount "
+			+ "FROM orders o "
+			+ "JOIN global_area g ON o.global_area_id = g.id "
+			+ "JOIN regions r ON g.regions_id = r.id "
+			+ "WHERE o.global_area_id = ?1 AND o.completed_at BETWEEN ?2 AND ?3 "
+			+ "AND o.status = 'COMPLETED' "
+			+ "GROUP BY g.branch, r.country", nativeQuery = true)
+	public List<Object[]> findSingleBranchRevenue(int globalAreaId, LocalDateTime beginTime, LocalDateTime endTime);
+
+	/* 查詢同一國家所有分店在時間區間內的日營收（[店名, 國家名, 金額]）*/
+	@Query(value = "SELECT g.branch AS branchName, r.country AS regionsName, "
+			+ "COALESCE(SUM(o.total_amount), 0) AS totalAmount "
+			+ "FROM orders o "
+			+ "JOIN global_area g ON o.global_area_id = g.id "
+			+ "JOIN regions r ON g.regions_id = r.id "
+			+ "WHERE g.regions_id = ?1 AND o.completed_at BETWEEN ?2 AND ?3 "
+			+ "AND o.status = 'COMPLETED' "
+			+ "GROUP BY g.branch, r.country", nativeQuery = true)
+	public List<Object[]> findRevenueByRegionGroupedByBranch(int regionsId, LocalDateTime beginTime, LocalDateTime endTime);
+
+	/* 查詢全球所有分店在時間區間內的日營收（[店名, 國家名, 金額]）*/
+	@Query(value = "SELECT g.branch AS branchName, r.country AS regionsName, "
+			+ "COALESCE(SUM(o.total_amount), 0) AS totalAmount "
+			+ "FROM orders o "
+			+ "JOIN global_area g ON o.global_area_id = g.id "
+			+ "JOIN regions r ON g.regions_id = r.id "
+			+ "WHERE o.completed_at BETWEEN ?1 AND ?2 "
+			+ "AND o.status = 'COMPLETED' "
+			+ "GROUP BY g.branch, r.country", nativeQuery = true)
+	public List<Object[]> findRevenue(LocalDateTime beginTime, LocalDateTime endTime);
 }

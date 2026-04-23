@@ -64,18 +64,18 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 	// 訪客註冊：強制 id = 1，若衝突則更新(覆蓋)
 	@Modifying
 	@Transactional
-	@Query(value = "INSERT INTO members (id, name, phone, password, order_count, is_discount, created_at) "
-			+ " values (1, ?1, ?2, NULL, 0, false, CURDATE()) ON DUPLICATE KEY "
-			+ " UPDATE name = ?1, phone = ?2, password = NULL, "
+	@Query(value = "INSERT INTO members (id, name, phone, country, password, order_count, is_discount, created_at) "
+			+ " values (1, ?1, ?2, ?3, NULL, 0, false, CURDATE()) ON DUPLICATE KEY "
+			+ " UPDATE name = ?1, phone = ?2, country = ?3, password = NULL, "
 			+ " order_count = 0, is_discount = false, created_at = CURDATE()", nativeQuery = true)
-	public void registerGuest(String name, String phone);
-	
+	public void registerGuest(String name, String phone, String country);
+
 	// 會員註冊
 	@Modifying
 	@Transactional
-	@Query(value = "INSERT INTO members (name, phone, password, order_count, is_discount, created_at) "
-			+ " values (?1, ?2, ?3, 0, false, CURDATE())", nativeQuery = true)
-	public void registerMember(String name, String phone, String password);
+	@Query(value = "INSERT INTO members (name, phone, country, password, order_count, is_discount, created_at) "
+			+ " values (?1, ?2, ?3, ?4, 0, false, CURDATE())", nativeQuery = true)
+	public void registerMember(String name, String phone, String country, String password);
 	
 	// 查詢(根據手機號碼)
 	@Query(value = "SELECT * FROM members WHERE phone = ?1", nativeQuery = true)

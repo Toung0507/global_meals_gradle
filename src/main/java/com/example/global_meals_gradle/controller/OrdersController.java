@@ -7,24 +7,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
+import com.example.global_meals_gradle.req.KitchenStatusReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
+import com.example.global_meals_gradle.res.GetTodayOrdersRes;
 import com.example.global_meals_gradle.service.EcpayService;
 import com.example.global_meals_gradle.service.LinePayService;
 import com.example.global_meals_gradle.service.OrdersService;
 
 import jakarta.validation.Valid;
 
-//@CrossOrigin(origins = "http://localhost:4200")
 @RestController
+@RequestMapping("/lazybaobao") // 統一加上 lazybaobao 前綴，與前端 api.config.ts 路由一致
 public class OrdersController {
 
 	@Autowired
@@ -36,20 +39,26 @@ public class OrdersController {
 	@Autowired
 	private LinePayService linePayService;
 
-	/* 取的該會員的歷史訂單 */
-	@PostMapping("orders/get_all_orders_list")
+	/* 取得該會員的歷史訂單
+	 * 路徑從 orders/get_all_orders_list 改為 orders/get_all_orders，對應前端 api.config.ts
+	 */
+	@PostMapping("orders/get_all_orders")
 	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req) {
 		return ordersService.getAllOrders(req);
 	}
 
-	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED */
-	@PostMapping("orders/orders_status")
+	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED
+	 * 路徑從 orders/orders_status 改為 orders/update_status，對應前端 api.config.ts
+	 */
+	@PostMapping("orders/update_status")
 	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req) {
 		return ordersService.ordersStatus(req);
 	}
 
-	/* 成立訂單(未結帳) */
-	@PostMapping("orders/create_orders")
+	/* 成立訂單（未結帳）
+	 * 路徑從 orders/create_orders 改為 orders/create_order，對應前端 api.config.ts
+	 */
+	@PostMapping("orders/create_order")
 	public CreateOrdersRes createOrdersRes(@Valid @RequestBody CreateOrdersReq req) {
 		return ordersService.createOrders(req);
 	}
@@ -60,15 +69,41 @@ public class OrdersController {
 		return ordersService.pay(req);
 	}
 
-	/* 報電話號碼取餐(今天) */
+	/* 報電話號碼取餐（今天）*/
 	@GetMapping("orders/get_order_by_phone")
 	public CreateOrdersRes getOrderByPhone(@RequestParam("phone") String phone) {
 		return ordersService.getOrderByPhone(phone);
 	}
+
+	/* POS 看板：取得今日所有已付款訂單（含品項、廚房狀態）
+	 * URL: GET /lazybaobao/orders/today_orders
+	 */
+	@GetMapping("orders/today_orders")
+	public GetTodayOrdersRes getTodayOrders() {
+		return ordersService.getTodayOrders();
+	}
+
+	/* POS 看板：更新廚房狀態（WAITING / COOKING / READY）
+	 * URL: POST /lazybaobao/orders/kitchen_status
+	 */
+	@PostMapping("orders/kitchen_status")
+	public BasicRes updateKitchenStatus(@Valid @RequestBody KitchenStatusReq req) {
+		return ordersService.updateKitchenStatus(req);
+	}
+
+	/* 客戶端：查詢自己訂單的廚房狀態
+	 * URL: GET /lazybaobao/orders/order_status?id=&orderDateId=
+	 */
+	@GetMapping("orders/order_status")
+	public BasicRes getOrderStatus(
+			@RequestParam("id") String id,
+			@RequestParam("orderDateId") String orderDateId) {
+		return ordersService.getOrderStatus(id, orderDateId);
+	}
 	
 	// 前端點擊「前往付款」時請求的 API
 	@GetMapping("/goPay")
-	public String goPay(@RequestParam String orderDateId, @RequestParam String id, @RequestParam String way) {
+	public String goPay(@RequestParam("orderDateId") String orderDateId, @RequestParam("id") String id, @RequestParam("way") String way) {
 		// 判斷付款方式是否為綠界 (ECPAY) 還是LINE Pay
 		if ("ECPAY".equalsIgnoreCase(way)) {
             // 執行綠界刷卡
@@ -135,10 +170,10 @@ public class OrdersController {
 	 */
 	@GetMapping("/linepay/confirm")
 	public String linePayConfirm(
-	    @RequestParam String transactionId, // LINE Pay 給的交易序號
-	    @RequestParam String orderDateId,   // 我們自己傳過去的參數 (透傳)
-	    @RequestParam String id,
-	    @RequestParam int amount
+	    @RequestParam("transactionId") String transactionId,
+	    @RequestParam("orderDateId") String orderDateId,
+	    @RequestParam("id") String id,
+	    @RequestParam("amount") int amount
 	) {
 	    try {
 	        // 執行確認扣款

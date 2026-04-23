@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.req.ExchangeRatesReq;
@@ -14,7 +15,8 @@ import com.example.global_meals_gradle.service.ExchangeRatesService;
 import jakarta.validation.Valid;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true") // 允許 Angular 跨域呼叫
+@RequestMapping("/lazybaobao") // 統一加上 lazybaobao 前綴，與前端 api.config.ts 路由一致
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 public class ExchangeRatesController {
 	
 	@Autowired

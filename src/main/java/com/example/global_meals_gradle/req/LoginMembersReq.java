@@ -14,7 +14,6 @@ public class LoginMembersReq {
 	private String phone;
 	
 	@NotBlank(message = ValidationMsg.PASSWORD_ERROR)
-	@Size(min = 6, message = ValidationMsg.PASSWORD_ERROR) // 密碼至少6碼
 	private String password;
 
 	public String getPhone() {

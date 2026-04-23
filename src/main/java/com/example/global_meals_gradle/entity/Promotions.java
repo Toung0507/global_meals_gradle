@@ -25,6 +25,25 @@ public class Promotions {
 	@Column(name = "is_active")
 	private boolean active;
 
+	@Column(name = "description", columnDefinition = "TEXT")
+	private String description;
+
+	// NULL = 全球活動（老闆建立，所有分店可見）; 有值 = 分店專屬活動
+	@Column(name = "global_area_id")
+	private Integer globalAreaId;
+
+	// 日文活動名稱（可為 null，前端顯示時 fallback 至 name）
+	@Column(name = "name_jp")
+	private String nameJP;
+
+	// 韓文活動名稱（可為 null，前端顯示時 fallback 至 name）
+	@Column(name = "name_kr")
+	private String nameKR;
+
+	@Lob
+	@Column(name = "promotion_img", columnDefinition = "MEDIUMBLOB")
+	private byte[] promotionImg;
+
 	public int getId() {
 		return id;
 	}
@@ -64,6 +83,45 @@ public class Promotions {
 	public void setActive(boolean active) {
 		this.active = active;
 	}
-	
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public Integer getGlobalAreaId() {
+		return globalAreaId;
+	}
+
+	public void setGlobalAreaId(Integer globalAreaId) {
+		this.globalAreaId = globalAreaId;
+	}
+
+	public String getNameJP() {
+		return nameJP;
+	}
+
+	public void setNameJP(String nameJP) {
+		this.nameJP = nameJP;
+	}
+
+	public String getNameKR() {
+		return nameKR;
+	}
+
+	public void setNameKR(String nameKR) {
+		this.nameKR = nameKR;
+	}
+
+	public byte[] getPromotionImg() {
+		return promotionImg;
+	}
+
+	public void setPromotionImg(byte[] promotionImg) {
+		this.promotionImg = promotionImg;
+	}
 
 }

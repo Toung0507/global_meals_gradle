@@ -22,6 +22,7 @@ import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.dao.BranchInventoryDao;
 import com.example.global_meals_gradle.dao.MembersDao;
+import com.example.global_meals_gradle.dao.OrderCartDetailsDao;
 import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
@@ -35,12 +36,16 @@ import com.example.global_meals_gradle.entity.Regions;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
 import com.example.global_meals_gradle.req.RefundedReq;
+import com.example.global_meals_gradle.req.KitchenStatusReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
 import com.example.global_meals_gradle.res.GetOrdersDetailVo;
 import com.example.global_meals_gradle.res.GetOrdersVo;
+import com.example.global_meals_gradle.res.GetTodayOrdersRes;
+import com.example.global_meals_gradle.res.TodayOrderDetailVo;
+import com.example.global_meals_gradle.res.TodayOrderVo;
 
 /*	待做:
  * 	成立訂單那邊的庫存需不需要以分店做區分;已經有未稅金額，但還需要做稅率跟含稅總金額
@@ -57,6 +62,9 @@ public class OrdersService {
 
 	@Autowired
 	private MembersDao membersDao;
+
+	@Autowired
+	private OrderCartDetailsDao orderCartDetailsDao;
 
 	@Autowired
 	private PromotionsGiftsDao promotionsGiftsDao;
@@ -405,8 +413,10 @@ public class OrdersService {
 			}
 
 			// ====== 執行新增主訂單 ======
+			// 客戶端傳 paymentMethod=CASH 時，建立 PENDING_CASH（等現場收款）；其他一律 UNPAID
+			String initialStatus = "CASH".equalsIgnoreCase(req.getPaymentMethod()) ? "PENDING_CASH" : "UNPAID";
 			ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
-					req.getPhone(), finalSubtotal, taxAmount, afterTax, "UNPAID", req.isUseDiscount());
+					req.getPhone(), finalSubtotal, taxAmount, afterTax, initialStatus, req.isUseDiscount());
 
 			// 成功後回傳結果
 			return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
@@ -429,7 +439,7 @@ public class OrdersService {
 					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 		}
 		// 金額檢查: 使用 compareTo == 0 來比對 BigDecimal，避免 100.0 跟 100 判定不一致的問題
-		if (order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
+		if (req.getTotalAmount() != null && order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
 			throw new RuntimeException("支付金額與訂單金額不符！");
 		}
 		// 檢查訂單狀態：只有「未付款」的訂單可以執行付款
@@ -438,12 +448,13 @@ public class OrdersService {
 			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "訂單已支付完成，無需重複操作");
 		}
 		// 如果訂單是其他狀態（如 REFUNDED, CANCELLED），則不允許付款
-		if (!OrdersStatus.UNPAID.equals(order.getStatus())) {
+		if (!OrdersStatus.UNPAID.equals(order.getStatus()) && !OrdersStatus.PENDING_CASH.equals(order.getStatus())) {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "訂單狀態錯誤，無法付款");
 		}
 		try {
 			// 新增(更新)的資料(付款方式、交易號碼、狀態)
-			int result = ordersDao.updatePay(req.getId(), req.getOrderDateId(), //
+			// updatePayAnyPending 允許 UNPAID 或 PENDING_CASH 的訂單付款
+			int result = ordersDao.updatePayAnyPending(req.getId(), req.getOrderDateId(), //
 					req.getPaymentMethod(), req.getTransactionId(), "COMPLETED");
 			if (result > 0) {
 				// ====== 會員邏輯(點數處理) ======
@@ -496,7 +507,7 @@ public class OrdersService {
 				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
 						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
-			if (targetStatus.equalsIgnoreCase("CANCELLED") && !oldStatus.equals("UNPAID")) {
+			if (targetStatus.equalsIgnoreCase("CANCELLED") && !oldStatus.equals("UNPAID") && !oldStatus.equals("PENDING_CASH")) {
 				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
 						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
@@ -539,12 +550,73 @@ public class OrdersService {
 
 	/* 報電話號碼查詢今天的訂單 */
 	public CreateOrdersRes getOrderByPhone(String phone) {
-		// 取的今天的日期字串，參考成立訂單
 		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-		// 取的資料根據電話號碼跟今天日期
 		GetOrdersVo order = ordersDao.getOrderByPhone(todayStr, phone);
-
-		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
+		return new CreateOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(),
 				order.getId(), order.getOrderDateId(), order.getTotalAmount());
+	}
+
+	/* POS 看板：取得今日所有已付款訂單（含品項與廚房狀態）
+	 * 查詢今天日期下所有 COMPLETED 的訂單，並把購物車明細組裝進來
+	 */
+	public GetTodayOrdersRes getTodayOrders() {
+		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+		List<Orders> todayOrders = ordersDao.getTodayCompletedOrders(todayStr);
+		List<TodayOrderVo> voList = new ArrayList<>();
+
+		for (Orders order : todayOrders) {
+			TodayOrderVo vo = new TodayOrderVo();
+			vo.setId(order.getId());
+			vo.setOrderDateId(order.getOrderDateId());
+			vo.setTotalAmount(order.getTotalAmount());
+			vo.setKitchenStatus(order.getKitchenStatus() != null ? order.getKitchenStatus() : "WAITING");
+			vo.setPhone(order.getPhone());
+			vo.setPaymentStatus(order.getStatus().toString()); // COMPLETED 或 PENDING_CASH
+
+			// 從 order_cart_details 取出該訂單的商品明細
+			List<TodayOrderDetailVo> items = new ArrayList<>();
+			orderCartDetailsDao.findAllByCartId(order.getOrderCartId()).forEach(detail -> {
+				TodayOrderDetailVo detailVo = new TodayOrderDetailVo();
+				// 取商品名稱（products 表）
+				Products _p = productsDao.findById(detail.getProductId());
+				if (_p != null) detailVo.setProductName(_p.getName());
+				detailVo.setQuantity(detail.getQuantity());
+				detailVo.setGift(detail.isGift());
+				items.add(detailVo);
+			});
+			vo.setItems(items);
+			voList.add(vo);
+		}
+		return new GetTodayOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), voList);
+	}
+
+	/* POS 看板：更新廚房狀態（WAITING / COOKING / READY）*/
+	@Transactional
+	public BasicRes updateKitchenStatus(KitchenStatusReq req) {
+		String status = req.getKitchenStatus();
+		// 只允許合法的廚房狀態值
+		if (!status.equals("WAITING") && !status.equals("COOKING") && !status.equals("READY")) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "廚房狀態值無效，請傳入 WAITING / COOKING / READY");
+		}
+		int updated = ordersDao.updateKitchenStatus(req.getId(), req.getOrderDateId(), status);
+		if (updated == 0) {
+			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), "找不到對應訂單");
+		}
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	}
+
+	/* 客戶端輪詢：查詢自己訂單的廚房狀態（含 PENDING_CASH 待付款狀態） */
+	public BasicRes getOrderStatus(String id, String orderDateId) {
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(orderDateId, id);
+		if (order == null) {
+			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), "找不到對應訂單");
+		}
+		// 現金待付款：回傳特殊狀態讓前端顯示「請前往櫃台付款」
+		if (OrdersStatus.PENDING_CASH.equals(order.getStatus())) {
+			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "PENDING_CASH");
+		}
+		// 已付款但廚房狀態尚未設定時，預設 WAITING
+		String kitchenStatus = order.getKitchenStatus() != null ? order.getKitchenStatus() : "WAITING";
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), kitchenStatus);
 	}
 }

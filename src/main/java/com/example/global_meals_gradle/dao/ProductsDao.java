@@ -1,6 +1,7 @@
 package com.example.global_meals_gradle.dao;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -12,6 +13,16 @@ import com.example.global_meals_gradle.entity.Products;
 
 @Repository
 public interface ProductsDao extends JpaRepository<Products, Integer> {
+
+	boolean existsByName(String name);
+
+	boolean existsByNameAndIdNot(String name, int id);
+
+	List<Products> findByDeletedAtIsNull();
+
+	List<Products> findByActiveIsTrueAndDeletedAtIsNull();
+
+	Optional<Products> findByIdAndDeletedAtIsNull(int id);
 
 	// 1. 【隱形功能】繼承來的 .save(entity)
 	// 用途：處理「新增」與「修改」的所有情況。

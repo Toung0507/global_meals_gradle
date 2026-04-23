@@ -102,8 +102,8 @@ public class CartService {
 			    if (newQuantity > oldQuantity) {
 //			      查這個商品在本分店的庫存設定
 			        OrderCart cart = orderCartDao.findById(currentCartId);
-			        BranchInventory inv = branchInventoryDao.findByProductIdAndAreaId(
-			                req.getProductId(), cart.getGlobalAreaId());
+			        BranchInventory inv = branchInventoryDao.findByProductIdAndGlobalAreaId(
+			                req.getProductId(), cart.getGlobalAreaId()).orElse(null);
 			        if (inv == null) {
 //			          查無庫存設定 → 不能更新
 			            throw new RuntimeException("商品 ID " + req.getProductId()
@@ -136,8 +136,8 @@ public class CartService {
 //			  第2層防線：確認這個商品在本分店有設定庫存（branch_inventory 表）
 //			  從購物車取 globalAreaId，因為 syncItem 劇本分支A建新車時已把 globalAreaId 存進 DB
 			    OrderCart cart = orderCartDao.findById(currentCartId);
-			    BranchInventory inv = branchInventoryDao.findByProductIdAndAreaId(
-			            req.getProductId(), cart.getGlobalAreaId());
+			    BranchInventory inv = branchInventoryDao.findByProductIdAndGlobalAreaId(
+			            req.getProductId(), cart.getGlobalAreaId()).orElse(null);
 			    if (inv == null) {
 			        throw new RuntimeException("商品 ID " + req.getProductId() + " 在此分店未設定庫存");
 			    }
@@ -331,8 +331,8 @@ public class CartService {
 //			  -1：商品存在且上架
 				 vo.setProductName(product.getName());
 //				  (B) 查詢這個商品在本分店的庫存記錄，取得當前定價
-				    BranchInventory inv = branchInventoryDao.findByProductIdAndAreaId(
-				            detail.getProductId(), cart.getGlobalAreaId());
+				    BranchInventory inv = branchInventoryDao.findByProductIdAndGlobalAreaId(
+				            detail.getProductId(), cart.getGlobalAreaId()).orElse(null);
 				    if (inv == null) {
 //				      庫存設定不存在（branch_inventory 被刪）：視同無法販售
 //				      警告前端；lineTotal 不納入小計；後端 log 方便排查

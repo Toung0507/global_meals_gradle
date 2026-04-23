@@ -1,66 +1,120 @@
 package com.example.global_meals_gradle.service;
 
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.entity.Orders;
+import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.utils.EcpayUtils;
 
 @Service
 public class EcpayService {
 
 	@Autowired
-    private OrdersDao ordersDao;
-	
+	private OrdersDao ordersDao;
+
+	@Autowired
+	private OrdersService ordersService;
+
+	@Value("${ecpay.merchant.id}")
+	private String merchantId;
+
+	@Value("${ecpay.hash.key}")
+	private String hashKey;
+
+	@Value("${ecpay.hash.iv}")
+	private String hashIV;
+
+	@Value("${payment.ngrok.url}")
+	private String ngrokUrl;
+
+	private static final String ECPAY_URL = "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5";
+
+	/**
+	 * 產生自動送出的 ECPay 付款表單 HTML
+	 */
 	public String getEcpayForm(String orderDateId, String id) {
-		
-        Orders order = ordersDao.getOrderByOrderDateIdAndId(orderDateId, id);
-        if (order == null) throw new RuntimeException("訂單不存在");
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(orderDateId, id);
+		if (order == null) throw new RuntimeException("訂單不存在");
 
-        // 建立一個 Map 存放所有綠界要求的 API 參數
-        Map<String, String> params = new HashMap<>();
-        params.put("MerchantID", "2000132");  // 商店編號 (測試用)
-        params.put("MerchantTradeNo", orderDateId + id);  // 訂單編號 (唯一)
-        // 交易時間: 格式需固定 "2026/04/12 12:00:00"
-        params.put("MerchantTradeDate", new SimpleDateFormat("yyyy/MM/dd HH:mm:ss") //
-        		.format(new java.util.Date())); 
-        params.put("PaymentType", "aio");  // 交易類型 (固定為 aio)
-        params.put("TotalAmount", String.valueOf(order.getTotalAmount().intValue()));  // 交易金額 (轉為整數)
-        params.put("TradeDesc", "GlobalBau Food Delivery");  // 交易描述
-        params.put("ChoosePayment", "Credit");  // 指定支付方式：信用卡
-        params.put("ReturnURL", "https://你的外網網址/api/payment/callback");  // 付款成功後綠界通知後端的網址
-        params.put("OrderResultURL", "https://你的外網網址/payment/success");  // 客人付完款後跳轉回來的網頁
-        
-        // 計算最難的 CheckMacValue
-        // 設定加密用的 Key 和 IV (這兩個值非常重要，不可洩漏)
-        String hashKey = "5294y06JbCWpE5vM"; // 綠界測試環境 Key
-        String hashIV = "v77hoKGq4uF8dnAC";  // 綠界測試環境 IV
-        // 呼叫 Utils 計算 CheckMacValue (簽章)
-        String checkMacValue = EcpayUtils.generateCheckMacValue(hashKey, hashIV, params);
-        // 將計算好的簽章放進參數 Map
-        params.put("CheckMacValue", checkMacValue);
+		// MerchantTradeNo 最多 20 碼英數字
+		String rawNo = (orderDateId + id).replaceAll("[^A-Za-z0-9]", "");
+		String merchantTradeNo = rawNo.substring(0, Math.min(20, rawNo.length()));
 
-        // 使用 StringBuilder 組裝自動跳轉的 HTML Form
-        StringBuilder html = new StringBuilder();
-        // action 設為綠界測試環境的支付頁面地址
-        html.append("<form id='payForm' action='https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5' method='post'>");
-        // params 是一個 Map，裡面存了所有要給綠界的資料（key 是名稱，value 是值）
-        params.forEach((key, value) -> {
-        	// 這裡是在寫 HTML。每次跑這行，就會產生一行：
-            // <input type='hidden' name='MerchantID' value='2000132'>
-            // type='hidden' 就是讓這個框框在網頁上隱形
-            html.append("<input type='hidden' name='").append(key).append("' value='").append(value).append("'>");
-        });
-        // 所有的參數都生出來後，寫上表單的結尾標籤
-        html.append("</form>");
-        // 加入 JavaScript 腳本，讓頁面載入後自動觸發表單送出 (submit)
-        html.append("</form><script>document.getElementById('payForm').submit();</script>");
-        
-        return html.toString();
-    }
+		Map<String, String> params = new HashMap<>();
+		params.put("MerchantID", merchantId);
+		params.put("MerchantTradeNo", merchantTradeNo);
+		params.put("MerchantTradeDate", new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(new Date()));
+		params.put("PaymentType", "aio");
+		params.put("TotalAmount", String.valueOf(order.getTotalAmount().intValue()));
+		params.put("TradeDesc", "GlobalBau_Food_Delivery");
+		params.put("ItemName", "懶飽飽點餐服務");
+		params.put("ChoosePayment", "Credit");
+		// ReturnURL: ECPay server → backend (via Angular proxy)
+		params.put("ReturnURL", ngrokUrl + "/lazybaobao/payment/ecpay/callback");
+		// OrderResultURL: 付款後瀏覽器跳回前端
+		params.put("OrderResultURL", ngrokUrl + "/payment/result");
+		params.put("ClientBackURL", ngrokUrl + "/payment/cancel");
+		// 備份 orderDateId/id，方便 callback 時取回
+		params.put("CustomField1", orderDateId);
+		params.put("CustomField2", id);
+
+		String checkMacValue = EcpayUtils.generateCheckMacValue(hashKey, hashIV, params);
+		params.put("CheckMacValue", checkMacValue);
+
+		StringBuilder html = new StringBuilder();
+		html.append("<form id='ecpayForm' action='").append(ECPAY_URL).append("' method='post'>");
+		params.forEach((k, v) ->
+			html.append("<input type='hidden' name='").append(k).append("' value='").append(v).append("'>")
+		);
+		html.append("</form>");
+		html.append("<script>document.getElementById('ecpayForm').submit();</script>");
+		return html.toString();
+	}
+
+	/**
+	 * 處理 ECPay 付款結果通知（ReturnURL callback）
+	 * ECPay 要求成功回傳 "1|OK"，失敗回傳 "0|error"
+	 */
+	public String handleCallback(Map<String, String> params) {
+		// 複製成可修改的 Map，避免 remove 時出錯
+		Map<String, String> mutableParams = new HashMap<>(params);
+		String receivedCheckMac = mutableParams.remove("CheckMacValue");
+		String expectedCheckMac = EcpayUtils.generateCheckMacValue(hashKey, hashIV, mutableParams);
+
+		if (!expectedCheckMac.equalsIgnoreCase(receivedCheckMac)) {
+			return "0|CheckMacValue 驗證失敗";
+		}
+		if (!"1".equals(mutableParams.get("RtnCode"))) {
+			return "0|" + mutableParams.getOrDefault("RtnMsg", "付款失敗");
+		}
+
+		String orderDateId = mutableParams.getOrDefault("CustomField1", "");
+		String id = mutableParams.getOrDefault("CustomField2", "");
+		String tradeNo = mutableParams.getOrDefault("TradeNo", mutableParams.get("MerchantTradeNo"));
+
+		if (orderDateId.isEmpty() || id.isEmpty()) {
+			return "1|OK"; // 無法還原訂單 ID，但 ECPay 需要收到 1|OK
+		}
+
+		try {
+			PayReq req = new PayReq();
+			req.setOrderDateId(orderDateId);
+			req.setId(id);
+			req.setPaymentMethod("ECPAY");
+			req.setTransactionId(tradeNo);
+			ordersService.pay(req);
+		} catch (Exception e) {
+			// 記錄錯誤但仍回 1|OK，避免 ECPay 重複通知
+			System.err.println("ECPay callback 訂單更新失敗: " + e.getMessage());
+		}
+		return "1|OK";
+	}
 }

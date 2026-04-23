@@ -1,5 +1,6 @@
 package com.example.global_meals_gradle.dao;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,6 +16,8 @@ import com.example.global_meals_gradle.entity.BranchInventory;
 public interface BranchInventoryDao extends JpaRepository<BranchInventory, Integer> {
 
 	public Optional<BranchInventory> findByProductIdAndGlobalAreaId(int productId, int globalAreaId);
+
+	public List<BranchInventory> findByGlobalAreaId(int globalAreaId);
 	
 	@Modifying
 	@Transactional

@@ -15,7 +15,11 @@ public class RegisterMembersReq {
 	@NotBlank(message = ValidationMsg.PHONE_ERROR)
 	@Length(min = 10, max = 10, message = ValidationMsg.PHONE_ERROR) // 電話號碼10碼
 	private String phone;
-	
+
+	/* 前端 BranchService 傳入，合法值：TW / JP / KR，預設 TW */
+	private String country = "TW";
+
+	@Size(min = 8, message = ValidationMsg.PASSWORD_ERROR)
 	private String password;
 
 	public String getName() {
@@ -34,6 +38,14 @@ public class RegisterMembersReq {
 		this.phone = phone;
 	}
 
+	public String getCountry() {
+		return country;
+	}
+
+	public void setCountry(String country) {
+		this.country = country;
+	}
+
 	public String getPassword() {
 		return password;
 	}
@@ -41,5 +53,5 @@ public class RegisterMembersReq {
 	public void setPassword(String password) {
 		this.password = password;
 	}
-	
+
 }

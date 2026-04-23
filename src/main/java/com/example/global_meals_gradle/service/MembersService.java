@@ -39,7 +39,9 @@ public class MembersService {
 					return new BasicRes(ReplyMessage.PASSWORD_NOT_ENTERED.getCode(), //
 							ReplyMessage.PASSWORD_NOT_ENTERED.getMessage());
 				}
-				membersDao.registerMember(req.getName(), req.getPhone(), encoder.encode(req.getPassword()));
+				membersDao.registerMember(req.getName(), req.getPhone(),
+						req.getCountry() != null ? req.getCountry() : "TW",
+						encoder.encode(req.getPassword()));
 			} else {
 				// 訪客註冊：只需檢查是否佔用到「正式會員(id != 1)」的手機
 	            if (membersDao.getByPhoneExcludeGuest(req.getPhone()) != null) {
@@ -47,7 +49,8 @@ public class MembersService {
 							ReplyMessage.PHONE_HAS_EXISTED.getMessage());
 	            }
 	            // 覆蓋 id = 1 的資料
-				membersDao.registerGuest(req.getName(), req.getPhone());
+				membersDao.registerGuest(req.getName(), req.getPhone(),
+						req.getCountry() != null ? req.getCountry() : "TW");
 			}
 		} catch (Exception e) {
 			throw e;

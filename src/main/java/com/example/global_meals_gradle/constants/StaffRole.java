@@ -4,6 +4,7 @@ public enum StaffRole {
 
 	ADMIN("ADMIN"), //
 	REGION_MANAGER("REGION_MANAGER"), //
+	MANAGER_AGENT("MANAGER_AGENT"), //
 	STAFF("STAFF");
 
 	private String staffRole;

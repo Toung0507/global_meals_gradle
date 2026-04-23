@@ -18,6 +18,10 @@ public class Members {
 	@Column(name = "phone", unique = true)
 	private String phone;
 
+	/* 註冊時所選的國家代碼（TW / JP / KR），對應 BranchService.CountryCode */
+	@Column(name = "country", length = 5)
+	private String country = "TW";
+
 	@Column(name = "password")
 	private String password;
 
@@ -52,6 +56,14 @@ public class Members {
 
 	public void setPhone(String phone) {
 		this.phone = phone;
+	}
+
+	public String getCountry() {
+		return country;
+	}
+
+	public void setCountry(String country) {
+		this.country = country;
 	}
 
 	public String getPassword() {

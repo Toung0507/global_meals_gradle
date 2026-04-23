@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
@@ -52,9 +53,24 @@ public class PromotionsManageService {
 	 * @return PromotionsListRes 包含 code、message 和完整活動清單
 	 */
 	public PromotionsListRes getList() {
+		return getList(null); // 管理端不傳 globalAreaId → 回傳所有活動
+	}
 
-		// findAll() 是 JpaRepository 內建方法，查出 promotions 表全部資料
-		List<Promotions> allPromotions = promotionsDao.findAll();
+	/**
+	 * 依分店 ID 篩選活動清單
+	 * globalAreaId = null → 管理端全查（findAll）
+	 * globalAreaId 有值  → 客戶端：回傳全球活動 + 該分店專屬活動
+	 */
+	public PromotionsListRes getList(Integer globalAreaId) {
+
+		List<Promotions> allPromotions;
+		if (globalAreaId != null && globalAreaId > 0) {
+			// 客戶端：只回傳「全球活動 OR 分店專屬活動」且目前有效的
+			allPromotions = promotionsDao.findActiveByAreaOrGlobal(globalAreaId);
+		} else {
+			// 管理端：不篩選，回傳全部（含停用）
+			allPromotions = promotionsDao.findAll();
+		}
 
 		// 準備組裝回傳用的 VO 清單
 		List<PromotionDetailVo> result = new ArrayList<>();
@@ -63,11 +79,19 @@ public class PromotionsManageService {
 
 			// 把 Promotions entity 的欄位逐一填入 PromotionDetailVo
 			PromotionDetailVo vo = new PromotionDetailVo();
-			vo.setId(p.getId());           // 活動 ID
-			vo.setName(p.getName());       // 活動名稱
-			vo.setStartTime(p.getStartTime()); // 開始日期
-			vo.setEndTime(p.getEndTime());     // 結束日期
-			vo.setActive(p.isActive());        // 是否啟用
+			vo.setId(p.getId());
+			vo.setName(p.getName());
+			vo.setNameJP(p.getNameJP());
+			vo.setNameKR(p.getNameKR());
+			vo.setGlobalAreaId(p.getGlobalAreaId());
+			vo.setStartTime(p.getStartTime());
+			vo.setEndTime(p.getEndTime());
+			vo.setActive(p.isActive());
+			vo.setDescription(p.getDescription());
+			// 有圖片時轉為 Base64 字串；無圖片為 null
+			if (p.getPromotionImg() != null && p.getPromotionImg().length > 0) {
+				vo.setPromotionImg(Base64.getEncoder().encodeToString(p.getPromotionImg()));
+			}
 
 			// 查此活動底下所有贈品規則（包含停用的，讓管理端看到完整狀態）
 			// findByPromotionsId 使用 native SQL：SELECT * FROM promotions_gifts WHERE promotions_id = ?
@@ -236,6 +260,40 @@ public class PromotionsManageService {
 	}
 
 	// =============================================
+	// 方法三點五：更新活動文案與封面圖片
+	// =============================================
+
+	/**
+	 * 更新指定促銷活動的 description（文案）與 promotion_img（封面圖）
+	 *
+	 * 流程：
+	 *   1. 確認 promotionsId 存在
+	 *   2. 更新 description
+	 *   3. 若 promotionImg 非空，解 Base64 後寫入 DB；否則不動圖片
+	 *
+	 * @param req 包含 promotionsId、description、promotionImg（Base64 或 data URL）
+	 */
+	@Transactional
+	public void updatePromotionInfo(PromotionsManageReq req) {
+
+		Promotions p = promotionsDao.findById(req.getPromotionsId())
+				.orElseThrow(() -> new RuntimeException(ReplyMessage.PROMOTION_NOT_FOUND.getMessage()));
+
+		p.setDescription(req.getDescription());
+
+		String b64 = req.getPromotionImg();
+		if (b64 != null && !b64.isBlank()) {
+			// 去除 data URL 前綴（例：data:image/jpeg;base64,）
+			if (b64.contains(",")) {
+				b64 = b64.substring(b64.indexOf(",") + 1);
+			}
+			p.setPromotionImg(Base64.getDecoder().decode(b64));
+		}
+
+		promotionsDao.save(p);
+	}
+
+	// =============================================
 	// 方法四：一次建立促銷活動 + 贈品規則（POST /promotions/create 使用）
 	// =============================================
 
@@ -287,6 +345,11 @@ public class PromotionsManageService {
 		// 組裝 Promotions entity 準備寫入
 		Promotions promotion = new Promotions();
 		promotion.setName(req.getName());
+		promotion.setNameJP(req.getNameJP());
+		promotion.setNameKR(req.getNameKR());
+		// globalAreaId = 0 或 null → 全球活動（老闆建立）; > 0 → 分店專屬
+		Integer areaId = req.getGlobalAreaId();
+		promotion.setGlobalAreaId((areaId != null && areaId > 0) ? areaId : null);
 		promotion.setStartTime(req.getStartTime());
 		promotion.setEndTime(req.getEndTime());
 		promotion.setActive(true); // 新建時固定啟用

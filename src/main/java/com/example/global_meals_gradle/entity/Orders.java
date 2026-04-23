@@ -46,9 +46,14 @@ public class Orders {
 	@Column(name = "transaction_id")
 	private String transactionId;
 
-	@Enumerated(EnumType.STRING) // 關鍵：存儲字串
+	@Enumerated(EnumType.STRING)
 	@Column(name = "status")
 	private OrdersStatus status;
+
+	// 廚房狀態：WAITING（待接單）/ COOKING（備餐中）/ READY（可取餐）
+	// 對應 DB 欄位 kitchen_status，需先執行 ALTER TABLE 新增此欄位
+	@Column(name = "kitchen_status")
+	private String kitchenStatus = "WAITING";
 
 	@Column(name = "completed_at")
 	private LocalDateTime completedAt;
@@ -166,5 +171,13 @@ public class Orders {
 
 	public void setUseDiscount(boolean useDiscount) {
 		this.useDiscount = useDiscount;
+	}
+
+	public String getKitchenStatus() {
+		return kitchenStatus;
+	}
+
+	public void setKitchenStatus(String kitchenStatus) {
+		this.kitchenStatus = kitchenStatus;
 	}
 }

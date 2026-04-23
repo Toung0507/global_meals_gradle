@@ -42,8 +42,10 @@ public class StaffService {
 	 */
 	private String generateAccount(StaffRole targetRole) {
 
-		// 決定前綴是 "RM" 還是 "ST"
-		String prefix = (targetRole == StaffRole.REGION_MANAGER) ? "RM" : "ST";
+		String prefix;
+		if (targetRole == StaffRole.REGION_MANAGER) prefix = "RM";
+		else if (targetRole == StaffRole.MANAGER_AGENT) prefix = "MA";
+		else prefix = "ST";
 
 		// 去資料庫問這個角色目前最後一個帳號（例如 "RM0015"）
 		String lastAccount = staffDao.findLastAccountByRole(targetRole.name());

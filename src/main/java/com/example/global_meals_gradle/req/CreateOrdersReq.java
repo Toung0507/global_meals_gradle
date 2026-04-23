@@ -34,8 +34,11 @@ public class CreateOrdersReq {
 	private List<OrderCartDetails> OrderCartDetailsList;
 	
 	private boolean useDiscount;   // 判斷有無使用優惠劵
-	
+
 	private int promotionsId;  // 判斷參加的優惠活動id
+
+	// 客戶端現金下單時傳 "CASH"，後端會建立 PENDING_CASH 訂單（不立即付款）
+	private String paymentMethod;
 
 	public String getOrderCartId() {
 		return orderCartId;
@@ -115,5 +118,13 @@ public class CreateOrdersReq {
 
 	public void setPromotionsId(int promotionsId) {
 		this.promotionsId = promotionsId;
+	}
+
+	public String getPaymentMethod() {
+		return paymentMethod;
+	}
+
+	public void setPaymentMethod(String paymentMethod) {
+		this.paymentMethod = paymentMethod;
 	}
 }

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 public enum OrdersStatus {
 
 	UNPAID("UNPAID"), //
+	PENDING_CASH("PENDING_CASH"), // 客戶端現金訂單：已建立但等待現場收款
 	COMPLETED("COMPLETED"), //
 	CANCELLED("CANCELLED"), //
 	REFUNDED("REFUNDED");

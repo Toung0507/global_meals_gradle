@@ -4,9 +4,13 @@ public enum ReplyMessage {
 	
 	// 昱文
 	// Service RegionsService
-	REGIONS_ID_ERROR(400, "Regions Id Error!!"),//
+	REGIONS_ID_ERROR(400, "Regions Id Error!!"), //
+	REGIONS_ID_NOT_FOUND(404, "Regions Id Not Found!!"), // id 對應的資料不存在
+	// Service MonthlyFinancialReportsService
+	REPORTS_NOT_FOUND(404, "Reports Not Found!!"), // 查詢無任何報表資料
 	// Service GlobalAreaService
 	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
+	TAX_TYPE_ERROR(400, "Tax Type Error!!"), //
 	// Service MembersService
 	PHONE_ERROR(400, "Phone Error!!"), //
 	PHONE_HAS_EXISTED(400, "Phone Has Existed!!"), // 電話號碼已存在
@@ -69,6 +73,16 @@ public enum ReplyMessage {
 	DEPUTY_OPERATE_ERROR(403, "Deputy Operate Error"), //翻譯:副店長無法執行此操作
 	TARGET_NOT_STAFF(400, "Target Not Staff"), //目標人物必須是員工
 	TARGET_NOT_DEPUTY(400, "Target Not Deputy"), //目標人物不是副店長
+
+	/* 家齊 - 商品管理 */
+	PRODUCT_EXISTS(400, "Product Name Already Exists!!"),
+	IMAGE_ERROR(400, "Image Decode Error!!"),
+	IMAGE_TOO_LARGE(400, "Image Too Large!!"),
+	PRODUCT_CREATE_SUCCESS(200, "Product Created Successfully!!"),
+	PRODUCT_UPDATE_SUCCESS(200, "Product Updated Successfully!!"),
+	PRODUCT_DELETE_SUCCESS(200, "Product Deleted Successfully!!"),
+	BRANCH_NOT_FOUND(404, "Branch Not Found!!"),
+	SYSTEM_ERROR(500, "System Error!!")
 	;
 	
 
