@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.constants.StaffRole;
 import com.example.global_meals_gradle.dao.BranchInventoryDao;
 import com.example.global_meals_gradle.dao.MembersDao;
 import com.example.global_meals_gradle.dao.OrdersDao;
@@ -332,7 +333,7 @@ public class OrdersService {
 		}
 		BigDecimal taxRate = region.getTaxRate(); // 稅率
 		String taxType = region.getTaxType().name(); // 稅制
-		// 初始化未稅金額 (使用 BigDecimal.ZERO 確保精準度)
+		// 初始化金額 (使用 BigDecimal.ZERO 確保精準度)
 		BigDecimal subtotal = BigDecimal.ZERO;
 		BigDecimal finalSubtotal = BigDecimal.ZERO; // 最終未稅金額
 		BigDecimal taxAmount = BigDecimal.ZERO; // 稅額
@@ -350,18 +351,8 @@ public class OrdersService {
 						.findByProductIdAndGlobalAreaId(detail.getProductId(), req.getGlobalAreaId())
 						.orElseThrow(() -> new RuntimeException("該分店未上架商品 ID: " + detail.getProductId()));
 				BigDecimal qty = BigDecimal.valueOf(detail.getQuantity()); // 取的商品購買數量
-				if ("INCLUSIVE".equals(taxType)) {
-					// --- 內含稅：單價先乘稅率並無條件進位 (產生標價) ---
-					BigDecimal priceWithTax = inv.getBasePrice() // priceWithTax = 商品含稅價格
-							.multiply(BigDecimal.ONE.add(taxRate)) // 1 * 稅率
-							.setScale(0, RoundingMode.UP); // 無條件進位
-					// 累加含稅總額
-					subtotal = subtotal.add(priceWithTax.multiply(qty));
-				} else {
-					// --- 外加稅：直接用未稅單價累加 ---
-					subtotal = subtotal.add(inv.getBasePrice().multiply(qty));
-				}
-
+				// 把取的商品金額做迴圈相加，內含稅國家取得的是含稅價格1;外加稅國家取得的是未稅價格
+				subtotal = subtotal.add(inv.getBasePrice().multiply(qty));
 			} else {
 				giftProductIds.add(detail.getProductId());
 			}
@@ -393,7 +384,7 @@ public class OrdersService {
 		// 反推「未稅金額」(總額 / (1 + 稅率))
 		BigDecimal beforeTax = afterTax.divide(BigDecimal.ONE.add(taxRate), 4, RoundingMode.HALF_UP);
 		// 稅額 = 總共付的錢 - 原始餐點的錢
-		taxAmount = afterTax.subtract(beforeTax).setScale(0, RoundingMode.UP);
+		taxAmount = afterTax.subtract(beforeTax).setScale(0, RoundingMode.HALF_UP);
 		// 定義「最終未稅小計」
 		finalSubtotal = afterTax.subtract(taxAmount);
 		// [DEBUG] 記錄金額計算結果，這在對帳出錯時非常重要
@@ -550,11 +541,97 @@ public class OrdersService {
 		}
 	}
 
-	/* 訂單狀態: 退款或取消 */
+	/* 申請退款 */
 	@Transactional(rollbackFor = Exception.class)
-	public BasicRes ordersStatus(RefundedReq req, HttpSession httpSession) {
+	public BasicRes applyForRefund(RefundedReq req, HttpSession httpSession) {
 		// 抓員工資訊
 		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		Members member = (membersRes != null) ? membersRes.getMembers() : null;
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+		// 防呆：只有 COMPLETED 才能申請退款
+		if (!order.getStatus().equals("COMPLETED")) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "僅完成之訂單可申請退款");
+		}
+		// 判斷是員工現場幫客人處理退款，還是客人線上申請退款
+		if (staff != null) { // 員工現場幫客人處理退款
+			return executeFullRefund(req, order);
+		} else if (staff == null && member != null) { // 客人線上申請退款
+			if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
+				return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
+			}
+			// 更新為「退款處理中」，等待店長審核
+			ordersDao.updateOrderStatus("REFUND_PROCESSING", req.getId(), req.getOrderDateId());
+			// TODO: 發送 WebSocket 或推播通知給店長
+			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "退款申請已提交，請等待店長審核");
+		} else { // 遊客操作
+			throw new RuntimeException("請先登入或請找員工處理");
+		}
+	}
+
+	// 退款實際動作: 狀態更新、點餐次數收回、優惠劵還原
+	@Transactional(rollbackFor = Exception.class)
+	private BasicRes executeFullRefund(RefundedReq req, Orders order) {
+		try {
+			// 執行訂單狀態更新
+			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
+			// 判斷是否成功
+			if (result > 0) {
+				// 如果是會員，次數扣回
+				if (order.getMemberId() > 1) {
+					if (order.isUseDiscount()) {
+						// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
+						membersDao.restoreCouponAndPoints(order.getMemberId());
+					} else {
+						// 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
+						membersDao.smartReducePoint(order.getMemberId());
+					}
+				}
+				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			}
+			throw new RuntimeException("更新訂單狀態失敗");
+		} catch (Exception e) {
+			throw new RuntimeException("退款流程發生錯誤: " + e.getMessage());
+		}
+	}
+	
+	/* 店長審核退款 */
+	@Transactional(rollbackFor = Exception.class)
+	public BasicRes auditRefund(RefundedReq req, HttpSession httpSession) {
+		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		// 判斷有沒有登入
+		if (staff == null) {
+		    return new BasicRes(ReplyMessage.NOT_LOGIN.getCode(), //
+		    		ReplyMessage.NOT_LOGIN.getMessage()); 
+		}
+		// 判斷是不是店長
+		if(staff.getRole() != StaffRole.REGION_MANAGER) { // 如果身分不是店長
+			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), //
+		    		ReplyMessage.PERMISSION_DENIED.getMessage()); 
+		}
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+	    if (order == null) {
+	        return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
+	        		ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+	    }
+	    
+	    try {
+	        if ("REFUNDED".equalsIgnoreCase(req.getStatus())) {
+	            return executeFullRefund(req, order); 
+	        }else { // 退款被駁回
+	        	ordersDao.updateOrderStatus("COMPLETED", req.getId(), req.getOrderDateId());
+	        	return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	        }
+	    } catch (Exception e) {
+	        // 拋出 RuntimeException 觸發 Transactional Rollback
+	        throw new RuntimeException("審核執行失敗：" + e.getMessage());
+	    }
+	}
+
+	/* 取消訂單 */
+	@Transactional(rollbackFor = Exception.class)
+	public BasicRes cancelOrder(RefundedReq req, HttpSession httpSession) {
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
 		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
@@ -565,30 +642,17 @@ public class OrdersService {
 			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 		}
-
-		if (staff != null) { // 員工操作
-			member = membersDao.findById(order.getMemberId());
-			if (member == null) {
-				return new BasicRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(), //
-						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
-			}
-		} else if (member != null) { // 會員操作
-			if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
-				return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
-			}
-		} else { // 遊客操作
+		if (member == null || member.getId() < 1) {
 			throw new RuntimeException("請先登入或請找員工處理");
 		}
-
+		if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
+			return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
+		}
 		try {
 
 			String oldStatus = order.getStatus().toString(); // 目前狀態
 			String targetStatus = req.getStatus().toString(); // 目標狀態(之後要更新的狀態)
-			// 防呆：只有 COMPLETED 才能退款；只有 UNPAID 才能取消
-			if (targetStatus.equalsIgnoreCase("REFUNDED") && !oldStatus.equals("COMPLETED")) {
-				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
-			}
+			// 防呆：只有 UNPAID 才能取消
 			if (targetStatus.equalsIgnoreCase("CANCELLED") && !oldStatus.equals("UNPAID")) {
 				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
 						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
@@ -598,31 +662,16 @@ public class OrdersService {
 			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
 			// 判斷是否成功
 			if (result > 0) {
-				// 如果是退款要把次數退回(取消不用走這裡)
-				if (targetStatus.equalsIgnoreCase("REFUNDED")) {
-					// 如果是會員，次數扣回
-					if (order.getMemberId() > 1) {
-						if (order.isUseDiscount()) {
-							// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
-							membersDao.restoreCouponAndPoints(order.getMemberId());
-						} else {
-							// 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
-							membersDao.smartReducePoint(order.getMemberId());
-						}
-					}
-					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-				} else if (targetStatus.equalsIgnoreCase("CANCELLED")) {
-					// 如果是會員且有使用優惠劵
-					if (order.getMemberId() > 1 && order.isUseDiscount()) {
-						// 這裡可以共用 restoreCouponAndPoints，把券設回 true 並點數設回 10
-						membersDao.restoreCouponAndPoints(order.getMemberId());
-					}
-					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+				// 如果是會員且有使用優惠劵
+				if (order.getMemberId() > 1 && order.isUseDiscount()) {
+					// 這裡可以共用 restoreCouponAndPoints，把券設回 true 並點數設回 10
+					membersDao.restoreCouponAndPoints(order.getMemberId());
 				}
+				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			}
-			throw new RuntimeException("更新訂單狀態失敗");
+			throw new RuntimeException("取消訂定單失敗");
 		} catch (Exception e) {
-			throw new RuntimeException("退款流程發生錯誤: " + e.getMessage());
+			throw new RuntimeException("取消流程發生錯誤: " + e.getMessage());
 		}
 	}
 
