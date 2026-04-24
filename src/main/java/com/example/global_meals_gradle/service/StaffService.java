@@ -12,7 +12,7 @@ import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.constants.StaffRole;
 import com.example.global_meals_gradle.dao.StaffDao;
 import com.example.global_meals_gradle.entity.Staff;
-import com.example.global_meals_gradle.req.ChangePasswordReq;
+import com.example.global_meals_gradle.req.ResetStaffPasswordReq;
 import com.example.global_meals_gradle.req.LoginStaffReq;
 import com.example.global_meals_gradle.req.RegisterStaffReq;
 import com.example.global_meals_gradle.req.UpdateStaffPasswordReq;
@@ -92,7 +92,7 @@ public class StaffService {
 	 * 主功能 2：【修改密碼】
 	 * ===================================================== */
 	@Transactional(rollbackFor = Exception.class)
-	public StaffSearchRes changePassword(int targetId, ChangePasswordReq req, Staff operator) {
+	public StaffSearchRes changePassword(int targetId, ResetStaffPasswordReq req, Staff operator) {
 
 		Staff targetStaff = staffDao.findById(targetId).orElse(null);
 		if (targetStaff == null) {

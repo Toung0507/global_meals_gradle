@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.entity.Staff;
-import com.example.global_meals_gradle.req.ChangePasswordReq;
+import com.example.global_meals_gradle.req.ResetStaffPasswordReq;
 import com.example.global_meals_gradle.req.LoginStaffReq;
 import com.example.global_meals_gradle.req.RegisterStaffReq;
 import com.example.global_meals_gradle.req.UpdateStaffPasswordReq;
@@ -144,7 +144,7 @@ public class StaffController {
 	@PatchMapping("/api/admin/staff/{id}/password")
 	public StaffSearchRes changePassword(//
 			@PathVariable int id, //
-			@Valid @RequestBody ChangePasswordReq req, //
+			@Valid @RequestBody ResetStaffPasswordReq req, //
 			HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
