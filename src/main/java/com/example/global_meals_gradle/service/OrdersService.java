@@ -207,7 +207,7 @@ public class OrdersService {
 		} else if (member != null) { // 代表會員操作
 			req.setMemberId(member.getId());
 		} else { // 代表是遊客
-			if(req.getMemberId() >1) {  // 可能是會員，但session失效(登出)
+			if (req.getMemberId() > 1) { // 可能是會員，但session失效(登出)
 				throw new RuntimeException("連線已逾時，請重新登入後再結帳");
 			}
 			req.setMemberId(1);
@@ -299,15 +299,18 @@ public class OrdersService {
 		// Key: 產品ID, Value: 總數量 (商品 + 贈品)
 		Map<Integer, Integer> stockToReduceMap = new HashMap<>();
 
-		/*
-		 * 這是一般的 if-else 寫法 for (OrderCartDetails detail : cartDetailsList) { int pid =
-		 * detail.getProductId(); int qty = detail.getQuantity();
-		 * 
-		 * 檢查 Map 裡是不是已經有這個商品 ID 了 if (stockToReduceMap.containsKey(pid)) { //
-		 * 【情況A】：已經有了（例如之前跑過商品，現在跑贈品） int oldQty = stockToReduceMap.get(pid); // 取出舊的數量
-		 * stockToReduceMap.put(pid, oldQty + qty); // 加完後更新進去 } else { // 【情況 B】：還沒出現過
-		 * stockToReduceMap.put(pid, qty); // 直接放進去 } }
-		 */
+		// 這是一般的 if-else 寫法
+		// for (OrderCartDetails detail : cartDetailsList) {
+		// int pid = detail.getProductId();
+		// int qty = detail.getQuantity();
+		// 檢查 Map 裡是不是已經有這個商品 ID 了
+		// if (stockToReduceMap.containsKey(pid)) { // 情況A】：已經有了（例如之前跑過商品，現在跑贈品）
+		// int oldQty = stockToReduceMap.get(pid); // 取出舊的數量
+		// stockToReduceMap.put(pid, oldQty + qty); // 加完後更新進去
+		// } else { // 【情況 B】：還沒出現過
+		// stockToReduceMap.put(pid, qty); // 直接放進去
+		// }
+		// }
 
 		/*
 		 * merge 方法的三個參數意義： detail.getProductId()：我要找哪個 ID？ detail.getQuantity()：如果這個 ID
@@ -555,31 +558,30 @@ public class OrdersService {
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
 		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
-		
+
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
 		// 找不到該筆訂單
 		if (order == null) { // 找不到該筆訂單
 			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 		}
-		
-		if(staff != null) {  // 員工操作
+
+		if (staff != null) { // 員工操作
 			member = membersDao.findById(order.getMemberId());
 			if (member == null) {
 				return new BasicRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(), //
 						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
 			}
-		}else if(member != null) {  // 會員操作
-			if(member.getId() != order.getMemberId()) {  // 如果與該訂單的會員ID不相符
-				return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(),
-						ReplyMessage.MEMBER_ERROR.getMessage());
+		} else if (member != null) { // 會員操作
+			if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
+				return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
 			}
-		}else {  // 遊客操作
+		} else { // 遊客操作
 			throw new RuntimeException("請先登入或請找員工處理");
 		}
-		
+
 		try {
-			
+
 			String oldStatus = order.getStatus().toString(); // 目前狀態
 			String targetStatus = req.getStatus().toString(); // 目標狀態(之後要更新的狀態)
 			// 防呆：只有 COMPLETED 才能退款；只有 UNPAID 才能取消

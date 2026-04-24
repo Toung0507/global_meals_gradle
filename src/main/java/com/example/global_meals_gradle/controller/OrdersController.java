@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,11 +23,15 @@ import com.example.global_meals_gradle.service.EcpayService;
 import com.example.global_meals_gradle.service.LinePayService;
 import com.example.global_meals_gradle.service.OrdersService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
-//@CrossOrigin(origins = "http://localhost:4200")
 @RestController
+@RequestMapping("/orders")
+@Tag(name = "訂單管理模組", description = "處理訂單查詢、建立、狀態更新及第三方金流串接")
 public class OrdersController {
 
 	@Autowired
@@ -39,41 +44,48 @@ public class OrdersController {
 	private LinePayService linePayService;
 
 	/* 取的該會員的歷史訂單 */
-	@PostMapping("orders/get_all_orders_list")
+	@PostMapping("get_all_orders_list")
+	@Operation(summary = "取得會員歷史訂單", description = "查詢該會員的所有歷史訂單記錄")
 	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req, //
-			HttpSession httpSession) {
+			@Parameter(hidden = true) HttpSession httpSession) {
 		return ordersService.getAllOrders(req, httpSession);
 	}
 
 	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED */
-	@PostMapping("orders/orders_status")
-	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req, HttpSession httpSession) {
+	@PostMapping("orders_status")
+	@Operation(summary = "更改訂單狀態", description = "將訂單狀態更新為 REFUNDED (退款) 或 CANCELLED (取消)")
+	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req, //
+			@Parameter(hidden = true) HttpSession httpSession) {
 		return ordersService.ordersStatus(req, httpSession);
 	}
 
 	/* 成立訂單(未結帳) */
-	@PostMapping("orders/create_orders")
+	@PostMapping("create_orders")
+	@Operation(summary = "建立新訂單", description = "新增一筆未結帳的訂單")
 	public CreateOrdersRes createOrders(@Valid @RequestBody CreateOrdersReq req, //
-			HttpSession httpSession) {
+			@Parameter(hidden = true) HttpSession httpSession) {
 		return ordersService.createOrders(req, httpSession);
 	}
 
 	/* 現金付款成功 */
-	@PostMapping("orders/pay")
+	@PostMapping("pay")
+	@Operation(summary = "現金付款確認", description = "紀錄訂單已使用現金完成付款")
 	public BasicRes pay(@Valid @RequestBody PayReq req) {
 		return ordersService.pay(req);
 	}
 
 	/* 報電話號碼取餐(今天) */
-	@GetMapping("orders/get_order_by_phone")
+	@GetMapping("get_order_by_phone")
+	@Operation(summary = "手機號碼取餐", description = "根據電話號碼查詢今日待取餐訂單")
 	public GetOrdersByPhoneRes getOrderByPhone(@RequestParam("phone") String phone) {
 		return ordersService.getOrderByPhone(phone);
 	}
 	
 	// 前端點擊「前往付款」時請求的 API
 	@GetMapping("/goPay")
-	public String goPay(@RequestParam String orderDateId, @RequestParam String id, //
-			@RequestParam String way) {
+	@Operation(summary = "前往付款頁面", description = "根據選擇的付款方式 (ECPAY/LINEPAY) 轉導至金流平台")
+	public String goPay(@RequestParam String orderDateId, @RequestParam("id") String id, //
+			@RequestParam("way") String way) {
 		// 判斷付款方式是否為綠界 (ECPAY) 還是LINE Pay
 		if ("ECPAY".equalsIgnoreCase(way)) {
             // 執行綠界刷卡
@@ -88,7 +100,8 @@ public class OrdersController {
     }
 
 	/* 接收金流公司傳的付款成功通知 */
-	@PostMapping("/api/payment/callback")
+	@PostMapping("/payment/callback")
+	@Operation(summary = "金流回呼通知", description = "接收綠界等第三方金流的付款結果回傳 (內部 API)")
 	public String handlePaymentNotify(@RequestParam Map<String, String> params) {
 	    // 取得金流公司傳回來的結果 (RtnCode 是綠界的標準)
 	    String rtnCode = params.get("RtnCode"); 
@@ -139,11 +152,12 @@ public class OrdersController {
 	 * LINE Pay 支付完成後跳轉回來的網址 (ConfirmUrl)
 	 */
 	@GetMapping("/linepay/confirm")
+	@Operation(summary = "LinePay 付款確認", description = "接收 LinePay 支付完成後的確認導回")
 	public String linePayConfirm(
-	    @RequestParam String transactionId, // LINE Pay 給的交易序號
-	    @RequestParam String orderDateId,   // 我們自己傳過去的參數 (透傳)
-	    @RequestParam String id,
-	    @RequestParam int amount
+	    @RequestParam("transactionId") String transactionId, // LINE Pay 給的交易序號
+	    @RequestParam("orderDateId") String orderDateId,   // 我們自己傳過去的參數 (透傳)
+	    @RequestParam("id") String id,
+	    @RequestParam("amount") int amount
 	) {
 	    try {
 	        // 執行確認扣款

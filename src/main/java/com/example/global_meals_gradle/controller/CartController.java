@@ -18,11 +18,15 @@ import com.example.global_meals_gradle.req.CartSyncReq;
 import com.example.global_meals_gradle.res.CartViewRes;
 import com.example.global_meals_gradle.service.CartService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
 // 全局設定此模組的開頭都是 /cart
 @RequestMapping("/cart")
+@Tag(name = "購物車管理模組", description = "處理購物車增刪改查、贈品選擇及跨分店切換業務")
 public class CartController {
 	@Autowired
 	private CartService cartService;
@@ -34,8 +38,10 @@ public class CartController {
 	 * 前端呼叫時機：① 頁面初次載入 ② 按下「確認下單」前的最後一次驗算
 	 */
 	@GetMapping("/{cartId}")
-	public CartViewRes viewCart(@PathVariable int cartId, // 從 URL 路徑取出 cartId（例：/cart/7）
-			@RequestParam int memberId) { // 從 URL 附加的查詢參數取出 memberId（例：?memberId=3）
+	@Operation(summary = "查看購物車", description = "取得當前購物車的完整商品列表與狀態")
+	public CartViewRes viewCart(
+			@Parameter(description = "購物車 ID", example = "7") @PathVariable("cartId") int cartId, // 從 URL 路徑取出 cartId（例：/cart/7）
+			@Parameter(description = "會員 ID", example = "3") @RequestParam("memberId") int memberId) { // 從 URL 附加的查詢參數取出 memberId（例：?memberId=3）
 		return cartService.viewCart(cartId, memberId);
 	}
 
@@ -50,25 +56,13 @@ public class CartController {
 	@PostMapping("/sync")
 	// @Valid 觸發欄位驗證
 	// @RequestBody 把 JSON 轉成 Java 物件
+	@Operation(summary = "同步購物車商品", description = "新增商品至購物車或更新現有商品數量")
 	public CartViewRes syncItem(@Valid @RequestBody CartSyncReq req) {
 		return cartService.syncItem(req);
 	}
 
 	/**
-	 * API 3：刪除購物車裡的單一商品 <br>
-	 * HTTP Method：DELETE（刪除操作）<br>
-	 * URL：DELETE /cart/item <br>
-	 * 前端呼叫時機：使用者點擊商品旁邊的「刪除」圖示 <br>
-	 * 前端 Body 範例：{ "cartId": 7, "productId": 5, "memberId":3 }
-	 */
-
-	@DeleteMapping("/item")
-	public CartViewRes removeItem(@Valid @RequestBody CartRemoveReq req) {
-		return cartService.removeItem(req);
-	}
-
-	/**
-	 * API 4：使用者選擇贈品 <br>
+	 * API 3：使用者選擇贈品 <br>
 	 * HTTP Method：POST（有寫入操作）<br>
 	 * URL：POST /cart/gift <br>
 	 * 前端呼叫時機：使用者從贈品清單選擇了一個贈品後點擊確認 <br>
@@ -77,12 +71,13 @@ public class CartController {
 	 */
 
 	@PostMapping("/gift")
+	@Operation(summary = "選擇贈品", description = "使用者在購物車中選擇符合條件的贈品")
 	public CartViewRes selectGift(@Valid @RequestBody CartSelectGiftReq req) {
 		return cartService.selectGift(req);
 	}
 
 	/**
-	 * API 5：清空購物車 <br>
+	 * API 4：清空購物車 <br>
 	 * HTTP Method：DELETE（刪除操作）<br>
 	 * URL：DELETE /cart/clear <br>
 	 * 前端呼叫時機：使用者點擊「清空購物車」按鈕 <br>
@@ -90,17 +85,19 @@ public class CartController {
 	 */
 
 	@DeleteMapping("/clear")
+	@Operation(summary = "清空購物車", description = "移除購物車內所有商品")
 	public CartViewRes clearCart(@Valid @RequestBody CartClearReq req) {
 		return cartService.clearCart(req);
 	}
 
 	/**
-	 * API 6：切換分店 <br>
+	 * API 5：切換分店 <br>
 	 * HTTP Method：POST<br>
 	 * URL：/cart/switch-branch <br>
 	 * 前端傳：舊的 cartId + 新的 globalAreaId + memberId 後端回：一台空的新購物車（屬於新分店）
 	 */
-	@PostMapping("cart/switch-branch")
+	@PostMapping("switch-branch")
+	@Operation(summary = "切換分店", description = "切換分店後將產生新的購物車，原購物車內容將被清空或重置")
 	public CartViewRes switchBranch(@Valid @RequestBody CartSwitchBranchReq req) {
 		return cartService.switchBranch(req.getOldCartId(), req.getNewGlobalAreaId(), req.getMemberId());
 	}
