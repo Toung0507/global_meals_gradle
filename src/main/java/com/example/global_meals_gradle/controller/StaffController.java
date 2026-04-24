@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
@@ -20,6 +21,9 @@ import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.StaffSearchRes;
 import com.example.global_meals_gradle.service.StaffService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
@@ -29,6 +33,8 @@ import jakarta.validation.Valid;
 //               allowCredentials = "true" 讓 Cookie（Session）可以跨域傳送
 @RestController
 @CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
+@RequestMapping("/staff")
+@Tag(name = "員工管理模組", description = "處理員工登入、權限管理與密碼變更業務")
 public class StaffController {
 
 	// Session 的 key 名稱，統一用常數，避免到處打字串打錯
@@ -58,8 +64,10 @@ public class StaffController {
 	 *           欄位不合格直接回傳 400，不會進到 Service
 	 *  HttpSession session：Spring 自動注入 Session 物件
 	 * ================================================================= */
-	@PostMapping("/api/auth/login")//看ATM
-	public StaffSearchRes login(@Valid @RequestBody LoginStaffReq req, HttpSession session) {
+	@PostMapping("/auth/login")//看ATM
+	@Operation(summary = "員工登入", description = "驗證帳號密碼並建立 Session")
+	public StaffSearchRes login(@Valid @RequestBody LoginStaffReq req, //
+			@Parameter(hidden = true) HttpSession session) {
 
 		StaffSearchRes res = staffService.login(req);
 		
@@ -82,7 +90,8 @@ public class StaffController {
 	 *  session.invalidate()：把這個 Session 整個清掉
 	 *  下次要操作就要重新登入
 	 * ================================================================= */
-	@GetMapping("/api/auth/logout")
+	@GetMapping("/auth/logout")
+	@Operation(summary = "員工登出", description = "銷毀當前 Session")
 	public BasicRes logout(HttpSession session) {
 		session.invalidate();
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), //
@@ -93,8 +102,10 @@ public class StaffController {
 	/* =================================================================
 	 *  POST /api/admin/staff — 新增員工（建立 RM 或 ST）
 	 * ================================================================= */
-	@PostMapping("/api/admin/staff")
-	public StaffSearchRes register(@Valid @RequestBody RegisterStaffReq req, HttpSession session) {
+	@PostMapping("/admin/staff")
+	@Operation(summary = "新增員工", description = "建立新員工帳號 (需管理員權限)")
+	public StaffSearchRes register(@Valid @RequestBody RegisterStaffReq req, //
+            @Parameter(hidden = true) HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
 		
@@ -106,8 +117,9 @@ public class StaffController {
 	 *  GET /api/admin/staff — 查詢員工清單
 	 *  ADMIN → 看所有 RM；RM → 看自己分店的員工
 	 * ================================================================= */
-	@GetMapping("/api/admin/staff")
-	public StaffSearchRes getStaffList(HttpSession session) {
+	@GetMapping("/admin/staff")
+	@Operation(summary = "查詢員工清單", description = "取得員工列表")
+	public StaffSearchRes getStaffList(@Parameter(hidden = true) HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
 
@@ -126,11 +138,12 @@ public class StaffController {
 	 *  @PathVariable int id：從 URL 路徑取出 {id}
 	 *  例如呼叫 PATCH /api/admin/staff/5/status → id = 5
 	 * ================================================================= */
-	@PatchMapping("/api/admin/staff/{id}/status")
+	@PatchMapping("/admin/staff/{id}/status")
+	@Operation(summary = "調整員工狀態", description = "停權或復權指定員工")
 	public StaffSearchRes updateStatus(//
-			@PathVariable int id, //
+			@PathVariable("id") int id, //
 			@Valid @RequestBody UpdateStaffStatusReq req, //
-			HttpSession session) {
+			@Parameter(hidden = true) HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
 		
@@ -141,11 +154,12 @@ public class StaffController {
 	/* =================================================================
 	 *  PATCH /api/admin/staff/{id}/password — 修改密碼
 	 * ================================================================= */
-	@PatchMapping("/api/admin/staff/{id}/password")
+	@PatchMapping("/admin/staff/{id}/password")
+	@Operation(summary = "管理員修改員工密碼", description = "由管理員強制重置員工密碼")
 	public StaffSearchRes changePassword(//
-			@PathVariable int id, //
+			@PathVariable("id") int id, //
 			@Valid @RequestBody ChangePasswordReq req, //
-			HttpSession session) {
+			@Parameter(hidden = true) HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
 	
@@ -155,7 +169,8 @@ public class StaffController {
 	/* =================================================================
 	 * PATCH /api/staff/password — 員工自己修改密碼 (需驗證舊密碼)
 	 * ================================================================= */
-	@PatchMapping("/api/staff/password")
+	@PatchMapping("/staff/password")
+	@Operation(summary = "員工自行修改密碼", description = "員工驗證舊密碼後變更為新密碼")
 	public StaffSearchRes selfChangePassword(//
 	        @Valid @RequestBody UpdateStaffPasswordReq req, //
 	        HttpSession session) {
@@ -168,7 +183,9 @@ public class StaffController {
 	 *  PATCH /api/admin/staff/{id}/promote — 晉升
 	 * ================================================================= */
 	@PatchMapping("/api/admin/staff/{id}/promote")
-	public StaffSearchRes promoteToMA(@PathVariable int id, HttpSession session) {
+	@Operation(summary = "晉升員工", description = "將員工權限晉升為副店長或更高層級")
+	public StaffSearchRes promoteToMA(@PathVariable("id") int id, //
+			@Parameter(hidden = true) HttpSession session) {
 		Staff operator = getLoginStaff(session);
         // 此處攔截器會處理登入檢查，不需再寫 if(operator == null)
 		return staffService.promoteToManagerAgent(id, operator);
