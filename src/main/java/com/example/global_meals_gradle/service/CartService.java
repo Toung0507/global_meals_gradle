@@ -19,7 +19,6 @@ import com.example.global_meals_gradle.vo.*;
 
 @Service
 public class CartService {
-
 	@Autowired
 	private OrderCartDao orderCartDao;
 	@Autowired
@@ -40,14 +39,11 @@ public class CartService {
 	private PromotionsDao promotionsDao;
 	@Autowired
 	private BranchInventoryDao branchInventoryDao;
-
 //	核心 API 1:同步購物車，包括刪除單品
 //	 前端呼叫時機：使用者改了數量且「停手 1 秒後」（Debounce 防抖邏輯）
 	@Transactional
 	public CartViewRes syncItem(CartSyncReq req) {
-
 		int currentCartId;
-
 //		 步驟 1：判斷這是第一件商品（要建新車），還是後面加的商品（沿用舊車）
 		if (req.getCartId() == null) {
 
@@ -79,6 +75,15 @@ public class CartService {
 			// 原本：OperationType.valueOf(req.getOperationType()) 若傳 "abc" →
 			// IllegalArgumentException（500）
 			// 改法：try-catch 包住 valueOf，抓到就回傳友善的 400，不讓 500 暴露給前端
+			/*
+			 * 1.String 是無底洞：如果變數型別是 String，它就可以裝載任何東西。前端可以傳
+			 * "CUSTOMER"，也可以傳 "Apple"、"12345" 或是一堆亂碼。你的程式碼必須到處去檢查
+			 * 這個字串到底合不合法。
+			 * 2.Enum 是嚴格的選擇題：一旦成功轉成 OperationType，這個變數就只能是 Enum 裡定義好
+			 * 的那幾個值（例如 CUSTOMER, ORDER, PRODUCT）。這等於在系統入口處就做了一次嚴格的
+			 * 安檢，後續接手的程式碼完全不用再擔心「收到奇怪的操作類型怎麼辦」，因為不合法的字串
+			 * 在轉換這一關（valueOf）就已經被擋下來並拋出錯誤了。
+			 */
 			OperationType opType; // 先宣告，等安全轉換完再賦值
 			try {
 				// toUpperCase()：前端傳 "customer" 也能正確轉成 CUSTOMER，增加大小寫容錯
@@ -110,7 +115,7 @@ public class CartService {
 			// 🛡️ 防禦：確認這台車尚未被結帳
 			// 如果前端帶來的 cartId 已在訂單表裡，不允許再修改
 			if (ordersDao.existsByOrderCartId(currentCartId)) {
-				// 修改十三：從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
+				//從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
 				return buildError(ReplyMessage.CART_ALREADY_CHECKED_OUT); // code=400
 			}
 		}

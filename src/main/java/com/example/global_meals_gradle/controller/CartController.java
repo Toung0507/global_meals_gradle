@@ -62,10 +62,10 @@ public class CartController {
 	 * 前端 Body 範例：{ "cartId": 7, "productId": 5, "memberId":3 }
 	 */
 
-	@DeleteMapping("/item")
-	public CartViewRes removeItem(@Valid @RequestBody CartRemoveReq req) {
-		return cartService.removeItem(req);
-	}
+//	@DeleteMapping("/item")
+//	public CartViewRes removeItem(@Valid @RequestBody CartRemoveReq req) {
+//		return cartService.removeItem(req);
+//	}
 
 	/**
 	 * API 4：使用者選擇贈品 <br>

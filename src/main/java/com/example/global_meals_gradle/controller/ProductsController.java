@@ -81,7 +81,7 @@ public class ProductsController {
 	 * 不需要傳 globalAreaId！分店長的分店 ID 從 Session 取（安全設計）
 	 * =================================================================
 	 */
-	@GetMapping("/api/rm/monthly-sales")
+	@GetMapping("/rm/monthlysales")
 	public MonthlyProductsSalesRes getMonthlySalesByBranch(@RequestParam Integer year, @RequestParam Integer month,
 			HttpSession session) {
 
@@ -111,7 +111,7 @@ public class ProductsController {
 	 * regionId：前端國家下拉選單選擇後傳入（老闆有權選任何國家，安全的）
 	 * =================================================================
 	 */
-	@GetMapping("/api/admin/top5-monthly-sales")
+	@GetMapping("/admin/top5monthlysales")
 	public MonthlyProductsSalesRes getTop5MonthlySalesByRegion(@RequestParam Integer year, @RequestParam Integer month,
 			@RequestParam Integer regionId, HttpSession session) {
 
