@@ -43,6 +43,7 @@ public enum ReplyMessage {
 	PROMOTION_DATE_ERROR(400, "Promotion Date Error!!"), // 活動日期不合法（開始日期已過期或結束日期早於開始日期）
 	PROMOTION_GIFT_PARAM_ERROR(400, "Promotion Gift Param Error!!"), // 贈品參數不合法（門檻金額 <= 0 或數量 = 0）
 	PROMOTION_NAME_ERROR(400, "Promotion Name Error!!"), // 活動名稱為空或空白
+	PROMOTION_IMG_REQUIRED(400, "Promotion Image Required!!"), // 建立活動時圖片為必填
 	COUNTRY_ERROR(400, "Country Error!!"), // 使用折扣券時國家欄位為空
 
 	/* 艷羽 */

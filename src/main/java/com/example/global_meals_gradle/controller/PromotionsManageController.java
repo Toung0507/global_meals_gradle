@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -69,84 +70,38 @@ public class PromotionsManageController {
 		return promotionsService.getAvailableGifts(amount);
 	}
 
-	// =============================================
-	// 以下為新增的四個端點（對應前端 manager-dashboard promotions 頁籤）
-	// =============================================
-
-	/**
-	 * GET /promotions/list
-	 * 取得所有促銷活動及各自的贈品規則清單（管理端列表頁使用）
-	 *
-	 * 不需要 Request Body，直接回傳全部資料
-	 * 包含啟用與停用的活動，讓管理員看到完整狀態
-	 */
 	@GetMapping("/list")
 	@Operation(summary = "取得活動列表", description = "取得所有促銷活動及其贈品規則 (管理後台用)")
 	public PromotionsListRes list() {
-		// 委派給 PromotionsManageService.getList()，由 Service 組裝所有活動與贈品
 		return promotionsManageService.getList();
 	}
 
-	/**
-	 * POST /promotions/create
-	 * 一次建立促銷活動，並選擇性同時新增一筆贈品規則
-	 *
-	 * Request Body 欄位說明：
-	 *   必填（活動）：name, startTime, endTime
-	 *   選填（贈品）：giftProductId（> 0 才會建贈品）、fullAmount、quantity
-	 *
-	 * 兩個步驟在同一個 @Transactional 內，任一失敗整筆 rollback
-	 * 欄位驗證全部在 Service 層手動進行
-	 */
-	@PostMapping("/create")
-	@Operation(summary = "建立促銷活動", description = "建立活動並選擇性設定一筆贈品規則")
-	public BasicRes create(@RequestBody PromotionsManageReq req) {
-		// 委派給 createPromotionWithGift()，由 Service 處理驗證與寫入
-		promotionsManageService.createPromotionWithGift(req);
-		// 成功後回傳 200 + "Success!!"
+	@PostMapping(value = "/create", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+	@Operation(summary = "建立促銷活動", description = "建立活動並同時上傳活動圖片（必填），選擇性設定一筆贈品規則")
+	public BasicRes create(
+			@RequestPart("data") PromotionsManageReq req,
+			@RequestPart("image") MultipartFile image) throws IOException {
+		promotionsManageService.createPromotionWithGift(req, image.getBytes());
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
-	/**
-	 * POST /promotions/toggle
-	 * 啟用或停用一個促銷活動
-	 *
-	 * Request Body 欄位說明：
-	 *   promotionsId → 要切換的活動 ID
-	 *   active       → true = 開啟，false = 關閉（關閉時連帶停用底下所有贈品）
-	 */
 	@PostMapping("/toggle")
 	@Operation(summary = "啟用/停用活動", description = "切換活動狀態 (開啟/關閉)")
 	public BasicRes toggle(@RequestBody PromotionsManageReq req) {
-		// 委派給既有的 togglePromotion()，邏輯不重複實作
 		promotionsManageService.togglePromotion(req);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
-	/**
-	 * POST /promotions/uploadImage/{id}
-	 * 上傳促銷活動圖片，存入 promotions.promotion_img
-	 *
-	 * 前端用 multipart/form-data 格式傳送，欄位名稱為 "image"
-	 * 活動 ID 由路徑帶入
-	 */
-	@PostMapping("/uploadImage/{id}")
+	@PostMapping(value = "/uploadImage/{id}", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
 	@Operation(summary = "上傳活動圖片", description = "為指定促銷活動上傳宣傳圖片")
-	public BasicRes uploadImage( // 
-			@Parameter(description = "活動 ID") @PathVariable("id") int id, //
-			@Parameter(description = "圖片檔案") @RequestParam("image") MultipartFile image) //
+	public BasicRes uploadImage(
+			@Parameter(description = "活動 ID") @PathVariable("id") int id,
+			@Parameter(description = "圖片檔案") @RequestParam("image") MultipartFile image)
 			throws IOException {
 		promotionsManageService.uploadImage(id, image.getBytes());
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
-	/**
-	 * GET /promotions/image/{id}
-	 * 取得促銷活動圖片，供前端 <img> 標籤直接顯示
-	 *
-	 * 回傳原始圖片位元組，Content-Type 為 image/jpeg
-	 * 若該活動沒有圖片，回傳 404
-	 */
 	@GetMapping("/image/{id}")
 	@Operation(summary = "取得活動圖片", description = "獲取指定活動的圖片檔案")
 	public ResponseEntity<byte[]> getImage(@PathVariable("id") int id) {
@@ -159,23 +114,9 @@ public class PromotionsManageController {
 		return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
 	}
 
-	/**
-	 * POST /promotions/calculate
-	 * 結帳時計算促銷結果：驗證並領取贈品、套用會員折扣、無條件進位
-	 *
-	 * Request Body（PromotionsReq）欄位說明：
-	 *   cartId         → 購物車 ID（原封不動帶回回傳值，讓前端對應）
-	 *   memberId       → 1 = 訪客（無折扣），> 1 = 會員（查折扣券）
-	 *   useCoupon      → true = 使用者勾選使用 9 折券
-	 *   selectedGiftId → 使用者選的贈品 ID（0 = 放棄）
-	 *   originalAmount → 購物車原始總金額（由前端計算後傳入）
-	 *
-	 * 回傳 PromotionsRes：finalAmount（最終金額）、receivedGifts（贈品清單）等
-	 */
-	@PostMapping("/promotions/calculate")
+	@PostMapping("/calculate")
 	@Operation(summary = "計算結帳金額", description = "結帳時套用折扣、檢查贈品並計算最終總額")
 	public PromotionsRes calculate(@Valid @RequestBody PromotionsReq req) {
-		// originalAmount 已整合進 PromotionsReq，直接取出傳給 Service
 		return promotionsService.calculate(req, req.getOriginalAmount());
 	}
 
