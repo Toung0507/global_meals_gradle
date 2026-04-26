@@ -28,8 +28,8 @@ public interface RegionsDao extends JpaRepository<Regions, Integer> {
 			+ " values (:inputCountry, :inputCurrencyCode, :inputCountryCode, "//
 			+ ":inputTaxRate, :inputTaxType, 0, curdate(), curdate()) " //
 			+ " ON DUPLICATE KEY UPDATE " //
-			+ " tax_rate = IFNULL(:inputTaxRate, tax_rate), " //
-			+ " tax_type = IFNULL(:inputTaxType, tax_type), " //
+			+ " tax_rate = IFNULL(VALUES(tax_rate), tax_rate), " //
+			+ " tax_type = IFNULL(VALUES(tax_type), tax_type), " //
 			+ " updated_at = curdate() ", nativeQuery = true)
 	public void upsertTax(//
 			@Param("inputCountry") String country, //
