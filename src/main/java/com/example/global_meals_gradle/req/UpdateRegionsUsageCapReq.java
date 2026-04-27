@@ -5,12 +5,12 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 
 import jakarta.validation.constraints.Min;
 
-public class UpdateRegionsUsageCapReq extends UpsertRegionsTaxReq{
+public class UpdateRegionsUsageCapReq {
 	
 	@Min(value = 1, message = ValidationMsg.REGIONS_ID_ERROR)
 	private int id;
 	
-	@Min(value = 0, message = "Usage cap must be >= 0")
+	@Min(value = 0, message = ValidationMsg.USAGE_CAP_ERROR)
     @JsonAlias("usage_cap")
     private int usageCap;
 
