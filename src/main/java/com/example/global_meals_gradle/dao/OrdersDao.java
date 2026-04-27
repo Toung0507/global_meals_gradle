@@ -76,12 +76,21 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
 	public List<Object[]> getFullOrderHistory(int memberId);
 
-	/* 訂單狀態更新(用於退款或取消訂單) */
+	/* 訂單狀態更新(用於取消訂單) */
 	@Modifying
 	@Transactional
 	@Query(value = "UPDATE orders SET orders_status = :ordersStatus "
 			+ "WHERE id = :id AND order_date_id = :orderDateId And pay_status = 'UNPAID'", nativeQuery = true)
 	public int updateOrderStatus(@Param("ordersStatus") String ordersStatus, //
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
+	
+	/* 訂單狀態更新(用於退款訂單) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus, pay_status = :payStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And pay_status = 'PAID'", nativeQuery = true)
+	public int updateOrderStatusAndPayStatus(@Param("ordersStatus") String ordersStatus, //
+			@Param("payStatus") String payStatus,//
 			@Param("id") String id, @Param("orderDateId") String orderDateId);
 	
 	/* 更改總金額 */

@@ -8,7 +8,6 @@ import com.example.global_meals_gradle.entity.OrderCartDetails;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 
 /* 成立訂單(還沒付款) */

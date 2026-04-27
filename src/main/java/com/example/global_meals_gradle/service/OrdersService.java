@@ -39,7 +39,6 @@ import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.entity.Regions;
 import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
-import com.example.global_meals_gradle.req.HistoricalOrdersReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.res.BasicRes;
@@ -556,8 +555,13 @@ public class OrdersService {
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
 		// 防呆：只有 PAID(已付款) 才能申請退款
-		if (!order.getPayStatus().equals("PAID")) {
+		if (!PayStatus.PAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "僅完成之訂單可申請退款");
+		}
+		// 訂單狀態是已取消(退款或取消)，無法申請退款
+		if(OrdersStatus.CANCELLED.name().equalsIgnoreCase(order.getOrdersStatus().name())) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 		}
 		// 判斷是員工現場幫客人處理退款，還是客人線上申請退款
 		if (staff != null) { // 員工現場幫客人處理退款
@@ -580,7 +584,8 @@ public class OrdersService {
 	private BasicRes executeFullRefund(RefundedReq req, Orders order) {
 		try {
 			// 執行訂單狀態更新
-			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
+			int result = ordersDao.updateOrderStatusAndPayStatus(req.getOrdersStatus(), req.getPayStatus(), //
+					req.getId(), req.getOrderDateId());
 			// 判斷是否成功
 			if (result > 0) {
 				// 如果是會員，次數扣回
