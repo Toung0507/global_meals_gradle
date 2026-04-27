@@ -13,8 +13,16 @@ import jakarta.validation.constraints.NotEmpty;
 /* 成立訂單(還沒付款) */
 public class CreateOrdersReq {
 
-	@NotBlank(message = ValidationMsg.ORDER_CART_ID_ERROR)
-	private String orderCartId;
+	
+	private int orderCartId;
+
+	public int getOrderCartId() {
+		return orderCartId;
+	}
+
+	public void setOrderCartId(int orderCartId) {
+		this.orderCartId = orderCartId;
+	}
 
 	private int globalAreaId;
 
@@ -37,14 +45,7 @@ public class CreateOrdersReq {
 	
 	private int promotionsId;  // 判斷參加的優惠活動id
 
-	public String getOrderCartId() {
-		return orderCartId;
-	}
-
-	public void setOrderCartId(String orderCartId) {
-		this.orderCartId = orderCartId;
-	}
-
+	
 	public int getGlobalAreaId() {
 		return globalAreaId;
 	}

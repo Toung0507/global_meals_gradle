@@ -319,7 +319,15 @@ public class CartService {
 			if (giftProduct == null) {
 				return buildError(ReplyMessage.GIFT_NOT_AVAILABLE);
 			}
-
+//			步驟2-7.5：確保5：確認該贈品在目前分店的實體庫存是否大於 0
+			BranchInventory giftInv = branchInventoryDao
+					.findByProductIdAndGlobalAreaId(giftProductId, cart.getGlobalAreaId())
+					.orElse(null);
+			
+			if (giftInv == null || giftInv.getStockQuantity() <= 0) {
+				// 如果沒有庫存設定，或是實體庫存 <= 0，就回傳贈品送完的錯誤
+				return buildError(ReplyMessage.GIFT_SEND_LIGHT);
+			}
 //			步驟2-8：全部驗證通過！把贈品寫進購物車明細
 			OrderCartDetails giftDetail = new OrderCartDetails();
 			giftDetail.setOrderCartId(req.getCartId()); // 關聯購物車
