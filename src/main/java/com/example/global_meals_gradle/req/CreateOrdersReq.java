@@ -7,13 +7,14 @@ import com.example.global_meals_gradle.constants.ValidationMsg;
 import com.example.global_meals_gradle.entity.OrderCartDetails;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 
 /* 成立訂單(還沒付款) */
 public class CreateOrdersReq {
 
-	@NotBlank(message = ValidationMsg.ORDER_CART_ID_ERROR)
+	@Min(value = 1, message = ValidationMsg.ORDER_CART_ID_ERROR)
 	private int orderCartId;
 
 	private int globalAreaId;
