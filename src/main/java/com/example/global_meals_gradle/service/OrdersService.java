@@ -697,6 +697,7 @@ public class OrdersService {
 		GetOrdersVo order = ordersDao.getOrderByPhone(todayStr, phone);
 
 		return new GetOrdersByPhoneRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
-				order.getId(), order.getOrderDateId(), order.getTotalAmount(), order.getStatus());
+				order.getId(), order.getOrderDateId(), order.getTotalAmount(), //
+				order.getOrdersStatus(), order.getPayStatus());
 	}
 }
