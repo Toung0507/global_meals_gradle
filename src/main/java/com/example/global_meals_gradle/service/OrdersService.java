@@ -252,7 +252,8 @@ public class OrdersService {
 				// 只有當訊息包含「衝突」(樂觀鎖失敗) 或 「Duplicate」(序號重複) 時才進入重試
 				if (msg != null && (msg.contains("衝突") || msg.contains("Duplicate")//
 						|| msg.contains("Primary"))) {
-					log.info("【訂單重試】購物車 ID: {} 發生衝突，準備進行第 {} 次重試... 原因: {}", req.getOrderCartId(), i + 1, msg);
+					log.info("【訂單重試】購物車 ID: {} 發生衝突，準備進行第 {} 次重試... 原因: {}", //
+							req.getOrderCartId(), i + 1, msg);
 					// 如果還沒超過重試次數，就繼續跑下一輪 for 迴圈。
 					if (i == maxRetries - 1) {
 						// 如果重試了 5 次都還是失敗，才拋出錯誤。
@@ -390,8 +391,8 @@ public class OrdersService {
 		// 定義「最終未稅小計」
 		finalSubtotal = afterTax.subtract(taxAmount);
 		// [DEBUG] 記錄金額計算結果，這在對帳出錯時非常重要
-		log.debug("【金額計算】購物車: {} -> 最終未稅: {}, 稅額: {}, 含稅: {}, 折扣: {}", req.getOrderCartId(), finalSubtotal, taxAmount,
-				afterTax, discountOff);
+		log.debug("【金額計算】購物車: {} -> 最終未稅: {}, 稅額: {}, 含稅: {}, 折扣: {}", //
+				req.getOrderCartId(), finalSubtotal, taxAmount, afterTax, discountOff);
 
 		// ====== 贈品門檻檢查 ======
 		if (!giftProductIds.isEmpty()) { // 判斷贈品清單有沒有資料
@@ -470,7 +471,7 @@ public class OrdersService {
 
 			// ====== 執行新增主訂單 ======
 			ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
-					req.getPhone(), finalSubtotal, taxAmount, afterTax, "UNPAID", req.isUseDiscount());
+					req.getPhone(), finalSubtotal, taxAmount, afterTax, "PREPARING", "UNPAID", req.isUseDiscount());
 			log.info("【產單成功】購物車: {} -> 訂單編號: {}-{}", req.getOrderCartId(), todayStr, newId);
 
 			// 成功後回傳結果

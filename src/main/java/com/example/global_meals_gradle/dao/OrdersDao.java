@@ -23,11 +23,11 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Modifying
 	@Transactional
 	@Query(value = "INSERT INTO orders (id, order_date_id, order_cart_id, global_area_id, member_id, phone, "
-			+ " subtotal_before_tax, tax_amount, total_amount, status, is_use_discount) "
-			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)", nativeQuery = true)
+			+ " subtotal_before_tax, tax_amount, total_amount, orders_status, pay_status, is_use_discount) "
+			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)", nativeQuery = true)
 	public void insert(String id, String orderDateId, int orderCartId, int globalAreaId, int memberId, String phone, //
-			BigDecimal subtotalBeforeTax, //
-			BigDecimal taxAmount, BigDecimal totalAmount, String status, boolean useDiscount);
+			BigDecimal subtotalBeforeTax, BigDecimal taxAmount, BigDecimal totalAmount, //
+			String ordersStatus, String payStatus, boolean useDiscount);
 
 	/* 根據 orderDateId 查詢特定訂單 */
 	// ORDER BY id (排序)(字串排序需長度樣(補零)) DESC (倒序) LIMIT 1 (限制筆數) FOR UPDATE:
