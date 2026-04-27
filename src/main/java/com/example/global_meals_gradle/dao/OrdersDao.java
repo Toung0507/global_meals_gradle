@@ -68,7 +68,8 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	public List<GetOrdersVo> getOrderByMemberId(int memberId);
 
 	/* 查詢該會員的訂單紀錄 */
-	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, o.status, o.completed_at,"
+	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "
+			+ "o.orders_status, o.pay_status, o.completed_at,"
 			+ "d.quantity, d.price, d.is_gift, d.discount_note, " + "p.name as product_name " + "FROM orders o "
 			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
 			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.member_id = ?1 "
@@ -78,9 +79,9 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	/* 訂單狀態更新(用於退款或取消訂單) */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE orders SET status = :status "
-			+ "WHERE id = :id AND order_date_id = :orderDateId", nativeQuery = true)
-	public int updateOrderStatus(@Param("status") String status, //
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And pay_status = 'UNPAID'", nativeQuery = true)
+	public int updateOrderStatus(@Param("ordersStatus") String ordersStatus, //
 			@Param("id") String id, @Param("orderDateId") String orderDateId);
 	
 	/* 更改總金額 */

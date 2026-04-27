@@ -19,7 +19,7 @@ public class RefundedReq {
 	private String id;
 
 	@NotNull(message = ValidationMsg.STATUS_ERROR)
-	private String status;
+	private String ordersStatus;
 
 	public String getOrderDateId() {
 		return orderDateId;
@@ -37,12 +37,12 @@ public class RefundedReq {
 		this.id = id;
 	}
 
-	public String getStatus() {
-		return status;
+	public String getOrdersStatus() {
+		return ordersStatus;
 	}
 
-	public void setStatus(String status) {
-		this.status = status;
+	public void setOrdersStatus(String ordersStatus) {
+		this.ordersStatus = ordersStatus;
 	}
-
+	
 }

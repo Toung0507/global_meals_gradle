@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
+import com.example.global_meals_gradle.constants.PayStatus;
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.constants.StaffRole;
 import com.example.global_meals_gradle.controller.MembersController;
@@ -170,8 +171,9 @@ public class OrdersService {
 				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
 				newVo.setGlobalAreaId((Integer) row[2]); // o.global_area_id
 				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
-				newVo.setStatus(row[4].toString()); // o.status
-				newVo.setCompletedAt((LocalDateTime) row[5]);
+				newVo.setOrdersStatus(row[4].toString()); // o.status
+				newVo.setPayStatus(row[5].toString()) ;// o.status
+				newVo.setCompletedAt((LocalDateTime) row[6]);
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -179,10 +181,10 @@ public class OrdersService {
 			// 建立明細並塞入該訂單的 List
 			GetOrdersDetailVo detail = new GetOrdersDetailVo();
 			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
-			detail.setQuantity(((Number) row[6]).intValue());
-			detail.setPrice((BigDecimal) row[7]);
-			detail.setGift((Boolean) row[8]);
-			detail.setDiscountNote((String) row[9]);
+			detail.setQuantity(((Number) row[7]).intValue());
+			detail.setPrice((BigDecimal) row[8]);
+			detail.setGift((Boolean) row[9]);
+			detail.setDiscountNote((String) row[10]);
 			detail.setName((String) row[10]); // 產品名稱已經在 SQL 抓好了
 
 			vo.getGetOrdersDetailVoList().add(detail);
@@ -500,17 +502,17 @@ public class OrdersService {
 		}
 		// 檢查訂單狀態：只有「未付款」的訂單可以執行付款
 		// 如果訂單已經是 COMPLETED, 則不需要重複付款
-		if (OrdersStatus.COMPLETED.equals(order.getStatus())) {
+		if (PayStatus.PAID.equals(order.getPayStatus())) {
 			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "訂單已支付完成，無需重複操作");
 		}
 		// 如果訂單是其他狀態（如 REFUNDED, CANCELLED），則不允許付款
-		if (!OrdersStatus.UNPAID.equals(order.getStatus())) {
+		if (!PayStatus.UNPAID.equals(order.getPayStatus())) {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "訂單狀態錯誤，無法付款");
 		}
 		try {
 			// 新增(更新)的資料(付款方式、交易號碼、狀態)
 			int result = ordersDao.updatePay(req.getId(), req.getOrderDateId(), //
-					req.getPaymentMethod(), req.getTransactionId(), "COMPLETED");
+					req.getPaymentMethod(), req.getTransactionId(), "PAID");
 			if (result > 0) {
 				// ====== 會員邏輯(點數處理) ======
 				// 判斷是會員(> 1)還是訪客(= 1)
@@ -553,8 +555,8 @@ public class OrdersService {
 		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-		// 防呆：只有 COMPLETED 才能申請退款
-		if (!order.getStatus().equals("COMPLETED")) {
+		// 防呆：只有 PAID(已付款) 才能申請退款
+		if (!order.getPayStatus().equals("PAID")) {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "僅完成之訂單可申請退款");
 		}
 		// 判斷是員工現場幫客人處理退款，還是客人線上申請退款
@@ -653,16 +655,25 @@ public class OrdersService {
 		}
 		try {
 
-			String oldStatus = order.getStatus().toString(); // 目前狀態
-			String targetStatus = req.getStatus().toString(); // 目標狀態(之後要更新的狀態)
-			// 防呆：只有 UNPAID 才能取消
-			if (targetStatus.equalsIgnoreCase("CANCELLED") && !oldStatus.equals("UNPAID")) {
+			// 取得該訂單的付款狀態(如果取得是null，後面判斷會出錯，所以轉成"")
+			String oldOrdersStatus = (order.getOrdersStatus() != null) ? order.getOrdersStatus().name() : "";
+			// 取得該訂單的狀態(如果取得是null，後面判斷會出錯，所以轉成"")
+		    String oldPayStatus = (order.getPayStatus() != null) ? order.getPayStatus().name() : "";
+			String targetStatus = req.getOrdersStatus(); // 目標狀態(之後要更新的狀態)
+			// 判斷目標狀態是否為取消
+			if(!OrdersStatus.CANCELLED.name().equalsIgnoreCase(targetStatus)) {
+				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+			}
+			// 防呆：只有 PayStatus == UNPAID && OrdersStatus == PREPARING 才能取消
+			if (!OrdersStatus.PREPARING.name().equalsIgnoreCase(oldOrdersStatus) || //
+					!PayStatus.UNPAID.name().equalsIgnoreCase(oldPayStatus)) {
 				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
 						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
 
 			// 執行訂單狀態更新
-			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
+			int result = ordersDao.updateOrderStatus(targetStatus, req.getId(), req.getOrderDateId());
 			// 判斷是否成功
 			if (result > 0) {
 				// 如果是會員且有使用優惠劵

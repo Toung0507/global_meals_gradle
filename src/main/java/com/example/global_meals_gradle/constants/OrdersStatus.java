@@ -8,7 +8,7 @@ public enum OrdersStatus {
 
 	PREPARING("PREPARING"), // 製作中(初始狀態)
 	COMPLETED("COMPLETED"), // 餐點完成
-	CANCELLED("CANCELLED"); // 已取消
+	CANCELLED("CANCELLED"); // 已取消(退款跟取消)
 
 	private String ordersStatus;
 
