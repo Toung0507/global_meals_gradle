@@ -45,11 +45,11 @@ public class OrdersController {
 	private LinePayService linePayService;
 
 	/* 取的該會員的歷史訂單 */
-	@PostMapping("get_all_orders_list")
+	@GetMapping("get_all_orders_list")
 	@Operation(summary = "取得會員歷史訂單", description = "查詢該會員的所有歷史訂單記錄")
-	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req, //
+	public GetAllOrdersRes getAllOrdersList(@RequestParam("memberId") Integer memberId, //
 			@Parameter(hidden = true) HttpSession httpSession) {
-		return ordersService.getAllOrders(req, httpSession);
+		return ordersService.getAllOrders(memberId, httpSession);
 	}
 
 	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED */

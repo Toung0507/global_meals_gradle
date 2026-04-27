@@ -125,24 +125,24 @@ public class OrdersService {
 
 	/* 查詢歷史訂單(有分員工或會員查詢) */
 	@Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
-	public GetAllOrdersRes getAllOrders(HistoricalOrdersReq req, HttpSession httpSession) {
+	public GetAllOrdersRes getAllOrders(Integer memberId, HttpSession httpSession) {
 		// 抓員工資訊
 		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
 		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		if (staff != null) { // 代表是員工操作 // MemberId是設Integer，如果是int就要判斷是否 ==0
-			if (req.getMemberId() == null || membersDao.findById(req.getMemberId()) == null) {
+			if (memberId == null || membersDao.findById(memberId) == null) {
 				return new GetAllOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
 						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
 			}
 		} else if (member != null) { // 代表會員操作，只能查自己的歷史訂單紀錄
-			req.setMemberId(member.getId());
+			memberId = member.getId();
 		} else {
 			// 既不是員工也不是會員 -> 攔截
 			throw new RuntimeException("請先登入以查詢歷史訂單");
 		}
-		List<Object[]> rawData = ordersDao.getFullOrderHistory(req.getMemberId());
+		List<Object[]> rawData = ordersDao.getFullOrderHistory(memberId);
 		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
 		// LinkedHashMap 是為了「照順序排」，讓最新下單的排在最前面
 		Map<String, GetOrdersVo> orderMap = new LinkedHashMap<>();
