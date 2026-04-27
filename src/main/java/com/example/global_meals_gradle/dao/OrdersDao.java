@@ -25,7 +25,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "INSERT INTO orders (id, order_date_id, order_cart_id, global_area_id, member_id, phone, "
 			+ " subtotal_before_tax, tax_amount, total_amount, status, is_use_discount) "
 			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)", nativeQuery = true)
-	public void insert(String id, String orderDateId, String orderCartId, int globalAreaId, int memberId, String phone, //
+	public void insert(String id, String orderDateId, int orderCartId, int globalAreaId, int memberId, String phone, //
 			BigDecimal subtotalBeforeTax, //
 			BigDecimal taxAmount, BigDecimal totalAmount, String status, boolean useDiscount);
 
@@ -89,9 +89,6 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Transactional
 	@Query(value = "UPDATE total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
 	public void upDateTotalAmount(String id, String orderDateId, BigDecimal totalAmount);
-	
-	/* 判斷訂單表有無該購物車 id */
-	public boolean existsByOrderCartId(String orderCartId);
 	
 	// 從訂單表加總該分店、該月份、狀態為「已完成」的訂單
 	@Query(value = "SELECT SUM(total_amount) FROM orders"
