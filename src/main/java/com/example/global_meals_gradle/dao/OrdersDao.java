@@ -134,8 +134,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	 *   order_cart_id = :orderCartId → 尋找這台購物車
 	 * SELECT EXISTS 會回傳 boolean（1 或 0），效能最好
 	 */
-	@Query(value = "SELECT EXISTS(SELECT 1 FROM orders WHERE order_cart_id = :orderCartId)", 
-		   nativeQuery = true)
+    @Query("SELECT COUNT(o) > 0 FROM Orders o WHERE o.orderCartId = :orderCartId")
 	boolean existsByOrderCartId(@Param("orderCartId") int orderCartId);
 	// =====================================================================
 	// 功能A：分店長用 - 查某年某月「指定分店」所有商品銷售量
