@@ -113,6 +113,20 @@ public class PromotionsManageService {
 	}
 
 	// =============================================
+	// 方法一點五：單獨關閉指定贈品
+	// =============================================
+
+	@Transactional
+	public void deactivateGift(int giftId) {
+
+		if (!promotionsGiftsDao.existsById(giftId)) {
+			throw new RuntimeException(ReplyMessage.PROMOTION_GIFTS_NOT_FOUND.getMessage());
+		}
+
+		promotionsGiftsDao.deactivateById(giftId);
+	}
+
+	// =============================================
 	// 方法二：開關促銷活動
 	// =============================================
 

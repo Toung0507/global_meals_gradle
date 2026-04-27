@@ -85,6 +85,13 @@ public class PromotionsManageController {
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
+	@PostMapping("/deactivateGift/{id}")
+	@Operation(summary = "關閉單一贈品", description = "將指定贈品的 is_active 設為 0（不可回復）")
+	public BasicRes deactivateGift(@Parameter(description = "贈品 ID") @PathVariable("id") int id) {
+		promotionsManageService.deactivateGift(id);
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	}
+
 	@PostMapping("/toggle")
 	@Operation(summary = "啟用/停用活動", description = "切換活動狀態 (開啟/關閉)")
 	public BasicRes toggle(@RequestBody PromotionsManageReq req) {
