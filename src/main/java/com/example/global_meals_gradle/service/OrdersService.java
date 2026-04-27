@@ -627,7 +627,7 @@ public class OrdersService {
 	    }
 	    
 	    try {
-	        if ("REFUNDED".equalsIgnoreCase(req.getStatus())) {
+	        if (PayStatus.REFUNDED.name().equalsIgnoreCase(req.getPayStatus())) {
 	            return executeFullRefund(req, order); 
 	        }else { // 退款被駁回
 	        	ordersDao.updateOrderStatus("COMPLETED", req.getId(), req.getOrderDateId());
