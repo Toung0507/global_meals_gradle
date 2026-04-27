@@ -21,51 +21,75 @@ import com.example.global_meals_gradle.res.AdminProductRes;
 import com.example.global_meals_gradle.res.MonthlyProductsSalesRes;
 import com.example.global_meals_gradle.service.ProductService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 @RestController
 //全局設定此模組的開頭都是 /product
 @RequestMapping("/product")
+@Tag(name = "商品管理模組", description = "提供商品 CRUD、圖片上傳及銷售報表查詢")
 public class ProductsController {
 
 	@Autowired
 	private ProductService productService;
 
 	@PostMapping(value = "/create", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
-	public AdminProductRes createProduct(@RequestPart("data") @Valid ProductCreateReq req,
-			@RequestPart("file") MultipartFile file, HttpSession session) {
-		return productService.createProduct(req, file, session);
-	}
+	@Operation(summary = "新增商品", description = "上傳商品圖片並新增商品基本資料")
+	public AdminProductRes createProduct( //
+            @Parameter(content = @Content( //
+            		mediaType = MediaType.APPLICATION_JSON_VALUE))
+            @RequestPart("data") @Valid ProductCreateReq req, //
+            @Parameter(description = "商品圖片") //
+            @RequestPart("file") MultipartFile file, // 
+            @Parameter(hidden = true) HttpSession session) { //
+        return productService.createProduct(req, file, session);
+    }
 
 	@PostMapping(value = "/update", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
-	public AdminProductRes updateProduct(@RequestPart("data") @Valid ProductUpdateReq req, //
-			@RequestPart(value = "file", required = false) MultipartFile file, HttpSession session) {
-		return productService.updateProduct(req, file, session);
-	}
+	@Operation(summary = "更新商品", description = "修改商品資訊，可選是否同時更換圖片")
+	public AdminProductRes updateProduct( //
+            @Parameter(content = @Content( //
+            		mediaType = MediaType.APPLICATION_JSON_VALUE))
+            @RequestPart("data") @Valid ProductUpdateReq req, //
+            @Parameter(description = "新商品圖片 (選填)") //
+            @RequestPart(value = "file", required = false) MultipartFile file, //
+            @Parameter(hidden = true) HttpSession session) { //
+        return productService.updateProduct(req, file, session);
+    }
+	
 
 	@GetMapping("/list")
-	public AdminProductRes getActiveProducts(HttpSession session) {
-		return productService.getActiveProducts(session);
-	}
+	@Operation(summary = "取得所有上架商品", description = "查詢目前處於上架狀態的商品列表")
+	public AdminProductRes getActiveProducts(@Parameter(hidden = true) HttpSession session) {
+        return productService.getActiveProducts(session);
+    }
 
 	@GetMapping("/trash")
-	public AdminProductRes getDeletedProducts(HttpSession session) {
-		return productService.getDeletedProducts(session);
-	}
+    @Operation(summary = "取得下架商品", description = "查詢已刪除/下架的商品列表")
+    public AdminProductRes getDeletedProducts(@Parameter(hidden = true) HttpSession session) {
+        return productService.getDeletedProducts(session);
+    }
 
 	@GetMapping("/detail/{id}")
-	public AdminProductRes getProductDetail(@PathVariable int id, HttpSession session) {
-		return productService.getProductById(id, session);
-	}
+    @Operation(summary = "查詢商品詳情", description = "根據商品 ID 取得單一商品詳細資料")
+    public AdminProductRes getProductDetail(
+            @Parameter(description = "商品 ID", example = "1") @PathVariable int id, 
+            @Parameter(hidden = true) HttpSession session) {
+        return productService.getProductById(id, session);
+    }
 
-	// 使用 PATCH 代表「部分更新 (Partial Update)」，比起 POST 更精準
-	// url = /product/status/5?active=?
 	@PatchMapping("/status/{id}")
-	public AdminProductRes updateActiveStatus(@PathVariable int id, //
-			@RequestParam(value = "active") boolean active, HttpSession session) {
-		return productService.updateActiveStatus(id, active, session);
-	}
+    @Operation(summary = "更新商品狀態", description = "部分更新商品的啟用/停用狀態")
+    public AdminProductRes updateActiveStatus(
+            @Parameter(description = "商品 ID", example = "1") @PathVariable int id,
+            @Parameter(description = "是否啟用", example = "true") @RequestParam boolean active, 
+            @Parameter(hidden = true) HttpSession session) {
+        return productService.updateActiveStatus(id, active, session);
+    }
 
 	// 以下是艷羽寫的
 	// Session 的 key 名稱，與 StaffController 保持一致
@@ -81,9 +105,14 @@ public class ProductsController {
 	 * 不需要傳 globalAreaId！分店長的分店 ID 從 Session 取（安全設計）
 	 * =================================================================
 	 */
+
 	@GetMapping("/rm/monthlysales")
-	public MonthlyProductsSalesRes getMonthlySalesByBranch(@RequestParam Integer year, @RequestParam Integer month,
-			HttpSession session) {
+	@Operation(summary = "分店長銷售報表", description = "查詢該分店在指定年月的商品銷售總量 (分店ID取自登入狀態)")
+	public MonthlyProductsSalesRes getMonthlySalesByBranch(
+            @Parameter(description = "年份", example = "2026") @RequestParam("year") Integer year, 
+            @Parameter(description = "月份", example = "4") @RequestParam("month") Integer month,
+            @Parameter(hidden = true) HttpSession session) {
+
 
 		// Step 1：從 Session 取出登入的 Staff
 		Staff operator = (Staff) session.getAttribute(SESSION_KEY);
@@ -111,9 +140,15 @@ public class ProductsController {
 	 * regionId：前端國家下拉選單選擇後傳入（老闆有權選任何國家，安全的）
 	 * =================================================================
 	 */
+
 	@GetMapping("/admin/top5monthlysales")
-	public MonthlyProductsSalesRes getTop5MonthlySalesByRegion(@RequestParam Integer year, @RequestParam Integer month,
-			@RequestParam Integer regionId, HttpSession session) {
+	@Operation(summary = "老闆查詢銷售前五名", description = "查詢指定國家在指定年月的銷售前五名商品")
+	public MonthlyProductsSalesRes getTop5MonthlySalesByRegion(
+            @Parameter(description = "年份", example = "2026") @RequestParam("year") Integer year, 
+            @Parameter(description = "月份", example = "4") @RequestParam("month") Integer month,
+            @Parameter(description = "區域 ID", example = "1") @RequestParam("regionId") Integer regionId, 
+            @Parameter(hidden = true) HttpSession session) {
+
 
 		// Step 1：取 Session 登入者
 		Staff operator = (Staff) session.getAttribute(SESSION_KEY);
