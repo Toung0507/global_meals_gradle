@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.HistoricalOrdersReq;
 import com.example.global_meals_gradle.req.PayReq;
@@ -44,11 +45,11 @@ public class OrdersController {
 	private LinePayService linePayService;
 
 	/* 取的該會員的歷史訂單 */
-	@PostMapping("get_all_orders_list")
+	@GetMapping("get_all_orders_list")
 	@Operation(summary = "取得會員歷史訂單", description = "查詢該會員的所有歷史訂單記錄")
-	public GetAllOrdersRes GetAllOrdersList(@RequestBody HistoricalOrdersReq req, //
+	public GetAllOrdersRes getAllOrdersList(@RequestParam("memberId") Integer memberId, //
 			@Parameter(hidden = true) HttpSession httpSession) {
-		return ordersService.getAllOrders(req, httpSession);
+		return ordersService.getAllOrders(memberId, httpSession);
 	}
 
 	/* 更改訂單狀態: 退款 REFUNDED 或取消 CANCELLED */
@@ -56,7 +57,15 @@ public class OrdersController {
 	@Operation(summary = "更改訂單狀態", description = "將訂單狀態更新為 REFUNDED (退款) 或 CANCELLED (取消)")
 	public BasicRes ordersStatus(@Valid @RequestBody RefundedReq req, //
 			@Parameter(hidden = true) HttpSession httpSession) {
-		return ordersService.ordersStatus(req, httpSession);
+		// 區分退款或取消
+		if(req.getStatus().equalsIgnoreCase("REFUNDED")) {
+			return ordersService.applyForRefund(req, httpSession);
+		}else if(req.getStatus().equalsIgnoreCase("CANCELLED")) {
+			return ordersService.cancelOrder(req, httpSession);
+		}else {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+		}
 	}
 
 	/* 成立訂單(未結帳) */

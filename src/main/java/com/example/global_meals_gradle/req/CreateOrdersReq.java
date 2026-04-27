@@ -7,20 +7,20 @@ import com.example.global_meals_gradle.constants.ValidationMsg;
 import com.example.global_meals_gradle.entity.OrderCartDetails;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 
 /* 成立訂單(還沒付款) */
 public class CreateOrdersReq {
 
-	@NotBlank(message = ValidationMsg.ORDER_CART_ID_ERROR)
-	private String orderCartId;
+	@Min(value = 1, message = ValidationMsg.ORDER_CART_ID_ERROR)
+	private int orderCartId;
 
 	private int globalAreaId;
 
 	private int memberId;
 
-	@NotBlank(message = ValidationMsg.PHONE_ERROR)
 	private String phone;
 
 	private BigDecimal subtotalBeforeTax;
@@ -37,11 +37,11 @@ public class CreateOrdersReq {
 	
 	private int promotionsId;  // 判斷參加的優惠活動id
 
-	public String getOrderCartId() {
+	public int getOrderCartId() {
 		return orderCartId;
 	}
 
-	public void setOrderCartId(String orderCartId) {
+	public void setOrderCartId(int orderCartId) {
 		this.orderCartId = orderCartId;
 	}
 
