@@ -8,14 +8,15 @@ public class ValidationMsg {
 	// Entity Products
 	public static final String QUANTITY_CANT_BE_NEGATIVE = "Quantity Cant Be Negative!!";
 	public static final String MAX_ORDER_QUANTITY = "Max Order Quantity One At Least!!";
-	// Req CreateRegions
+	// Req UpsertRegionsTaxReq
 	public static final String COUNTRY_ERROR = "Country Error!!";
 	public static final String CURRENCY_CODE_ERROR = "Currency Code Error!!";
 	public static final String COUNTRY_CODE_ERROR = "Country Code Error!!";
 	public static final String TAX_TYPE_ERROR = "Tax Type Error!!";
 	public static final String TAX_RATE_ERROR = "Tax Rate Error!!";
-	// Req UpdateRegionsReq
+	// Req UpdateRegionsUsageCapReq
 	public static final String REGIONS_ID_ERROR = "Regions Id Error!!";
+	public static final String USAGE_CAP_ERROR = "Usage Cap Must Be >= 0!!";
 	// Req CreateGlobalAreaReq
 	public static final String BRANCH_ERROR = "Branch Error!!";
 	public static final String ADDRESS_ERROR = "Address Error!!";
