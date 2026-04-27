@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.constants.StaffRole;
+import com.example.global_meals_gradle.controller.MembersController;
+import com.example.global_meals_gradle.controller.StaffController;
 import com.example.global_meals_gradle.dao.BranchInventoryDao;
 import com.example.global_meals_gradle.dao.MembersDao;
 import com.example.global_meals_gradle.dao.OrdersDao;
@@ -127,9 +129,9 @@ public class OrdersService {
 	@Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
 	public GetAllOrdersRes getAllOrders(Integer memberId, HttpSession httpSession) {
 		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		if (staff != null) { // 代表是員工操作 // MemberId是設Integer，如果是int就要判斷是否 ==0
 			if (memberId == null || membersDao.findById(memberId) == null) {
@@ -196,9 +198,9 @@ public class OrdersService {
 	// 這個方法「不加」@Transactional，這樣裡面的 try-catch 才能重複執行。
 	public CreateOrdersRes createOrders(CreateOrdersReq req, HttpSession httpSession) {
 		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		if (staff != null) { // 代表是員工操作
 			if (req.getMemberId() == 0 || membersDao.findById(req.getMemberId()) == null) {
@@ -545,9 +547,9 @@ public class OrdersService {
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes applyForRefund(RefundedReq req, HttpSession httpSession) {
 		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
 		// 防呆：只有 COMPLETED 才能申請退款
@@ -599,7 +601,7 @@ public class OrdersService {
 	/* 店長審核退款 */
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes auditRefund(RefundedReq req, HttpSession httpSession) {
-		Staff staff = (Staff) httpSession.getAttribute("SESSION_KEY");
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
 		// 判斷有沒有登入
 		if (staff == null) {
 		    return new BasicRes(ReplyMessage.NOT_LOGIN.getCode(), //
@@ -633,7 +635,7 @@ public class OrdersService {
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes cancelOrder(RefundedReq req, HttpSession httpSession) {
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute("ATTRIBUTE_KEY");
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
