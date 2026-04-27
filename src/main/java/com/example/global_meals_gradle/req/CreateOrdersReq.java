@@ -20,7 +20,6 @@ public class CreateOrdersReq {
 
 	private int memberId;
 
-	@NotBlank(message = ValidationMsg.PHONE_ERROR)
 	private String phone;
 
 	private BigDecimal subtotalBeforeTax;
