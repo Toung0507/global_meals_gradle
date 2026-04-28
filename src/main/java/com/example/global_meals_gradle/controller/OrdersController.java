@@ -52,6 +52,13 @@ public class OrdersController {
 			@Parameter(hidden = true) HttpSession httpSession) {
 		return ordersService.getAllOrders(memberId, httpSession);
 	}
+	
+	/* 取的該分店今天所有訂單 */
+	@GetMapping("get_today_all_orders_list")
+	@Operation(summary = "取得今天所有訂單", description = "查詢今天所有訂單記錄")
+	public GetAllOrdersRes getAllOrdersList(@Parameter(hidden = true) HttpSession httpSession) {
+		return ordersService.getTodayAllOrders(httpSession);
+	}
 
 	/* 更改訂單狀態: 訂單退款或取消 */
 	// 退款會傳的狀態: PayStatus = REFUNDED && OrdersStatus = CANCELLED

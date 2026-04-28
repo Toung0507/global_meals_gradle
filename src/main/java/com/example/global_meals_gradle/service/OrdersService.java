@@ -84,18 +84,58 @@ public class OrdersService {
 	@Lazy // 加上 @Lazy 避免某些 Spring 版本出現循環依賴的警告
 	private OrdersService self;
 
-	/* 查詢今日所有訂單 */
+	/* 查詢該分店今日所有訂單 */
 	@Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
-	public GetAllOrdersRes getAllOrdersToday(HttpSession httpSession) {
+	public GetAllOrdersRes getTodayAllOrders(HttpSession httpSession) {
 		// 抓員工資訊
 		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
-		if (staff != null) { // 只有管理者才能查詢
+		if (staff == null) { // 只有管理者才能查詢
 			return new GetAllOrdersRes(ReplyMessage.PERMISSION_DENIED.getCode(),
 					ReplyMessage.PERMISSION_DENIED.getMessage());
 		}
 		// 取的今天的日期字串，參考成立訂單
 		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-		GetOrdersVo order = ordersDao.getOrderByDay(todayStr);
+		// 取得所在分店
+		int globalAreaId = staff.getGlobalAreaId();
+		List<Object[]> rawData = ordersDao.getTodayAllOrders(todayStr, globalAreaId);
+		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
+		// LinkedHashMap 是為了「照順序排」，讓最新下單的排在最前面
+		Map<String, GetOrdersVo> orderMap = new LinkedHashMap<>();
+		for (Object[] row : rawData) {
+			String orderKey = row[1].toString() + row[0].toString(); // 日期 + ID
+
+			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
+				// 建立一個新的訂單物件
+				GetOrdersVo newVo = new GetOrdersVo();
+				newVo.setId(row[0].toString()); // o.id
+				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
+				newVo.setGlobalAreaId(((Number) row[2]).intValue()); // o.global_area_id
+				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
+				newVo.setOrdersStatus(row[4].toString()); // o.status
+				newVo.setPayStatus(row[5].toString());// o.status
+				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
+				// 回傳的 Java 物件實際上是 java.sql.Timestamp
+				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
+				newVo.setCompletedAt(row[6] != null ? ((java.sql.Timestamp) row[6]).toLocalDateTime() : null);
+				newVo.setGetOrdersDetailVoList(new ArrayList<>());
+				return newVo;
+			});
+
+			// 建立明細並塞入該訂單的 List
+			GetOrdersDetailVo detail = new GetOrdersDetailVo();
+			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
+			detail.setQuantity(((Number) row[7]).intValue());
+			detail.setPrice((BigDecimal) row[8]);
+			detail.setGift(((Number) row[9]).intValue() == 1); // 回傳0或1，在 Java 是數字，透過比較運算產生 true/false
+			detail.setDiscountNote(row[10] != null ? row[10].toString() : "");
+			detail.setName(row[11].toString()); // 產品名稱已經在 SQL 抓好了
+
+			vo.getGetOrdersDetailVoList().add(detail);
+		}
+		// 把 Map 的值轉換成 List
+		List<GetOrdersVo> result = new ArrayList<>(orderMap.values());
+
+		return new GetAllOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), result);
 
 	}
 
@@ -680,14 +720,14 @@ public class OrdersService {
 	public GetAllOrdersRes getOrderByPhone(String phone, HttpSession httpSession) {
 		// 抓員工資訊
 		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
-		if (staff != null) { // 只有管理者才能查詢
+		if (staff == null) { // 只有管理者才能查詢
 			return new GetAllOrdersRes(ReplyMessage.PERMISSION_DENIED.getCode(),
 					ReplyMessage.PERMISSION_DENIED.getMessage());
 		}
 		// 取的今天的日期字串，參考成立訂單
 		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 		// 取的資料根據電話號碼跟今天日期 DAO 取得扁平化的資料
-		List<Object[]> rawData = ordersDao.getOrderByPhone(todayStr, phone);
+		List<Object[]> rawData = ordersDao.getOrdersByPhone(todayStr, phone);
 		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
 		// LinkedHashMap 是為了「照順序排」，讓最新下單的排在最前面
 		Map<String, GetOrdersVo> orderMap = new LinkedHashMap<>();
