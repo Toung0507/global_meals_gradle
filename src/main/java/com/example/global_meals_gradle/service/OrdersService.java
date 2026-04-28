@@ -501,11 +501,11 @@ public class OrdersService {
 		}
 		// 檢查訂單狀態：只有「未付款」的訂單可以執行付款
 		// 如果訂單已經是 COMPLETED, 則不需要重複付款
-		if (PayStatus.PAID.equals(order.getPayStatus())) {
+		if (PayStatus.PAID.name().equals(order.getPayStatus().name())) {
 			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "訂單已支付完成，無需重複操作");
 		}
 		// 如果訂單是其他狀態（如 REFUNDED, CANCELLED），則不允許付款
-		if (!PayStatus.UNPAID.equals(order.getPayStatus())) {
+		if (!PayStatus.UNPAID.name().equals(order.getPayStatus().name())) {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "訂單狀態錯誤，無法付款");
 		}
 		try {
@@ -516,11 +516,18 @@ public class OrdersService {
 				// ====== 會員邏輯(點數處理) ======
 				// 判斷是會員(> 1)還是訪客(= 1)
 				if (order.getMemberId() > 1) {
-					// 利用會員id 撈取並鎖定會員資料(點數、9折卷)
+					// 利用會員id 撈取會員資料(點數、9折卷)
 					Members member = membersDao.findById(order.getMemberId());
 					// 如果是 null 則代表沒有這筆會員資料
 					if (member == null) {
 						throw new RuntimeException(order.getMemberId() + "錯誤，查無會員資料");
+					}
+					if (order.isUseDiscount()) { // 如果有使用優惠劵，須把它關閉、次數歸0
+						int updated = membersDao.useDiscount(member.getId());
+						if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
+							throw new RuntimeException("優惠券已被使用或不存在");
+						}
+						return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 					}
 					int addResult = membersDao.addPoint(member.getId()); // 加次數(如果次數 < 9或 > 9 )
 					if (addResult == 0) { // 加點失敗，可能次數剛好是 9
@@ -530,18 +537,13 @@ public class OrdersService {
 							throw new RuntimeException("會員次數更新失敗");
 						}
 					}
-					if (order.isUseDiscount()) { // 如果有使用優惠劵，須把它關閉、點數變1
-						int updated = membersDao.useDiscount(member.getId());
-						if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
-							throw new RuntimeException("優惠券已被使用或不存在");
-						}
-					}
+					
 				}
 				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			}
 			throw new RuntimeException("付款更新失敗");
 		} catch (Exception e) {
-			throw new RuntimeException("付款失敗");
+			throw new RuntimeException("付款失敗：" + e.getMessage());
 		}
 	}
 
