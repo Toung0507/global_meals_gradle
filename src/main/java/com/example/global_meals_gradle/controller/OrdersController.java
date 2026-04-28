@@ -89,8 +89,9 @@ public class OrdersController {
 	/* 報電話號碼取餐(今天) */
 	@GetMapping("get_order_by_phone")
 	@Operation(summary = "手機號碼取餐", description = "根據電話號碼查詢今日待取餐訂單")
-	public GetOrdersByPhoneRes getOrderByPhone(@RequestParam("phone") String phone) {
-		return ordersService.getOrderByPhone(phone);
+	public GetAllOrdersRes getOrderByPhone(@RequestParam("phone") String phone, //
+			@Parameter(hidden = true) HttpSession httpSession) {
+		return ordersService.getOrderByPhone(phone, httpSession);
 	}
 	
 	// 前端點擊「前往付款」時請求的 API

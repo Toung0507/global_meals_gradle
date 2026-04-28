@@ -38,10 +38,14 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			nativeQuery = true)
 	public Optional<Orders> getOrderByOrderDateId(String orderDateId);
 
-	/* 根據電話號碼查詢最新的一筆訂單 */
-	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND phone = ?2 ORDER BY id DESC LIMIT 1", 
-			nativeQuery = true)
-	public GetOrdersVo getOrderByPhone(String orderDateId, String phone);
+	/* 根據電話號碼查詢今天的訂單 */
+	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "
+			+ "o.orders_status, o.pay_status, o.completed_at,"
+			+ "d.quantity, d.price, d.is_gift, d.discount_note, " + "p.name as product_name " + "FROM orders o "
+			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.order_date_id = ?1 AND o.phone = ?2 "
+			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
+	public List<Object[]> getOrderByPhone(String orderDateId, String phone);
 
 	/* 依據訂單編號查詢該筆訂單 */
 	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND id = ?2", nativeQuery = true)
