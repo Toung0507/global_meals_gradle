@@ -597,7 +597,11 @@ public class OrdersService {
 						membersDao.restoreCouponAndPoints(order.getMemberId());
 					} else {
 						// 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
-						membersDao.smartReducePoint(order.getMemberId());
+						int pointResult = membersDao.smartReducePoint(order.getMemberId());
+						if(pointResult == 0) {
+							log.warn("退款扣點異常 - 會員ID: {}, 訂單ID: {}, 原因: 點數不足(0)", 
+							         order.getMemberId(), order.getId());
+						}
 					}
 				}
 				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
