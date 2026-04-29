@@ -48,9 +48,9 @@ public class StaffService {
 		if (!StringUtils.hasText(req.getName())) {
 			return new StaffSearchRes(ReplyMessage.NAME_ERROR.getCode(), ReplyMessage.NAME_ERROR.getMessage());
 		}
-		if (!StringUtils.hasText(req.getPassword())) {
-			return new StaffSearchRes(ReplyMessage.PASSWORD_ERROR.getCode(), ReplyMessage.PASSWORD_ERROR.getMessage());
-		}
+//		if (!StringUtils.hasText(req.getPassword())) {
+//			return new StaffSearchRes(ReplyMessage.PASSWORD_ERROR.getCode(), ReplyMessage.PASSWORD_ERROR.getMessage());
+//		}//因為密碼直接生成，也不需要去驗證有沒有輸入密碼了
 		if (!StringUtils.hasText(req.getRole())) {
 			return new StaffSearchRes(ReplyMessage.ROLE_ERROR.getCode(), ReplyMessage.ROLE_ERROR.getMessage());
 		}
@@ -74,11 +74,13 @@ public class StaffService {
 			return new StaffSearchRes(ReplyMessage.REPEAT_ERROR.getCode(), ReplyMessage.REPEAT_ERROR.getMessage());
 		}
 		try {
-			// 5. 寫入資料庫 (移除多餘的 try-catch)
+			
+			String defaultPassword = "00000"; // 🌟 統一預設密碼！
+			// 5. 寫入資料庫 
 			staffDao.insert(
 					req.getName(), 
 					autoAccount, 
-					encoder.encode(req.getPassword()), 
+					encoder.encode(defaultPassword), 
 					targetRole.name(),
 					req.getGlobalAreaId());
 		} catch (Exception e) {
@@ -105,7 +107,7 @@ public class StaffService {
 		}
 
 		targetStaff.setPassword(encoder.encode(req.getNewPassword()));
-		staffDao.save(targetStaff); // 移除多餘的 try-catch
+		staffDao.save(targetStaff); 
 
 		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
@@ -113,6 +115,17 @@ public class StaffService {
 	// 修改自己的密碼
 	@Transactional(rollbackFor = Exception.class)
 	public StaffSearchRes selfChangePassword(UpdateStaffPasswordReq req, Staff operator) {
+	    
+		// 新密碼不能跟舊密碼一樣
+	    if (req.getOldPassword().equals(req.getNewPassword())) {
+	        // 建議在 ReplyMessage 新增對應 Enum
+	        return new StaffSearchRes(ReplyMessage.OLD_AND_NEW_PASSWORD_SAME.getCode(), ReplyMessage.OLD_AND_NEW_PASSWORD_SAME.getMessage());
+	    }
+
+	    // 新密碼絕對不能是系統預設密碼
+	    if ("00000".equals(req.getNewPassword())) {
+	        return new StaffSearchRes(ReplyMessage.INITAL_PASSWORD_SAME.getCode(), ReplyMessage.INITAL_PASSWORD_SAME.getMessage());
+	    }
 	    
 	    // 1. 從資料庫重新抓取目前的員工資料（確保資料是最新的）
 	    Staff staff = staffDao.findById(operator.getId()).orElse(null);
@@ -182,6 +195,12 @@ public class StaffService {
 		if (!staff.isStatus()) {
 			return new StaffSearchRes(ReplyMessage.ACCOUNT_DISABLED.getCode(), ReplyMessage.ACCOUNT_DISABLED.getMessage());
 		}
+		if("00000".equals(req.getPassword())) {
+			// 這裡建議在 ReplyMessage 新增一個 FIRST_LOGIN_CHANGE_PASSWORD 的 ReplyMessage 
+						// 我們把 staff 回傳回去，讓前端知道是誰需要改密碼
+						return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), //
+								ReplyMessage.FIRST_LOGIN_CHANGE_PASSWORD.getMessage(), List.of(staff));
+		}
 		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), List.of(staff));
 	}
 
@@ -192,7 +211,6 @@ public class StaffService {
 	 *  - 只有 ADMIN 或 該店的 RM 可以操作
 	 *  - 目標必須是同一個 globalAreaId 的 STAFF
 	 *  - 採用原地晉升：保留 ID，只改 role + account
-	 *  - 不提供降級（規格第四點：沒有降級功能，不佳就直接停權）
 	 * ===================================================== */
 	@Transactional(rollbackFor = Exception.class)
 	public StaffSearchRes promoteToManagerAgent(int targetId, Staff operator) {
@@ -239,6 +257,50 @@ public class StaffService {
 		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage(), List.of(targetStaff));
 	}
+	/* =====================================================
+	 * 【職務降級】 (下去)
+	 * 邏輯：RM 將所屬區域的 MA 降級為 ST
+	 * ===================================================== */
+	@Transactional(rollbackFor = Exception.class)
+	public StaffSearchRes demoteToStaff(int targetId, Staff operator) {
+		
+		// 1. 權限檢查：只有正牌店長或是老闆可以拔掉副店長的頭銜
+		if (operator.getRole() != StaffRole.REGION_MANAGER && operator.getRole() != StaffRole.ADMIN) {
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		}
+
+		// 2. 找出目標員工
+		Staff targetStaff = staffDao.findById(targetId).orElse(null);
+		if (targetStaff == null) {
+			return new StaffSearchRes(ReplyMessage.STAFF_ID_NOT_FOUND.getCode(), ReplyMessage.STAFF_ID_NOT_FOUND.getMessage());
+		}
+
+		// 3. 區域檢查：店長只能降級自己店裡的人！
+		if (operator.getRole() == StaffRole.REGION_MANAGER && 
+			targetStaff.getGlobalAreaId() != operator.getGlobalAreaId()) {
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		}
+
+		// 4. 狀態檢查：只有目前的「副店長(MA)」才可以被降級成「員工(ST)」
+		if (targetStaff.getRole() != StaffRole.MANAGER_AGENT) {
+			// 你可以在 ReplyMessage 加一個 DEMOTE_TARGET_ERROR，這裡偷懶先用字串
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		}
+
+		// 5. 執行降級邏輯：拔掉副店長臂章，換回基層制服
+		targetStaff.setRole(StaffRole.STAFF);
+
+		// 6. 重新配發帳號 🌟 (完美解決你的第 4 點需求)
+		// 我們不玩「文字替換 (MA變ST)」了，直接呼叫你寫好的工具箱！
+		// 這樣系統就會自動去資料庫找目前 ST 最大的號碼，然後 +1 配發給他！
+		String newAccount = generateAccount(StaffRole.STAFF);
+		targetStaff.setAccount(newAccount);
+
+		// 7. 存檔！
+		staffDao.save(targetStaff);
+
+		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), List.of(targetStaff));
+	}
 	/*
 	 * =============================================================================
 	 * ============ ⬇️⬇️⬇️ 以下是私有輔助方法 (工具箱) ⬇️⬇️⬇️
@@ -280,12 +342,18 @@ public class StaffService {
 	// 工具 2：判斷「新增帳號」的權限
 	private boolean hasRegisterPermission(Staff operator, StaffRole targetRole, int targetAreaId) {
 		StaffRole operatorRole = operator.getRole();
-
+		// 規則 1：老闆 (ADMIN) 只能建 店長 (RM)
 		if (operatorRole == StaffRole.ADMIN) {
 			return targetRole == StaffRole.REGION_MANAGER;
 		}
+		// 規則 2：店長 (RM) 可以建 員工 (STAFF) 以及 副店長 (MANAGER_AGENT)！
 		if (operatorRole == StaffRole.REGION_MANAGER) {
-			return targetRole == StaffRole.STAFF && targetAreaId == operator.getGlobalAreaId();
+//			return targetRole == StaffRole.STAFF && targetAreaId == operator.getGlobalAreaId();//舊的寫法
+			//先確認身分是員工或是副店長，跟目標分店ID=操作員.分店長ID
+//			return (targetRole == StaffRole.STAFF || targetRole == StaffRole.MANAGER_AGENT) && targetAreaId == operator.getGlobalAreaId();
+			//有效的Valid
+			boolean TargetValid = (targetRole == StaffRole.STAFF || targetRole == StaffRole.MANAGER_AGENT);
+			return TargetValid && targetAreaId == operator.getGlobalAreaId();
 		}
 		return false;
 	}
