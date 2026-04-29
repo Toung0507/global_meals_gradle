@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -68,7 +69,7 @@ public class PromotionsManageController {
 	public List<GiftItemVo> getAvailableGifts(@RequestBody BigDecimal amount) {
 		return promotionsService.getAvailableGifts(amount);
 	}
-
+	
 	// =============================================
 	// 以下為新增的四個端點（對應前端 manager-dashboard promotions 頁籤）
 	// =============================================
@@ -87,23 +88,19 @@ public class PromotionsManageController {
 		return promotionsManageService.getList();
 	}
 
-	/**
-	 * POST /promotions/create
-	 * 一次建立促銷活動，並選擇性同時新增一筆贈品規則
-	 *
-	 * Request Body 欄位說明：
-	 *   必填（活動）：name, startTime, endTime
-	 *   選填（贈品）：giftProductId（> 0 才會建贈品）、fullAmount、quantity
-	 *
-	 * 兩個步驟在同一個 @Transactional 內，任一失敗整筆 rollback
-	 * 欄位驗證全部在 Service 層手動進行
-	 */
-	@PostMapping("/create")
-	@Operation(summary = "建立促銷活動", description = "建立活動並選擇性設定一筆贈品規則")
-	public BasicRes create(@RequestBody PromotionsManageReq req) {
-		// 委派給 createPromotionWithGift()，由 Service 處理驗證與寫入
-		promotionsManageService.createPromotionWithGift(req);
-		// 成功後回傳 200 + "Success!!"
+	@PostMapping(value = "/create", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+	@Operation(summary = "建立促銷活動", description = "建立活動並同時上傳活動圖片（必填），選擇性設定一筆贈品規則")
+	public BasicRes create(
+			@RequestPart("data") PromotionsManageReq req,
+			@RequestPart("image") MultipartFile image) throws IOException {
+		promotionsManageService.createPromotionWithGift(req, image.getBytes());
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	}
+
+	@PostMapping("/deactivateGift/{id}")
+	@Operation(summary = "關閉單一贈品", description = "將指定贈品的 is_active 設為 0（不可回復）")
+	public BasicRes deactivateGift(@Parameter(description = "贈品 ID") @PathVariable("id") int id) {
+		promotionsManageService.deactivateGift(id);
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
@@ -123,18 +120,11 @@ public class PromotionsManageController {
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
-	/**
-	 * POST /promotions/uploadImage/{id}
-	 * 上傳促銷活動圖片，存入 promotions.promotion_img
-	 *
-	 * 前端用 multipart/form-data 格式傳送，欄位名稱為 "image"
-	 * 活動 ID 由路徑帶入
-	 */
-	@PostMapping("/uploadImage/{id}")
+	@PostMapping(value = "/uploadImage/{id}", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
 	@Operation(summary = "上傳活動圖片", description = "為指定促銷活動上傳宣傳圖片")
-	public BasicRes uploadImage( // 
-			@Parameter(description = "活動 ID") @PathVariable("id") int id, //
-			@Parameter(description = "圖片檔案") @RequestParam("image") MultipartFile image) //
+	public BasicRes uploadImage(
+			@Parameter(description = "活動 ID") @PathVariable("id") int id,
+			@Parameter(description = "圖片檔案") @RequestParam("image") MultipartFile image)
 			throws IOException {
 		promotionsManageService.uploadImage(id, image.getBytes());
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
@@ -172,7 +162,7 @@ public class PromotionsManageController {
 	 *
 	 * 回傳 PromotionsRes：finalAmount（最終金額）、receivedGifts（贈品清單）等
 	 */
-	@PostMapping("/promotions/calculate")
+	@PostMapping("/calculate")
 	@Operation(summary = "計算結帳金額", description = "結帳時套用折扣、檢查贈品並計算最終總額")
 	public PromotionsRes calculate(@Valid @RequestBody PromotionsReq req) {
 		// originalAmount 已整合進 PromotionsReq，直接取出傳給 Service

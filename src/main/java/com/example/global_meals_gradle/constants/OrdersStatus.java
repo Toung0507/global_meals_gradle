@@ -6,10 +6,10 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 @JsonFormat(with = JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_PROPERTIES)
 public enum OrdersStatus {
 
-	UNPAID("UNPAID"), //
-	COMPLETED("COMPLETED"), //
-	CANCELLED("CANCELLED"), //
-	REFUNDED("REFUNDED");
+	PREPARING("PREPARING"), // 製作中(初始狀態)
+	READY("READY"), // 餐點完成/待取餐
+	PICKED_UP("PICKED UP"), // 已取餐
+	CANCELLED("CANCELLED"); // 已取消(退款跟取消)
 
 	private String ordersStatus;
 
