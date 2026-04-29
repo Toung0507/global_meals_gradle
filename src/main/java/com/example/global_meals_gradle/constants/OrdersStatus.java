@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 public enum OrdersStatus {
 
 	PREPARING("PREPARING"), // 製作中(初始狀態)
-	READY ("READY"), // 餐點完成/待取餐
+	READY("READY"), // 餐點完成/待取餐
 	PICKED_UP("PICKED UP"), // 已取餐
 	CANCELLED("CANCELLED"); // 已取消(退款跟取消)
 
