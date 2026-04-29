@@ -48,7 +48,7 @@ public class GlobalAreaController {
 	}
 	
 	// 刪除分店
-	@PostMapping("global_area/delete")
+	@PostMapping("delete")
 	@Operation(summary = "刪除分店", description = "將指定分店從系統中刪除")
 	public BasicRes delete(@Valid @RequestBody DeleteGlobalAreaReq req) {
 		return globalAreaService.delete(req);

@@ -33,6 +33,7 @@ public enum ReplyMessage {
 	TOTAL_AMOUNT_ERROR(400, "Total Amount ERROR!!"), //
 	NOT_DISCOUNT_ERROR(400, "Not Discount ERROR!!"), //
 	REPORTS_NOT_FOUND(404, "Reports Not Found!!"), //
+	PERMISSION_DENIED(403, "Permission Denied"), // 權限不足
 
 	/* 致遠 */
 	// 促銷活動相關錯誤

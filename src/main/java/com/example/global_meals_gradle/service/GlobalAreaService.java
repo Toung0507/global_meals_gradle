@@ -63,24 +63,37 @@ public class GlobalAreaService {
 	// 更新分店
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes update(UpdateGlobalAreaReq req) {
-		// GlobalArea globalArea = globalAreaDao.findById(req.getId());
-		Regions regions = regionsDao.getById(req.getRegionsId());
-		if (globalAreaDao.findById(req.getId()) == null) {
+		GlobalArea globalArea = globalAreaDao.findById(req.getId());
+		if (globalArea == null) {
 			return new BasicRes(ReplyMessage.GLOBAL_AREA_NOT_FOUND.getCode(), //
 					ReplyMessage.GLOBAL_AREA_NOT_FOUND.getMessage());
 		}
+		Regions regions = regionsDao.getById(globalArea.getRegionsId());
 		if (regions == null) {
 			return new BasicRes(ReplyMessage.REGIONS_ID_NOT_FOUND.getCode(), //
 					ReplyMessage.REGIONS_ID_NOT_FOUND.getMessage());
 		}
+		// 處理 只修改了部分資料，其餘照舊
+		String inputBranch = (req.getBranch() == null || req.getBranch().isBlank()) ? globalArea.getBranch() : req.getBranch();
+		String inputAddress = (req.getAddress() == null || req.getAddress().isBlank()) ? globalArea.getAddress() : req.getAddress();
+		String inputPhone = globalArea.getPhone(); // 預設照舊
 		try {
 			String countryCode = regions.getCountryCode();
-			if (!PhoneValidatorUtils.isValid(req.getPhone(), countryCode)) {
-				return new BasicRes(ReplyMessage.PHONE_ERROR.getCode(), //
-						ReplyMessage.PHONE_ERROR.getMessage());
+			// 電話有傳入新值才驗證與轉換
+			if (req.getPhone() != null && !req.getPhone().isBlank()) {
+				// 如果前端有輸入值進來，再來判斷他的最小長度
+				if (req.getPhone().length() <= 7) {
+					return new BasicRes(ReplyMessage.PHONE_ERROR.getCode(), //
+							ReplyMessage.PHONE_ERROR.getMessage());
+				}
+				if (!PhoneValidatorUtils.isValid(req.getPhone(), countryCode)) {
+					return new BasicRes(ReplyMessage.PHONE_ERROR.getCode(), //
+							ReplyMessage.PHONE_ERROR.getMessage());
+				}
+				// 如果值有變動，將舊值更改為新值，並將輸入的值"正規化"存入
+				inputPhone = PhoneValidatorUtils.toE164Format(req.getPhone(), countryCode);
 			}
-			String normalizedPhone = PhoneValidatorUtils.toE164Format(req.getPhone(), countryCode);
-			globalAreaDao.update(req.getId(), req.getBranch(), req.getAddress(), normalizedPhone);
+			globalAreaDao.update(req.getId(), inputBranch, inputAddress, inputPhone);
 		} catch (Exception e) {
 			throw e;
 		}
