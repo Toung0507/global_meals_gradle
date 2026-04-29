@@ -31,7 +31,7 @@ public class BranchInventoryController {
 
 	// 1. 處理庫存批次更新
 	@PostMapping("/update")
-	@Operation(summary = "批次更新庫存", description = "接收一組庫存更新請求，批次調整商品在庫存中的數量")
+	@Operation(summary = "批次更新分店相關資料", description = "接收一組分店更新商品請求，批次調整商品在分店中的數量、價格、最大購買量")
 	public BranchInventoryRes updateInventory( //
 			@Validated @RequestBody List<BranchInventoryUpdateReq> reqList) {
 		return branchInventoryService.updateInventory(reqList);

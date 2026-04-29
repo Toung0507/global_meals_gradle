@@ -63,7 +63,7 @@ public interface BranchInventoryDao extends JpaRepository<BranchInventory, Integ
 
 	// 6. 分店菜單列表 (JOIN 兩表)
 	// 以庫存表為主，撈出該分店所有「上架」商品
-	@Query(value = "SELECT p.*, bi.base_price, bi.stock_quantity " //
+	@Query(value = "SELECT p.*, bi.base_price, bi.stock_quantity, bi.active " //
 			+ "  FROM branch_inventory AS bi " //
 			+ "  JOIN products AS p " //
 			+ "    ON bi.product_id = p.id " //

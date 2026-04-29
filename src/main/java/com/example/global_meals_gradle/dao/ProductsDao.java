@@ -2,7 +2,7 @@ package com.example.global_meals_gradle.dao;
 
 import java.util.List;
 
-import org.apache.ibatis.annotations.Param;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -46,7 +46,7 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	// 7. 更新時檢查名稱是否存在
 	@Query(value = "SELECT COUNT(*) > 0 FROM products WHERE name = :name AND id <> :id", //
 			nativeQuery = true)
-	public boolean existsByNameAndIdNot(@Param("name") String name, @Param("id") int id);
+	public int existsByNameAndIdNot(@Param("name") String name, @Param("id") int id);
 	
 	// 8. 查詢所有「未刪除」的商品 (管理者清單頁)
     @Query(value = "SELECT * FROM products WHERE deleted_at IS NULL", nativeQuery = true)

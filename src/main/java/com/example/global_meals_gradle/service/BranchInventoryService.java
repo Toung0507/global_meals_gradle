@@ -57,7 +57,9 @@ public class BranchInventoryService {
 				// 更新欄位
 				inv.setStockQuantity(req.getStockQuantity());
 				inv.setBasePrice(req.getBasePrice());
+				inv.setCostPrice(req.getCostPrice());
 				inv.setMaxOrderQuantity(req.getMaxOrderQuantity());
+				inv.setActive(req.isActive());
 				inv.setUpdatedAt(LocalDateTime.now());
 
 				toUpdateList.add(inv);
@@ -88,7 +90,7 @@ public class BranchInventoryService {
 					ReplyMessage.SYSTEM_ERROR.getMessage() + e.getMessage());
 		}
 	}
-	
+
 	// 專門處理「對特定分店初始化所有商品」
 	@Transactional(rollbackFor = Exception.class)
 	public void initInventoryForNewBranch(int branchId) {
@@ -104,9 +106,11 @@ public class BranchInventoryService {
 			inventory.setProductId(p.getId());
 			inventory.setGlobalAreaId(branchId); // 傳入新分店的 ID
 			inventory.setBasePrice(BigDecimal.ZERO);
+			inventory.setCostPrice(BigDecimal.ZERO);
 			inventory.setMaxOrderQuantity(0);
 			inventory.setStockQuantity(0); // 初始化為 0
 			inventory.setUpdatedAt(LocalDateTime.now());
+			inventory.setActive(false);
 			inventory.setVersion(1);
 			inventoryList.add(inventory);
 		}
@@ -114,6 +118,40 @@ public class BranchInventoryService {
 		if (!inventoryList.isEmpty()) {
 			branchInventoryDao.saveAll(inventoryList);
 		}
+	}
+
+	// 快速修正分店內商品的上下架狀態
+	@Transactional(rollbackFor = Exception.class)
+	public BranchInventoryRes updateBranchActiveStatus(int productId, int globalAreaId, boolean active,
+			HttpSession session) {
+		// 1. 權限檢查 (重複使用你現有的 validateAccess)
+		// 這樣可以確保分店長只能改自己店的，Admin 可以改所有店
+		BasicRes authRes = validateAccess(session, globalAreaId);
+		if (authRes != null) {
+			return new BranchInventoryRes(authRes.getCode(), authRes.getMessage());
+		}
+
+		// 2. 找到該分店的庫存紀錄
+		BranchInventory inv = branchInventoryDao.findByProductIdAndGlobalAreaId(productId, globalAreaId).orElse(null);
+
+		if (inv == null) {
+			return new BranchInventoryRes(ReplyMessage.INVENTORY_NOT_FOUND.getCode(),
+					ReplyMessage.INVENTORY_NOT_FOUND.getMessage());
+		}
+
+		// 3. 更新狀態
+		inv.setActive(active);
+		inv.setUpdatedAt(LocalDateTime.now());
+		branchInventoryDao.save(inv);
+
+		// 4. 回傳結果
+		// 因為只需要告知前端成功，你可以直接轉成 VO 列表回傳，或是只回傳狀態碼
+		Map<Integer, String> branchMap = globalAreaDao.getBranchNameMap();
+		List<InventoryDetailVo> resultList = new ArrayList<>();
+		resultList.add(convertToInventoryDetailVo(inv, branchMap));
+
+		return new BranchInventoryRes(ReplyMessage.INVENTORY_UPDATE_SUCCESS.getCode(),
+				ReplyMessage.INVENTORY_UPDATE_SUCCESS.getMessage(), resultList);
 	}
 
 	// 分店取得菜單
@@ -132,8 +170,10 @@ public class BranchInventoryService {
 				vo.setCategory((String) obj[2]);
 				vo.setDescription((String) obj[3]);
 				vo.setFoodImgBase64(encodeImage((byte[]) obj[4])); // 假設第5個是 image
-				vo.setBasePrice((BigDecimal) obj[obj.length - 2]); // 取最後倒數第二個
-				vo.setStockQuantity((Integer) obj[obj.length - 1]); // 取最後一個
+				vo.setBasePrice((BigDecimal) obj[obj.length - 3]);
+				vo.setStockQuantity((Integer) obj[obj.length - 2]);
+				vo.setActive((Boolean) obj[obj.length - 1]);
+
 				return vo;
 			}).collect(Collectors.toList());
 
@@ -201,35 +241,36 @@ public class BranchInventoryService {
 	// 工具 - 權限檢查
 	// 權限檢查方法 (回傳 null 代表通過，回傳 BasicRes 代表失敗)
 	private BasicRes validateAccess(HttpSession session, int targetGlobalAreaId) {
-		// 1. 嘗試從 Session 取得使用者
 		Staff staff = (Staff) session.getAttribute(SESSION_KEY);
 
-		// 2. 檢查是否登入
+		// 1. 基礎驗證
 		if (staff == null) {
 			return new BasicRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage());
 		}
-
-		// 3. 檢查帳號是否被停用
 		if (!staff.isStatus()) {
-			return new BasicRes(ReplyMessage.ACCOUNT_DISABLED.getCode(), //
-					ReplyMessage.ACCOUNT_DISABLED.getMessage());
+			return new BasicRes(ReplyMessage.ACCOUNT_DISABLED.getCode(), ReplyMessage.ACCOUNT_DISABLED.getMessage());
 		}
 
-		// 4. 權限判定
-		// 如果是 ADMIN，直接放行 (回傳 null 代表沒有錯誤)
+		// 2. [通過條件 A] 管理員：直接放行
 		if (staff.getRole() == StaffRole.ADMIN) {
-			return null;
+			return null; // 驗證通過
 		}
 
-		// 如果不是 ADMIN，檢查他是否有權限看該分店
-		if (staff.getGlobalAreaId() != targetGlobalAreaId) {
-			// 使用你的 OPERATE_ERROR 來代表權限不足
-			return new BasicRes(ReplyMessage.OPERATE_ERROR.getCode(), //
-					ReplyMessage.OPERATE_ERROR.getMessage());
+		// 3. [通過條件 B] 分店長：檢查身分 AND 檢查是否為該店負責人
+		if (staff.getRole() == StaffRole.REGION_MANAGER || staff.getRole() == StaffRole.MANAGER_AGENT) {
+			if (staff.getGlobalAreaId() == targetGlobalAreaId) {
+				return null; // 驗證通過
+			} else {
+				// 這裡是「身分對了，但權限範圍不對」
+				return new BasicRes(ReplyMessage.OPERATE_ERROR.getCode(), //
+						ReplyMessage.OPERATE_ERROR.getMessage());
+			}
 		}
 
-		// 通過所有驗證
-		return null;
+		// 4. [結尾] 預設拒絕：只要程式跑到這裡，代表上述條件都不滿足
+		// (例如他是普通員工，或者其他我們尚未定義權限的角色)
+		return new BasicRes(ReplyMessage.OPERATE_ERROR.getCode(), //
+				ReplyMessage.OPERATE_ERROR.getMessage());
 	}
 
 	// 工具 - 轉換為 InventoryDetailVo VO (給管理者看完整資訊，且前端適用)
@@ -240,8 +281,10 @@ public class BranchInventoryService {
 		vo.setGlobalAreaId(inv.getGlobalAreaId());
 		vo.setBranchName(branchMap.getOrDefault(inv.getGlobalAreaId(), "未知分店"));
 		vo.setBasePrice(inv.getBasePrice());
+		vo.setCostPrice(inv.getCostPrice());
 		vo.setStockQuantity(inv.getStockQuantity());
 		vo.setMaxOrderQuantity(inv.getMaxOrderQuantity());
+		vo.setActive(inv.isActive());
 		return vo;
 	}
 

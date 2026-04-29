@@ -40,56 +40,61 @@ public class ProductsController {
 	@PostMapping(value = "/create", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
 	@Operation(summary = "新增商品", description = "上傳商品圖片並新增商品基本資料")
 	public AdminProductRes createProduct( //
-            @Parameter(content = @Content( //
-            		mediaType = MediaType.APPLICATION_JSON_VALUE))
-            @RequestPart("data") @Valid ProductCreateReq req, //
-            @Parameter(description = "商品圖片") //
-            @RequestPart("file") MultipartFile file, // 
-            @Parameter(hidden = true) HttpSession session) { //
-        return productService.createProduct(req, file, session);
-    }
+			@Parameter(content = @Content( //
+					mediaType = MediaType.APPLICATION_JSON_VALUE)) //
+			@RequestPart("data") @Valid ProductCreateReq req, //
+			@Parameter(description = "商品圖片") //
+			@RequestPart("file") MultipartFile file, //
+			@Parameter(hidden = true) HttpSession session) { //
+		return productService.createProduct(req, file, session);
+	}
 
 	@PostMapping(value = "/update", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
 	@Operation(summary = "更新商品", description = "修改商品資訊，可選是否同時更換圖片")
 	public AdminProductRes updateProduct( //
-            @Parameter(content = @Content( //
-            		mediaType = MediaType.APPLICATION_JSON_VALUE))
-            @RequestPart("data") @Valid ProductUpdateReq req, //
-            @Parameter(description = "新商品圖片 (選填)") //
-            @RequestPart(value = "file", required = false) MultipartFile file, //
-            @Parameter(hidden = true) HttpSession session) { //
-        return productService.updateProduct(req, file, session);
-    }
-	
+			@Parameter(content = //
+			@Content( mediaType = MediaType.APPLICATION_JSON_VALUE)) //
+			@RequestPart("data") @Valid ProductUpdateReq req, //
+			@Parameter(description = "新商品圖片 (選填)") //
+			@RequestPart(value = "file", required = false) MultipartFile file, //
+			@Parameter(hidden = true) HttpSession session) { //
+		return productService.updateProduct(req, file, session);
+	}
 
 	@GetMapping("/list")
 	@Operation(summary = "取得所有上架商品", description = "查詢目前處於上架狀態的商品列表")
 	public AdminProductRes getActiveProducts(@Parameter(hidden = true) HttpSession session) {
-        return productService.getActiveProducts(session);
-    }
+		return productService.getActiveProducts(session);
+	}
 
 	@GetMapping("/trash")
-    @Operation(summary = "取得下架商品", description = "查詢已刪除/下架的商品列表")
-    public AdminProductRes getDeletedProducts(@Parameter(hidden = true) HttpSession session) {
-        return productService.getDeletedProducts(session);
-    }
+	@Operation(summary = "取得下架商品", description = "查詢已刪除/下架的商品列表")
+	public AdminProductRes getDeletedProducts(@Parameter(hidden = true) HttpSession session) {
+		return productService.getDeletedProducts(session);
+	}
 
 	@GetMapping("/detail/{id}")
-    @Operation(summary = "查詢商品詳情", description = "根據商品 ID 取得單一商品詳細資料")
-    public AdminProductRes getProductDetail(
-            @Parameter(description = "商品 ID", example = "1") @PathVariable int id, 
-            @Parameter(hidden = true) HttpSession session) {
-        return productService.getProductById(id, session);
-    }
+	@Operation(summary = "查詢商品詳情", description = "根據商品 ID 取得單一商品詳細資料")
+	public AdminProductRes getProductDetail(@Parameter(description = "商品 ID", example = "1") @PathVariable int id,
+			@Parameter(hidden = true) HttpSession session) {
+		return productService.getProductById(id, session);
+	}
 
 	@PatchMapping("/status/{id}")
-    @Operation(summary = "更新商品狀態", description = "部分更新商品的啟用/停用狀態")
-    public AdminProductRes updateActiveStatus(
-            @Parameter(description = "商品 ID", example = "1") @PathVariable int id,
-            @Parameter(description = "是否啟用", example = "true") @RequestParam boolean active, 
-            @Parameter(hidden = true) HttpSession session) {
-        return productService.updateActiveStatus(id, active, session);
-    }
+	@Operation(summary = "更新商品狀態", description = "部分更新商品的啟用/停用狀態")
+	public AdminProductRes updateActiveStatus(@Parameter(description = "商品 ID", example = "1") @PathVariable("id") int id,
+			@Parameter(description = "是否啟用", example = "true") @RequestParam("active") boolean active,
+			@Parameter(hidden = true) HttpSession session) {
+		return productService.updateActiveStatus(id, active, session);
+	}
+	
+	@PostMapping("/delete/{id}")
+	@Operation(summary = "刪除商品", description = "執行商品的軟刪除操作")
+	public AdminProductRes deleteProduct(
+	        @Parameter(description = "要刪除的商品 ID") @PathVariable("id") int id,
+	        @Parameter(hidden = true) HttpSession session) {
+	    return productService.deleteProduct(id, session);
+	}
 
 	// 以下是艷羽寫的
 	// Session 的 key 名稱，與 StaffController 保持一致
@@ -108,9 +113,9 @@ public class ProductsController {
 	@GetMapping("/api/rm/monthly-sales")
 	@Operation(summary = "分店長銷售報表", description = "查詢該分店在指定年月的商品銷售總量 (分店ID取自登入狀態)")
 	public MonthlyProductsSalesRes getMonthlySalesByBranch(
-            @Parameter(description = "年份", example = "2026") @RequestParam("year") Integer year, 
-            @Parameter(description = "月份", example = "4") @RequestParam("month") Integer month,
-            @Parameter(hidden = true) HttpSession session) {
+			@Parameter(description = "年份", example = "2026") @RequestParam("year") Integer year,
+			@Parameter(description = "月份", example = "4") @RequestParam("month") Integer month,
+			@Parameter(hidden = true) HttpSession session) {
 
 		// Step 1：從 Session 取出登入的 Staff
 		Staff operator = (Staff) session.getAttribute(SESSION_KEY);
@@ -141,10 +146,10 @@ public class ProductsController {
 	@GetMapping("/api/admin/top5-monthly-sales")
 	@Operation(summary = "老闆查詢銷售前五名", description = "查詢指定國家在指定年月的銷售前五名商品")
 	public MonthlyProductsSalesRes getTop5MonthlySalesByRegion(
-            @Parameter(description = "年份", example = "2026") @RequestParam("year") Integer year, 
-            @Parameter(description = "月份", example = "4") @RequestParam("month") Integer month,
-            @Parameter(description = "區域 ID", example = "1") @RequestParam("regionId") Integer regionId, 
-            @Parameter(hidden = true) HttpSession session) {
+			@Parameter(description = "年份", example = "2026") @RequestParam("year") Integer year,
+			@Parameter(description = "月份", example = "4") @RequestParam("month") Integer month,
+			@Parameter(description = "區域 ID", example = "1") @RequestParam("regionId") Integer regionId,
+			@Parameter(hidden = true) HttpSession session) {
 
 		// Step 1：取 Session 登入者
 		Staff operator = (Staff) session.getAttribute(SESSION_KEY);

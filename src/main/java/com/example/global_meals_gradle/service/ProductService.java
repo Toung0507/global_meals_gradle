@@ -79,6 +79,9 @@ public class ProductService {
 
 			// 若沒有分店，不可新增商品
 			if (allBranches.isEmpty()) {
+				// 手動標記回滾，因為要返回失敗的 Res 物件
+				org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus()
+						.setRollbackOnly();
 				return new AdminProductRes(ReplyMessage.BRANCH_NOT_FOUND.getCode(), //
 						ReplyMessage.BRANCH_NOT_FOUND.getMessage());
 			}
@@ -89,7 +92,9 @@ public class ProductService {
 				inventory.setProductId(product.getId());
 				inventory.setGlobalAreaId(area.getId());
 				inventory.setBasePrice(BigDecimal.ZERO);
-				inventory.setMaxOrderQuantity(0);
+				inventory.setCostPrice(BigDecimal.ZERO);
+				inventory.setMaxOrderQuantity(1);
+				inventory.setActive(false);
 				inventory.setUpdatedAt(LocalDateTime.now());
 				inventory.setVersion(1);
 
@@ -112,15 +117,18 @@ public class ProductService {
 					ReplyMessage.PRODUCT_CREATE_SUCCESS.getMessage(), convertToAdminVo(product), inventoryVoList);
 
 		} catch (IOException e) {
-			// 圖片讀取失敗
+			// 圖片讀取失敗，強制回滾
+			org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus()
+					.setRollbackOnly();
 			return new AdminProductRes(ReplyMessage.IMAGE_ERROR.getCode(), //
 					ReplyMessage.IMAGE_ERROR.getMessage());
 		} catch (Exception e) {
-			// 其他任何預期外的錯誤
+			// 其他任何預期外的錯誤，強制回滾
+			org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus()
+					.setRollbackOnly();
 			return new AdminProductRes(ReplyMessage.SYSTEM_ERROR.getCode(), //
 					ReplyMessage.SYSTEM_ERROR.getMessage() + e.getMessage());
 		}
-
 	}
 
 	// 修改商品
@@ -196,7 +204,8 @@ public class ProductService {
 
 		} catch (Exception e) {
 			// 3. 捕捉資料庫層級的所有異常 (包含連線中斷、SQL 語法錯誤等)
-			return new AdminProductRes(ReplyMessage.SYSTEM_ERROR.getCode(), //
+			return new AdminProductRes(
+					ReplyMessage.SYSTEM_ERROR.getCode(), //
 					ReplyMessage.SYSTEM_ERROR.getMessage() + ": " + e.getMessage());
 		}
 	}
@@ -276,7 +285,7 @@ public class ProductService {
 		// 1. 名稱檢查
 		if (isUpdate) {
 			// 修改時：檢查「有沒有別的商品」已經用了這個名字
-			if (productsDao.existsByNameAndIdNot(req.getName(), productId)) {
+			if (productsDao.existsByNameAndIdNot(req.getName(), productId) >= 1) {
 				return new AdminProductRes(ReplyMessage.PRODUCT_EXISTS.getCode() //
 						, ReplyMessage.PRODUCT_EXISTS.getMessage());
 			}
@@ -321,8 +330,10 @@ public class ProductService {
 		vo.setProductId(inv.getProductId());
 		vo.setGlobalAreaId(inv.getGlobalAreaId());
 		vo.setBasePrice(inv.getBasePrice());
+		vo.setCostPrice(inv.getCostPrice());
 		vo.setStockQuantity(inv.getStockQuantity());
 		vo.setMaxOrderQuantity(inv.getMaxOrderQuantity());
+	    vo.setActive(inv.isActive());
 
 		// 從傳入的 Map 獲取分店名稱，如果找不到則預設為 "未知分店"
 		vo.setBranchName(branchMap.getOrDefault(inv.getGlobalAreaId(), "未知分店"));
@@ -349,7 +360,7 @@ public class ProductService {
 		}
 		return null;
 	}
-	
+
 	// 以下為艷羽寫的
 	private static final int YEAR_MIN = 2020;
 	@Autowired
@@ -379,7 +390,7 @@ public class ProductService {
 
 		// Step 2：年份基本防呆（不能查未來，不能查太久以前）
 		int currentYear = java.time.LocalDate.now().getYear();
-		if (req.getYear() < YEAR_MIN  || req.getYear() > currentYear) {
+		if (req.getYear() < YEAR_MIN || req.getYear() > currentYear) {
 			return new MonthlyProductsSalesRes(400, "年份超出合法範圍");
 		}
 		// 未來月份防呆（加在年份防呆的正後面）──
@@ -387,9 +398,9 @@ public class ProductService {
 		int currentMonth = java.time.LocalDate.now().getMonthValue();
 		// 條件：今年 且 查的月份 > 現在這個月 = 查未來，擋掉
 		if (req.getYear() == currentYear && req.getMonth() > currentMonth) {
-		    // %d 填年份，%02d 填月份（不足兩位補0，例如4→04）
-		    return new MonthlyProductsSalesRes(400,
-		        String.format("%d年%02d月還未結束，暫無銷售數據", req.getYear(), req.getMonth()));
+			// %d 填年份，%02d 填月份（不足兩位補0，例如4→04）
+			return new MonthlyProductsSalesRes(400,
+					String.format("%d年%02d月還未結束，暫無銷售數據", req.getYear(), req.getMonth()));
 		}
 
 		// Step 3：把 year + month 組成 SQL LIKE 用的字串，例如 "202604%"
@@ -405,17 +416,14 @@ public class ProductService {
 		// ── 空結果語意化──
 		// 如果查回來是空的，代表這個月/分店確實沒有任何已完成的訂單
 		if (rawData == null || rawData.isEmpty()) {
-		    // 回傳 200（不是錯誤），但附上清楚的說明訊息
-		    // 傳空清單，讓前端知道是「真的沒有資料」而不是系統錯誤
-		    return new MonthlyProductsSalesRes(
-		        ReplyMessage.SUCCESS.getCode(),
-		        String.format("%d年%02d月查無銷售記錄", req.getYear(), req.getMonth()),
-		        new ArrayList<>()  // 明確傳空清單，不是 null
-		    );
+			// 回傳 200（不是錯誤），但附上清楚的說明訊息
+			// 傳空清單，讓前端知道是「真的沒有資料」而不是系統錯誤
+			return new MonthlyProductsSalesRes(ReplyMessage.SUCCESS.getCode(),
+					String.format("%d年%02d月查無銷售記錄", req.getYear(), req.getMonth()), new ArrayList<>() // 明確傳空清單，不是 null
+			);
 		}
-		
-		List<MonthlyProductsSalesVo> salesList = toVoList(rawData);
 
+		List<MonthlyProductsSalesVo> salesList = toVoList(rawData);
 
 		return new MonthlyProductsSalesRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(),
 				salesList);
@@ -448,8 +456,8 @@ public class ProductService {
 		// ── 未來月份防呆
 		int currentMonth = java.time.LocalDate.now().getMonthValue();
 		if (req.getYear() == currentYear && req.getMonth() > currentMonth) {
-		    return new MonthlyProductsSalesRes(400,
-		        String.format("%d年%02d月還未結束，暫無銷售數據", req.getYear(), req.getMonth()));
+			return new MonthlyProductsSalesRes(400,
+					String.format("%d年%02d月還未結束，暫無銷售數據", req.getYear(), req.getMonth()));
 		}
 
 		// Step 3：國家 ID 防呆（老闆查詢必須傳 regionId）
@@ -458,8 +466,7 @@ public class ProductService {
 		}
 		Regions targetRegion = regionsDao.findById(req.getRegionId()).orElse(null);
 		if (targetRegion == null) {
-		    return new MonthlyProductsSalesRes(400,
-		        "國家 ID " + req.getRegionId() + " 不存在，請重新選擇");
+			return new MonthlyProductsSalesRes(400, "國家 ID " + req.getRegionId() + " 不存在，請重新選擇");
 		}
 		// Step 4：組成 LIKE 字串
 		String yearMonth = String.format("%d%02d%%", req.getYear(), req.getMonth());
@@ -468,51 +475,50 @@ public class ProductService {
 		// SQL 內部會 JOIN global_area + regions 過濾 r.id = regionId
 		List<Object[]> rawData = ordersDao.getTop5MonthlySalesByRegion(yearMonth, req.getRegionId());
 		// ── 空結果語意化
-				// 如果查回來是空的，代表這個月份/國家確實沒有任何已完成的訂單
-				if (rawData == null || rawData.isEmpty()) {
-				    return new MonthlyProductsSalesRes(
-				        ReplyMessage.SUCCESS.getCode(),
-				        String.format("%d年%02d月在此國家查無銷售記錄", req.getYear(), req.getMonth()),
-				        new ArrayList<>()  // 明確傳空清單，不是 null
-				    );
-				}
+		// 如果查回來是空的，代表這個月份/國家確實沒有任何已完成的訂單
+		if (rawData == null || rawData.isEmpty()) {
+			return new MonthlyProductsSalesRes(ReplyMessage.SUCCESS.getCode(),
+					String.format("%d年%02d月在此國家查無銷售記錄", req.getYear(), req.getMonth()), new ArrayList<>() // 明確傳空清單，不是
+																											// null
+			);
+		}
 		// Step 6：轉 VO（與功能A共用同樣格式）
 		// 原本那段 for 迴圈，刪掉，改成：
 		List<MonthlyProductsSalesVo> salesList = toVoList(rawData);
 
-
 		return new MonthlyProductsSalesRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(),
 				salesList);
 	}
+
 	// =====================================================================
 	// 私有工具方法：把 DB 原始資料（Object[]）轉換成前端看得懂的 VO 清單
 	// Step 6：把 Object[] 轉成前端看得懂的 VO 物件
-			// Object[0] = productName（商品名稱，String）
-			// Object[1] = totalQuantity（銷售總量）
-			//
-			// 【為什麼用 ((Number) row[1]).intValue()？】
-			// SUM() 在 MySQL 中永遠回傳 DECIMAL，JPA 會把它映射成 Java 的 BigDecimal。
-			// 用 (Number) 父類別接住，再呼叫 intValue()，幫我轉成 int（整數）來用,
-			//比直接 (Integer) 或 (BigDecimal) 更安全，
-			// 不管 DB 回的是 BigDecimal / Long / Integer 都不會噴 ClassCastException。
-			// 原本那段 for 迴圈，刪掉，改成：
+	// Object[0] = productName（商品名稱，String）
+	// Object[1] = totalQuantity（銷售總量）
+	//
+	// 【為什麼用 ((Number) row[1]).intValue()？】
+	// SUM() 在 MySQL 中永遠回傳 DECIMAL，JPA 會把它映射成 Java 的 BigDecimal。
+	// 用 (Number) 父類別接住，再呼叫 intValue()，幫我轉成 int（整數）來用,
+	// 比直接 (Integer) 或 (BigDecimal) 更安全，
+	// 不管 DB 回的是 BigDecimal / Long / Integer 都不會噴 ClassCastException。
+	// 原本那段 for 迴圈，刪掉，改成：
 	// =====================================================================
 	private List<MonthlyProductsSalesVo> toVoList(List<Object[]> rawData) {
-	    // 建立一個空清單，準備裝填轉換好的 VO
-	    List<MonthlyProductsSalesVo> salesList = new ArrayList<>();
-	    // 逐一把每列原始資料（Object[]）轉成乾淨的 VO 物件
-	    for (Object[] row : rawData) {
-	        MonthlyProductsSalesVo vo = new MonthlyProductsSalesVo();
-	        // row[0] 是 SQL 第一欄 p.name（商品名稱），強制轉成 String
-	     // row[0] 是 p.name（商品名稱），null 時顯示「未知商品」避免前端爆版
-	        vo.setProductName(row[0] != null ? (String) row[0] : "未知商品");
-	        // row[1] 是 SQL 第二欄 SUM(d.quantity)（銷售總量）
-	        // MySQL SUM() 回傳 DECIMAL，JPA 映射成 BigDecimal
-	        // 用 Number 父類別接住，再 .intValue() 轉成 int，最安全
-	        // null 防護：如果 SUM 回傳 null（理論上 GROUP BY 後不該發生，但保險一下），設為 0
-	        vo.setTotalQuantity(row[1] != null ? ((Number) row[1]).intValue() : 0);
-	        salesList.add(vo);
-	    }
-	    return salesList; // 回傳裝好的清單
+		// 建立一個空清單，準備裝填轉換好的 VO
+		List<MonthlyProductsSalesVo> salesList = new ArrayList<>();
+		// 逐一把每列原始資料（Object[]）轉成乾淨的 VO 物件
+		for (Object[] row : rawData) {
+			MonthlyProductsSalesVo vo = new MonthlyProductsSalesVo();
+			// row[0] 是 SQL 第一欄 p.name（商品名稱），強制轉成 String
+			// row[0] 是 p.name（商品名稱），null 時顯示「未知商品」避免前端爆版
+			vo.setProductName(row[0] != null ? (String) row[0] : "未知商品");
+			// row[1] 是 SQL 第二欄 SUM(d.quantity)（銷售總量）
+			// MySQL SUM() 回傳 DECIMAL，JPA 映射成 BigDecimal
+			// 用 Number 父類別接住，再 .intValue() 轉成 int，最安全
+			// null 防護：如果 SUM 回傳 null（理論上 GROUP BY 後不該發生，但保險一下），設為 0
+			vo.setTotalQuantity(row[1] != null ? ((Number) row[1]).intValue() : 0);
+			salesList.add(vo);
+		}
+		return salesList; // 回傳裝好的清單
 	}
 }
