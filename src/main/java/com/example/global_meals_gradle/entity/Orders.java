@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
+import com.example.global_meals_gradle.constants.PayStatus;
 
 import jakarta.persistence.*;
 
@@ -47,9 +48,13 @@ public class Orders {
 	private String transactionId;
 
 	@Enumerated(EnumType.STRING) // 關鍵：存儲字串
-	@Column(name = "status")
-	private OrdersStatus status;
+	@Column(name = "orders_status")
+	private OrdersStatus ordersStatus;
 
+	@Enumerated(EnumType.STRING) // 關鍵：存儲字串
+	@Column(name = "pay_status")
+	private PayStatus payStatus;
+	
 	@Column(name = "completed_at")
 	private LocalDateTime completedAt;
 	
@@ -143,13 +148,21 @@ public class Orders {
 	public void setTransactionId(String transactionId) {
 		this.transactionId = transactionId;
 	}
-
-	public OrdersStatus getStatus() {
-		return status;
+	
+	public OrdersStatus getOrdersStatus() {
+		return ordersStatus;
 	}
 
-	public void setStatus(OrdersStatus status) {
-		this.status = status;
+	public void setOrdersStatus(OrdersStatus ordersStatus) {
+		this.ordersStatus = ordersStatus;
+	}
+
+	public PayStatus getPayStatus() {
+		return payStatus;
+	}
+
+	public void setPayStatus(PayStatus payStatus) {
+		this.payStatus = payStatus;
 	}
 
 	public LocalDateTime getCompletedAt() {
