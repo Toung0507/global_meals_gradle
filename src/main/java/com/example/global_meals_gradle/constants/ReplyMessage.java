@@ -7,6 +7,7 @@ public enum ReplyMessage {
 	REGIONS_ID_ERROR(400, "Regions Id Error!!"), //
 	REGIONS_ID_NOT_FOUND(404, "Regions Id Not Found!!"), //
 	TAX_TYPE_ERROR(400, "Tax Type Error!!"), //
+	TAX_RATE_ERROR(400, "Tax Rate Error!!"), //
 	// Service GlobalAreaService
 	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
 	GLOBAL_AREA_ID_NOT_FOUND(404, "Global Area Id Not Found!!"), //
@@ -83,6 +84,10 @@ public enum ReplyMessage {
 	TARGET_NOT_STAFF(400, "Target Not Staff"), // 目標人物必須是員工
 	TARGET_NOT_DEPUTY(400, "Target Not Deputy"), // 目標人物不是副店長
 	PROMOTE_TARGET_ERROR(400, "Promote Target Error"), // 提升目標錯誤
+	// 首次登入要修改密碼
+	FIRST_LOGIN_CHANGE_PASSWORD(403, "First Login Change Password"),
+	OLD_AND_NEW_PASSWORD_SAME(400, "Old And New Password Same"), // 新舊密碼相同
+	INITAL_PASSWORD_SAME(400,"Inital Password Same"),// 初始密碼相同
 
 	/* 思云 */
 	// 商品表 & 庫存表

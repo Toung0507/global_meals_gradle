@@ -15,7 +15,9 @@ import com.example.global_meals_gradle.res.GlobalAreaRes;
 import com.example.global_meals_gradle.service.GlobalAreaService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 @RestController
@@ -29,29 +31,29 @@ public class GlobalAreaController {
 	// 新增分店
 	@PostMapping("create")
 	@Operation(summary = "新增分店", description = "在系統中建立一個新的營業分店")
-	public BasicRes create(@Valid @RequestBody CreateGlobalAreaReq req) {
-		return globalAreaService.create(req);
+	public BasicRes create(@Valid @RequestBody CreateGlobalAreaReq req, @Parameter(hidden = true) HttpSession session) {
+		return globalAreaService.create(req, session);
 	}
 	
 	// 修改分店
 	@PostMapping("update")
 	@Operation(summary = "修改分店資訊", description = "根據分店 ID 更新其基本資料")
-	public BasicRes update(@Valid @RequestBody UpdateGlobalAreaReq req) {
-		return globalAreaService.update(req);
+	public BasicRes update(@Valid @RequestBody UpdateGlobalAreaReq req, @Parameter(hidden = true) HttpSession session) {
+		return globalAreaService.update(req, session);
 	}
 	
 	// 取得分店清單
 	@GetMapping("get_all_branch")
 	@Operation(summary = "取得分店清單", description = "獲取目前系統中所有有效的分店列表")
-	public GlobalAreaRes getAllBranch() {
-		return globalAreaService.getAllBranch();
+	public GlobalAreaRes getAllBranch(@Parameter(hidden = true) HttpSession session) {
+		return globalAreaService.getAllBranch(session);
 	}
 	
 	// 刪除分店
 	@PostMapping("delete")
 	@Operation(summary = "刪除分店", description = "將指定分店從系統中刪除")
-	public BasicRes delete(@Valid @RequestBody DeleteGlobalAreaReq req) {
-		return globalAreaService.delete(req);
+	public BasicRes delete(@Valid @RequestBody DeleteGlobalAreaReq req, @Parameter(hidden = true) HttpSession session) {
+		return globalAreaService.delete(req, session);
 	}
 
 }

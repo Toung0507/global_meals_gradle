@@ -45,6 +45,12 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ " AND order_date_id = ?2 AND pay_status = 'UNPAID'", nativeQuery = true)
 	public int updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
 			String payStatus);
+	
+	/* 查詢這些訂單的狀態 */
+	@Query(value = "SELECT id, order_date_id, orders_status FROM orders  " //
+	        + "WHERE CONCAT(order_date_id, id) IN (?1) " //
+	        + "AND o.orders_status IN ('PREPARING', 'READY')", nativeQuery = true)
+	public List<Object[]> GetOrdersUncomplete(List<String> combinedIds);
 
 	/* 根據電話號碼查詢今天的訂單 */
 	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "
