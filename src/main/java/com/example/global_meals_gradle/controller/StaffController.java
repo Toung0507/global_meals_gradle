@@ -180,15 +180,17 @@ public class StaffController {
 	    return staffService.selfChangePassword(req, operator);
 	}
 	/* =================================================================
-	 *  PATCH /api/admin/staff/{id}/promote — 晉升
+	 *  PATCH /api/admin/staff/{id}/toggle — 調整身份
 	 * ================================================================= */
-	@PatchMapping("/api/admin/staff/{id}/promote")
-	@Operation(summary = "晉升員工", description = "將員工權限晉升為副店長或更高層級")
-	public StaffSearchRes promoteToMA(@PathVariable("id") int id, //
+	@PatchMapping("/admin/staff/{id}/toggle")
+	@Operation(summary = "調整員工身分", description = "將員工權限晉升或降級")
+	public StaffSearchRes toggle(@PathVariable("id") int id, //
 			@Parameter(hidden = true) HttpSession session) {
 		Staff operator = getLoginStaff(session);
         // 此處攔截器會處理登入檢查，不需再寫 if(operator == null)
-		return staffService.promoteToManagerAgent(id, operator);
+		return staffService.toggleManagerAgentRole(id, operator);
 	}
+	
+	
 
 }

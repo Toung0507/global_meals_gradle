@@ -84,7 +84,7 @@ public enum ReplyMessage {
 	TARGET_NOT_STAFF(400, "Target Not Staff"), // 目標人物必須是員工
 	TARGET_NOT_DEPUTY(400, "Target Not Deputy"), // 目標人物不是副店長
 	PROMOTE_TARGET_ERROR(400, "Promote Target Error"), // 提升目標錯誤
-	// 手次登入要修改密碼
+	// 首次登入要修改密碼
 	FIRST_LOGIN_CHANGE_PASSWORD(403, "First Login Change Password"),
 	OLD_AND_NEW_PASSWORD_SAME(400, "Old And New Password Same"), // 新舊密碼相同
 	INITAL_PASSWORD_SAME(400,"Inital Password Same"),// 初始密碼相同
