@@ -7,20 +7,19 @@ import com.example.global_meals_gradle.constants.ValidationMsg;
 import com.example.global_meals_gradle.entity.OrderCartDetails;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 
 /* 成立訂單(還沒付款) */
 public class CreateOrdersReq {
 
-	@NotBlank(message = ValidationMsg.ORDER_CART_ID_ERROR)
-	private String orderCartId;
+	@Min(value = 1, message = ValidationMsg.ORDER_CART_ID_ERROR)
+	private int orderCartId;
 
 	private int globalAreaId;
 
 	private int memberId;
 
-	@NotBlank(message = ValidationMsg.PHONE_ERROR)
 	private String phone;
 
 	private BigDecimal subtotalBeforeTax;
@@ -28,20 +27,20 @@ public class CreateOrdersReq {
 	private BigDecimal taxAmount;
 
 	private BigDecimal totalAmount;
-	
+
 	@NotEmpty(message = ValidationMsg.ORDER_CART_DETAILS_NOT_EMPTY)
 	@Valid // 這樣才會去檢查 OrderCartDetails 類別裡面的標註
-	private List<OrderCartDetails> OrderCartDetailsList;
-	
-	private boolean useDiscount;   // 判斷有無使用優惠劵
-	
-	private int promotionsId;  // 判斷參加的優惠活動id
+	private List<OrderCartDetails> orderCartDetailsList;
 
-	public String getOrderCartId() {
+	private boolean useDiscount; // 判斷有無使用優惠劵
+
+	private int promotionsId; // 判斷參加的優惠活動id
+
+	public int getOrderCartId() {
 		return orderCartId;
 	}
 
-	public void setOrderCartId(String orderCartId) {
+	public void setOrderCartId(int orderCartId) {
 		this.orderCartId = orderCartId;
 	}
 
@@ -94,11 +93,11 @@ public class CreateOrdersReq {
 	}
 
 	public List<OrderCartDetails> getOrderCartDetailsList() {
-		return OrderCartDetailsList;
+		return orderCartDetailsList;
 	}
 
 	public void setOrderCartDetailsList(List<OrderCartDetails> orderCartDetailsList) {
-		OrderCartDetailsList = orderCartDetailsList;
+		this.orderCartDetailsList = orderCartDetailsList;
 	}
 
 	public boolean isUseDiscount() {

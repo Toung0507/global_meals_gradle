@@ -20,33 +20,50 @@ public interface RegionsDao extends JpaRepository<Regions, Integer> {
 	 * 在使用 nativeQuery = true 時，JPA 有時無法自動將 TaxType (Enum) 轉換為資料庫認識的字串。 所以這邊需要改成
 	 * String taxType
 	 */
+//	@Modifying
+//	@Transactional
+//	@Query(value = "INSERT INTO regions " //
+//			+ "(country, currency_code, country_code, tax_rate, tax_type, " //
+//			+ " usage_cap, created_at, updated_at) " //
+//			+ " values (:inputCountry, :inputCurrencyCode, :inputCountryCode, "//
+//			+ ":inputTaxRate, :inputTaxType, :inputUsageCap, curdate(), curdate()) " //
+//			+ " ON DUPLICATE KEY UPDATE " //
+//			+ " tax_rate = IFNULL(VALUES(tax_rate), tax_rate), " //
+//			+ " tax_type = IFNULL(VALUES(tax_type), tax_type), " //
+//			+ " usage_cap = IFNULL(VALUES(usage_cap), usage_cap), " //
+//			+ " updated_at = curdate() ", nativeQuery = true)
+//	public void upsert(//
+//			@Param("inputCountry") String country, //
+//			@Param("inputCurrencyCode") String currencyCode, //
+//			@Param("inputCountryCode") String countryCode, //
+//			@Param("inputTaxRate") BigDecimal taxRate, //
+//			@Param("inputTaxType") String taxType, //
+//			@Param("inputUsageCap") int usageCap);\
+	
+	// 新增
 	@Modifying
 	@Transactional
-	@Query(value = "INSERT INTO regions " //
-			+ "(country, currency_code, country_code, tax_rate, tax_type, usage_cap, " //
-			+ "created_at, updated_at) " //
-			+ " values (:inputCountry, :inputCurrencyCode, :inputCountryCode, "//
-			+ ":inputTaxRate, :inputTaxType, 0, curdate(), curdate()) " //
-			+ " ON DUPLICATE KEY UPDATE " //
-			+ " tax_rate = IFNULL(VALUES(tax_rate), tax_rate), " //
-			+ " tax_type = IFNULL(VALUES(tax_type), tax_type), " //
-			+ " updated_at = curdate() ", nativeQuery = true)
-	public void upsertTax(//
+	@Query(value = "INSERT INTO regions (country, currency_code, country_code, tax_rate, " //
+			+ " tax_type, usage_cap, created_at, updated_at) "
+			+ " values (:inputCountry, :inputCurrencyCode, :inputCountryCode, " //
+			+ " :inputTaxRate, :inputTaxType, :inputUsageCap, curdate(), curdate())", nativeQuery = true)
+	public void insert(//
 			@Param("inputCountry") String country, //
 			@Param("inputCurrencyCode") String currencyCode, //
 			@Param("inputCountryCode") String countryCode, //
 			@Param("inputTaxRate") BigDecimal taxRate, //
-			@Param("inputTaxType") String taxType);
+			@Param("inputTaxType") String taxType, //
+			@Param("inputUsageCap") int usageCap);
 
-	// // 修改
-	// // 修改時通常需要手動觸發 updated_at = CURDATE()，否則該欄位會維持在舊的新增日期。
-	// @Modifying
-	// @Transactional
-	// @Query(value = "UPDATE regions SET tax_rate = ?2, tax_type = ?3, updated_at =
-	// curdate() WHERE id = ?1", nativeQuery = true)
-	// public void update(int id, BigDecimal taxRate, String taxType);
+	 // 修改
+	 // 修改時通常需要手動觸發 updated_at = CURDATE()，否則該欄位會維持在舊的新增日期。
+	 @Modifying
+	 @Transactional
+	 @Query(value = "UPDATE regions SET tax_rate = ?2, tax_type = ?3, " //
+	 		+ " usage_cap = ?4, updated_at = curdate() WHERE id = ?1", nativeQuery = true)
+	 public void update(int id, BigDecimal taxRate, String taxType, int usageCap);
 
-	// 查詢各國稅率
+	// 查詢各國基本設定
 	@Query(value = "SELECT * FROM regions", nativeQuery = true)
 	public List<Regions> getAll();
 
@@ -54,12 +71,12 @@ public interface RegionsDao extends JpaRepository<Regions, Integer> {
 	@Query(value = "SELECT * FROM regions WHERE id = ?1", nativeQuery = true)
 	public Regions getById(int id);
 
-	// 修改折扣上限
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE regions SET usage_cap = ?2, updated_at = CURDATE() WHERE id = ?1", //
-			nativeQuery = true)
-	public void updateUsageCap(int id, int usageCap);
+//	// 修改折扣上限
+//	@Modifying
+//	@Transactional
+//	@Query(value = "UPDATE regions SET usage_cap = ?2, updated_at = CURDATE() WHERE id = ?1", //
+//			nativeQuery = true)
+//	public void updateUsageCap(int id, int usageCap);
 
 	// 依國家名稱查出對應的折扣上限（promotions 折扣計算用）
 	// 查不到表示前端傳入的 country 不存在於 regions 表，屬於異常

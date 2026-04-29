@@ -39,7 +39,7 @@ public class StaffController {
 
 	// Session 的 key 名稱，統一用常數，避免到處打字串打錯
 	//宣告一個「不可變的常數」。把 Session 的鑰匙名稱統一寫在這裡
-	private static final String SESSION_KEY = "loginStaff";
+	public static final String SESSION_KEY = "loginStaff";
 
 	@Autowired
 	private StaffService staffService;

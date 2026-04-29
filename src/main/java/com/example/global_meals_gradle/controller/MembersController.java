@@ -31,7 +31,7 @@ public class MembersController {
 	@Autowired
 	private MembersService membersService;
 	
-	private final String ATTRIBUTE_KEY = "check_result";
+	public static final String ATTRIBUTE_KEY = "check_result";
 	
 	// 訪客註冊
 	@PostMapping("register_guest")

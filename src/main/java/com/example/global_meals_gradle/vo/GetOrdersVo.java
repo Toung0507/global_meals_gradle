@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-
 /* 查詢訂單中的外層 */
 public class GetOrdersVo {
 
@@ -16,7 +15,9 @@ public class GetOrdersVo {
 
 	private BigDecimal totalAmount;
 
-	private String status;
+	private String ordersStatus;
+
+	private String payStatus;
 
 	private LocalDateTime completedAt;
 
@@ -58,12 +59,20 @@ public class GetOrdersVo {
 		this.totalAmount = totalAmount;
 	}
 
-	public String getStatus() {
-		return status;
+	public String getOrdersStatus() {
+		return ordersStatus;
 	}
 
-	public void setStatus(String status) {
-		this.status = status;
+	public void setOrdersStatus(String ordersStatus) {
+		this.ordersStatus = ordersStatus;
+	}
+
+	public String getPayStatus() {
+		return payStatus;
+	}
+
+	public void setPayStatus(String payStatus) {
+		this.payStatus = payStatus;
 	}
 
 	public LocalDateTime getCompletedAt() {
