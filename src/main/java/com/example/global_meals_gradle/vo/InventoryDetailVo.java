@@ -9,8 +9,10 @@ public class InventoryDetailVo {
 	private int globalAreaId;
 	private String branchName; // 關鍵：我們幫前端查好的分店名稱
 	private BigDecimal basePrice;
+	private BigDecimal costPrice;
 	private int stockQuantity;
 	private int maxOrderQuantity;
+	private boolean active;
 
 	public int getProductId() {
 		return productId;
@@ -52,6 +54,14 @@ public class InventoryDetailVo {
 		this.basePrice = basePrice;
 	}
 
+	public BigDecimal getCostPrice() {
+		return costPrice;
+	}
+
+	public void setCostPrice(BigDecimal costPrice) {
+		this.costPrice = costPrice;
+	}
+
 	public int getStockQuantity() {
 		return stockQuantity;
 	}
@@ -66,6 +76,14 @@ public class InventoryDetailVo {
 
 	public void setMaxOrderQuantity(int maxOrderQuantity) {
 		this.maxOrderQuantity = maxOrderQuantity;
+	}
+
+	public boolean isActive() {
+		return active;
+	}
+
+	public void setActive(boolean active) {
+		this.active = active;
 	}
 
 }
