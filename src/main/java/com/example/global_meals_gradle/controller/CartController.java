@@ -62,7 +62,7 @@ public class CartController {
 	}
 
 	/**
-	 * API 4：使用者選擇贈品 <br>
+	 * API 3：使用者選擇贈品 <br>
 	 * HTTP Method：POST（有寫入操作）<br>
 	 * URL：POST /cart/gift <br>
 	 * 前端呼叫時機：使用者從贈品清單選擇了一個贈品後點擊確認 <br>
