@@ -62,19 +62,6 @@ public class CartController {
 	}
 
 	/**
-	 * API 3：刪除購物車裡的單一商品 <br>
-	 * HTTP Method：DELETE（刪除操作）<br>
-	 * URL：DELETE /cart/item <br>
-	 * 前端呼叫時機：使用者點擊商品旁邊的「刪除」圖示 <br>
-	 * 前端 Body 範例：{ "cartId": 7, "productId": 5, "memberId":3 }
-	 */
-
-//	@DeleteMapping("/item")
-//	public CartViewRes removeItem(@Valid @RequestBody CartRemoveReq req) {
-//		return cartService.removeItem(req);
-//	}
-
-	/**
 	 * API 4：使用者選擇贈品 <br>
 	 * HTTP Method：POST（有寫入操作）<br>
 	 * URL：POST /cart/gift <br>
