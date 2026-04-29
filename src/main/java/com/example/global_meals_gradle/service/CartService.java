@@ -589,7 +589,7 @@ public class CartService {
 //					 這一行取代了原本的 if (minFullAmount == null) { minFullAmount = ZERO; }
 					.orElse(BigDecimal.ZERO);
 
-//			 判斷使用者消費小計有沒有達到這個活動的最低門檻
+//			 判斷使用者消費小計有沒有達到這個活動的最低門檻，在這裡擋掉活動列表裡不符合的活動了
 			if (subtotal.compareTo(minFullAmount) < 0) {
 //				 subtotal < minFullAmount → 消費不達標 → 跳過整個活動
 //				 前端：這個活動不出現在下拉選單（沒有「選擇活動」按鈕）
@@ -602,7 +602,7 @@ public class CartService {
 
 //			 逐一審查這個活動底下的每條贈品規則
 			for (PromotionsGifts rule : giftsInThisPromotion) {
-
+//				在這裡擋掉贈品列表裡不符合的贈品：
 //				 確認使用者消費有沒有達到「這條贈品規則」自己的門檻
 //				 同一個活動可能有不同門檻：滿300送可樂、滿500才能選大盤雞
 //				 使用者消費400 → 能選可樂，但不能選大盤雞
