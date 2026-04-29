@@ -12,16 +12,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
-import com.example.global_meals_gradle.constants.PayStatus;
-import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
+import com.example.global_meals_gradle.req.GetStatusUncompleteReq;
 import com.example.global_meals_gradle.req.PayReq;
-import com.example.global_meals_gradle.req.RefundedReq;
 import com.example.global_meals_gradle.req.UpdateOrdersStatusReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
-import com.example.global_meals_gradle.res.GetOrdersByPhoneRes;
+import com.example.global_meals_gradle.res.GetAllOrdersUncompleteRes;
 import com.example.global_meals_gradle.service.EcpayService;
 import com.example.global_meals_gradle.service.LinePayService;
 import com.example.global_meals_gradle.service.OrdersService;
@@ -91,6 +89,14 @@ public class OrdersController {
 		} else {
 			return ordersService.UpdateOrdersStatus(req, httpSession);
 		}
+	}
+	
+	/* 取得這些訂單的狀態 */
+	@PostMapping("get_orders_status")
+	@Operation(summary = "取得訂單狀態", description = "取得訂單的狀態")
+	public GetAllOrdersUncompleteRes getAllOrdersUncomplete(@Valid @RequestBody GetStatusUncompleteReq req, //
+			@Parameter(hidden = true) HttpSession httpSession) {
+		return ordersService.getAllOrdersUncomplete(req, httpSession);
 	}
 
 	/* 成立訂單(未結帳) */
