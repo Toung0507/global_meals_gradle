@@ -105,12 +105,14 @@ public class ProductsController {
 	 * 不需要傳 globalAreaId！分店長的分店 ID 從 Session 取（安全設計）
 	 * =================================================================
 	 */
-	@GetMapping("/api/rm/monthly-sales")
+
+	@GetMapping("/rm/monthlysales")
 	@Operation(summary = "分店長銷售報表", description = "查詢該分店在指定年月的商品銷售總量 (分店ID取自登入狀態)")
 	public MonthlyProductsSalesRes getMonthlySalesByBranch(
             @Parameter(description = "年份", example = "2026") @RequestParam("year") Integer year, 
             @Parameter(description = "月份", example = "4") @RequestParam("month") Integer month,
             @Parameter(hidden = true) HttpSession session) {
+
 
 		// Step 1：從 Session 取出登入的 Staff
 		Staff operator = (Staff) session.getAttribute(SESSION_KEY);
@@ -138,13 +140,15 @@ public class ProductsController {
 	 * regionId：前端國家下拉選單選擇後傳入（老闆有權選任何國家，安全的）
 	 * =================================================================
 	 */
-	@GetMapping("/api/admin/top5-monthly-sales")
+
+	@GetMapping("/admin/top5monthlysales")
 	@Operation(summary = "老闆查詢銷售前五名", description = "查詢指定國家在指定年月的銷售前五名商品")
 	public MonthlyProductsSalesRes getTop5MonthlySalesByRegion(
             @Parameter(description = "年份", example = "2026") @RequestParam("year") Integer year, 
             @Parameter(description = "月份", example = "4") @RequestParam("month") Integer month,
             @Parameter(description = "區域 ID", example = "1") @RequestParam("regionId") Integer regionId, 
             @Parameter(hidden = true) HttpSession session) {
+
 
 		// Step 1：取 Session 登入者
 		Staff operator = (Staff) session.getAttribute(SESSION_KEY);
