@@ -63,13 +63,13 @@ public interface BranchInventoryDao extends JpaRepository<BranchInventory, Integ
 
 	// 6. 分店菜單列表 (JOIN 兩表)
 	// 以庫存表為主，撈出該分店所有「上架」商品
-	@Query(value = "SELECT p.*, bi.base_price, bi.stock_quantity, bi.active " //
-			+ "  FROM branch_inventory AS bi " //
-			+ "  JOIN products AS p " //
-			+ "    ON bi.product_id = p.id " //
-			+ " WHERE bi.global_area_id = ?1 " //
-			+ "   AND p.is_active = 1 AND p.deleted_at IS NULL", nativeQuery = true)
-	public List<Object[]> getMenuByArea(int globalAreaId);
+	@Query(value = "SELECT p.id, p.name, p.category, p.description, p.food_img, " // 順序 0, 1, 2, 3, 4
+		    + " bi.base_price, bi.stock_quantity, bi.is_active " // 順序 5, 6, 7
+		    + " FROM branch_inventory AS bi "
+		    + " JOIN products AS p ON bi.product_id = p.id "
+		    + " WHERE bi.global_area_id = ?1 "
+		    + " AND p.is_active = 1 AND p.deleted_at IS NULL", nativeQuery = true)
+		public List<Object[]> getMenuByArea(int globalAreaId);
 
 	// 7. 透過分店 ID 找出全部的商品庫存
 	public List<BranchInventory> findByGlobalAreaId(int globalAreaId);

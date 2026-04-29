@@ -9,7 +9,7 @@ public class AiPromotionsReq {
 	private String activityName;
 	private List<PromotionItem> promotionItems;
 
-	public class PromotionItem {
+	public static class PromotionItem {
 		private int productId;
 		private BigDecimal fullAmount;
 

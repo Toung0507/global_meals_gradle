@@ -75,7 +75,7 @@ public class ProductsController {
 
 	@GetMapping("/detail/{id}")
 	@Operation(summary = "查詢商品詳情", description = "根據商品 ID 取得單一商品詳細資料")
-	public AdminProductRes getProductDetail(@Parameter(description = "商品 ID", example = "1") @PathVariable int id,
+	public AdminProductRes getProductDetail(@Parameter(description = "商品 ID", example = "1") @PathVariable("id") int id,
 			@Parameter(hidden = true) HttpSession session) {
 		return productService.getProductById(id, session);
 	}

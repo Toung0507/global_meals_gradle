@@ -70,8 +70,9 @@ public class BranchInventoryService {
 
 			// 轉換 VO
 			Map<Integer, String> branchMap = globalAreaDao.getBranchNameMap();
+			Map<Integer, String> productMap = productsDao.getProductNameMap();
 			List<InventoryDetailVo> resultList = toUpdateList.stream()
-					.map(inv -> convertToInventoryDetailVo(inv, branchMap)).collect(Collectors.toList());
+					.map(inv -> convertToInventoryDetailVo(inv, branchMap, productMap)).collect(Collectors.toList());
 
 			// 成功回傳
 			return new BranchInventoryRes( //
@@ -139,6 +140,12 @@ public class BranchInventoryService {
 					ReplyMessage.INVENTORY_NOT_FOUND.getMessage());
 		}
 
+		// 新增：如果要「上架」商品，檢查總部主表狀態
+		if (active && !productsDao.isProductAvailable(productId)) {
+		    return new BranchInventoryRes(ReplyMessage.OPERATE_ERROR.getCode(), //
+		        "操作失敗：總部已將此商品下架或刪除，分店無法上架。");
+		}
+
 		// 3. 更新狀態
 		inv.setActive(active);
 		inv.setUpdatedAt(LocalDateTime.now());
@@ -147,8 +154,9 @@ public class BranchInventoryService {
 		// 4. 回傳結果
 		// 因為只需要告知前端成功，你可以直接轉成 VO 列表回傳，或是只回傳狀態碼
 		Map<Integer, String> branchMap = globalAreaDao.getBranchNameMap();
+		Map<Integer, String> productMap = productsDao.getProductNameMap();
 		List<InventoryDetailVo> resultList = new ArrayList<>();
-		resultList.add(convertToInventoryDetailVo(inv, branchMap));
+		resultList.add(convertToInventoryDetailVo(inv, branchMap, productMap));
 
 		return new BranchInventoryRes(ReplyMessage.INVENTORY_UPDATE_SUCCESS.getCode(),
 				ReplyMessage.INVENTORY_UPDATE_SUCCESS.getMessage(), resultList);
@@ -162,17 +170,30 @@ public class BranchInventoryService {
 			// 將 Object[] 轉為 MenuVo
 			List<MenuVo> menuList = rawList.stream().map(obj -> {
 				MenuVo vo = new MenuVo();
-				// 注意：這裡的索引順序必須完全對應你 SQL 語法 SELECT 出來的欄位順序
-				// 假設 SELECT p.* (id, name, category, description, image, ...),
-				// bi.base_price,bi.stock_quantity
+
+				// 2. 處理 Boolean 的安全轉型邏輯：
+				Object activeValue = obj[obj.length - 1]; // 取得最後一個欄位 bi.is_active
+
+				if (activeValue instanceof Number) {
+					// 如果是 Byte, Integer, Short 等數字型態 (TINYINT 常見情況)
+					vo.setActive(((Number) activeValue).intValue() == 1);
+				} else if (activeValue instanceof Boolean) {
+					// 如果驅動程式已經幫你轉好 Boolean 了
+					vo.setActive((Boolean) activeValue);
+				} else {
+					// 預設處理
+					vo.setActive(false);
+				}
+
+				byte[] imgBytes = (byte[]) obj[4]; // 假設第5個是 image
+				vo.setFoodImgBase64(getFullBase64(imgBytes));
+
 				vo.setProductId((Integer) obj[0]);
 				vo.setName((String) obj[1]);
 				vo.setCategory((String) obj[2]);
 				vo.setDescription((String) obj[3]);
-				vo.setFoodImgBase64(encodeImage((byte[]) obj[4])); // 假設第5個是 image
 				vo.setBasePrice((BigDecimal) obj[obj.length - 3]);
 				vo.setStockQuantity((Integer) obj[obj.length - 2]);
-				vo.setActive((Boolean) obj[obj.length - 1]);
 
 				return vo;
 			}).collect(Collectors.toList());
@@ -229,9 +250,14 @@ public class BranchInventoryService {
 
 	// 轉成 BranchInventoryRes
 	private BranchInventoryRes convertToRes(List<BranchInventory> list) {
+		// 1. 取得分店名稱 Map
 		Map<Integer, String> branchMap = globalAreaDao.getBranchNameMap();
+
+		// 2. 取得商品名稱 Map (補上這行)
+		Map<Integer, String> productMap = productsDao.getProductNameMap();
+
 		List<InventoryDetailVo> voList = list.stream(). //
-				map(inv -> convertToInventoryDetailVo(inv, branchMap)) //
+				map(inv -> convertToInventoryDetailVo(inv, branchMap, productMap)) //
 				.collect(Collectors.toList());
 
 		return new BranchInventoryRes( //
@@ -275,23 +301,58 @@ public class BranchInventoryService {
 
 	// 工具 - 轉換為 InventoryDetailVo VO (給管理者看完整資訊，且前端適用)
 	private InventoryDetailVo convertToInventoryDetailVo(BranchInventory inv, //
-			Map<Integer, String> branchMap) {
+			Map<Integer, String> branchMap, //
+			Map<Integer, String> productMap) {
+
 		InventoryDetailVo vo = new InventoryDetailVo();
+
 		vo.setProductId(inv.getProductId());
-		vo.setGlobalAreaId(inv.getGlobalAreaId());
-		vo.setBranchName(branchMap.getOrDefault(inv.getGlobalAreaId(), "未知分店"));
+		vo.setStockQuantity(inv.getStockQuantity());
 		vo.setBasePrice(inv.getBasePrice());
 		vo.setCostPrice(inv.getCostPrice());
-		vo.setStockQuantity(inv.getStockQuantity());
 		vo.setMaxOrderQuantity(inv.getMaxOrderQuantity());
 		vo.setActive(inv.isActive());
+		vo.setGlobalAreaId(inv.getGlobalAreaId());
+
+		// 設定分店名稱
+		vo.setBranchName(branchMap.getOrDefault(inv.getGlobalAreaId(), "未知分店"));
+
+		// ✨ 關鍵：從 Map 根據 productId 設定商品名稱 ✨
+		vo.setProductName(productMap.getOrDefault(inv.getProductId(), "未知商品"));
+
 		return vo;
 	}
 
+	// 統一的工具方法
+	private String getFullBase64(byte[] imgBytes) {
+	    if (imgBytes == null || imgBytes.length == 0) return "";
+	    String mimeType = detectMimeType(imgBytes);
+	    String base64 = Base64.getEncoder().encodeToString(imgBytes);
+	    return "data:" + mimeType + ";base64," + base64;
+	}
+	
 	// 圖片轉換工具
 	private String encodeImage(byte[] imageBytes) {
-		return (imageBytes != null && imageBytes.length > 0) ? //
-				Base64.getEncoder().encodeToString(imageBytes) //
-				: "";
+		return (imageBytes != null && imageBytes.length > 0) ? Base64.getEncoder().encodeToString(imageBytes) : "";
+	}
+
+	// 建議直接回傳一個小物件，或是把兩者串起來
+	private String detectMimeType(byte[] bytes) {
+		if (bytes == null || bytes.length < 4)
+			return "image/jpeg"; // 預設值
+
+		// 檢查文件頭 (Magic Numbers)
+		String hex = String.format("%02X%02X%02X%02X", bytes[0], bytes[1], bytes[2], bytes[3]);
+
+		if (hex.startsWith("89504E47"))
+			return "image/png";
+		if (hex.startsWith("FFD8FF"))
+			return "image/jpeg";
+		if (hex.startsWith("47494638"))
+			return "image/gif";
+		if (hex.startsWith("52494646") && new String(bytes, 8, 4).equals("WEBP"))
+			return "image/webp";
+
+		return "image/jpeg"; // 真的都認不出來就猜 jpeg
 	}
 }

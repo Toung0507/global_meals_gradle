@@ -192,6 +192,7 @@ public class ProductService {
 			int row = productsDao.softDeleteProduct(id);
 
 			if (row > 0) {
+				product.setActive(false);
 				return new AdminProductRes(ReplyMessage.PRODUCT_DELETE_SUCCESS.getCode(), //
 						ReplyMessage.PRODUCT_DELETE_SUCCESS.getMessage(), //
 						convertToAdminVo(product), new ArrayList<>());
@@ -204,8 +205,7 @@ public class ProductService {
 
 		} catch (Exception e) {
 			// 3. 捕捉資料庫層級的所有異常 (包含連線中斷、SQL 語法錯誤等)
-			return new AdminProductRes(
-					ReplyMessage.SYSTEM_ERROR.getCode(), //
+			return new AdminProductRes(ReplyMessage.SYSTEM_ERROR.getCode(), //
 					ReplyMessage.SYSTEM_ERROR.getMessage() + ": " + e.getMessage());
 		}
 	}
@@ -223,7 +223,13 @@ public class ProductService {
 			return new AdminProductRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(), //
 					ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
 		}
-
+		
+		// ✨ 新增防護邏輯：如果商品已被軟刪除，禁止執行上架動作
+	    if (active && product.getDeletedAt() != null) {
+	        return new AdminProductRes(ReplyMessage.OPERATE_ERROR.getCode(), 
+	            "操作失敗：該商品已刪除");
+	    }
+	    
 		// 更新狀態
 		product.setActive(active);
 		productsDao.save(product);
@@ -307,9 +313,37 @@ public class ProductService {
 		return null;
 	}
 
+	// 統一的工具方法
+	private String getFullBase64(byte[] imgBytes) {
+	    if (imgBytes == null || imgBytes.length == 0) return "";
+	    String mimeType = detectMimeType(imgBytes);
+	    String base64 = Base64.getEncoder().encodeToString(imgBytes);
+	    return "data:" + mimeType + ";base64," + base64;
+	}
+	
 	// 工具 - 圖片轉換成前端能夠直接使用
 	private String encodeImage(byte[] imageBytes) {
 		return (imageBytes != null && imageBytes.length > 0) ? Base64.getEncoder().encodeToString(imageBytes) : "";
+	}
+
+	// 建議直接回傳一個小物件，或是把兩者串起來
+	private String detectMimeType(byte[] bytes) {
+		if (bytes == null || bytes.length < 4)
+			return "image/jpeg"; // 預設值
+
+		// 檢查文件頭 (Magic Numbers)
+		String hex = String.format("%02X%02X%02X%02X", bytes[0], bytes[1], bytes[2], bytes[3]);
+
+		if (hex.startsWith("89504E47"))
+			return "image/png";
+		if (hex.startsWith("FFD8FF"))
+			return "image/jpeg";
+		if (hex.startsWith("47494638"))
+			return "image/gif";
+		if (hex.startsWith("52494646") && new String(bytes, 8, 4).equals("WEBP"))
+			return "image/webp";
+
+		return "image/jpeg"; // 真的都認不出來就猜 jpeg
 	}
 
 	// 工具 - 轉換為 Admin VO (給管理者看完整資訊，且前端適用)
@@ -320,7 +354,7 @@ public class ProductService {
 		vo.setCategory(p.getCategory());
 		vo.setDescription(p.getDescription());
 		vo.setActive(p.isActive());
-		vo.setFoodImgBase64(encodeImage(p.getFoodImg()));
+		vo.setFoodImgBase64(getFullBase64(p.getFoodImg()));
 		return vo;
 	}
 
@@ -333,7 +367,7 @@ public class ProductService {
 		vo.setCostPrice(inv.getCostPrice());
 		vo.setStockQuantity(inv.getStockQuantity());
 		vo.setMaxOrderQuantity(inv.getMaxOrderQuantity());
-	    vo.setActive(inv.isActive());
+		vo.setActive(inv.isActive());
 
 		// 從傳入的 Map 獲取分店名稱，如果找不到則預設為 "未知分店"
 		vo.setBranchName(branchMap.getOrDefault(inv.getGlobalAreaId(), "未知分店"));
