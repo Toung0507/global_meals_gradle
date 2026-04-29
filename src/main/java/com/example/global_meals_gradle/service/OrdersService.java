@@ -3,7 +3,6 @@ package com.example.global_meals_gradle.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,10 +40,10 @@ import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.RefundedReq;
+import com.example.global_meals_gradle.req.UpdateOrdersStatusReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
-import com.example.global_meals_gradle.res.GetOrdersByPhoneRes;
 import com.example.global_meals_gradle.res.MembersRes;
 import com.example.global_meals_gradle.vo.GetOrdersDetailVo;
 import com.example.global_meals_gradle.vo.GetOrdersVo;
@@ -564,106 +563,106 @@ public class OrdersService {
 		}
 	}
 
-	/* 申請退款 */
-	@Transactional(rollbackFor = Exception.class)
-	public BasicRes applyForRefund(RefundedReq req, HttpSession httpSession) {
-		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
-		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
-		Members member = (membersRes != null) ? membersRes.getMembers() : null;
-		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-		// 防呆：只有 PAID(已付款) 才能申請退款
-		if (!PayStatus.PAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
-			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "僅完成之訂單可申請退款");
-		}
-		// 訂單狀態是已取消(退款或取消)，無法申請退款
-		if (OrdersStatus.CANCELLED.name().equalsIgnoreCase(order.getOrdersStatus().name())) {
-			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
-		}
-		// 判斷是員工現場幫客人處理退款，還是客人線上申請退款
-		if (staff != null) { // 員工現場幫客人處理退款
-			return executeFullRefund(req, order);
-		} else if (staff == null && member != null) { // 客人線上申請退款
-			if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
-				return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
-			}
-			// 更新為「退款處理中」，等待店長審核
-			ordersDao.updateOrderStatus("REFUND_PROCESSING", req.getId(), req.getOrderDateId());
-			// TODO: 發送 WebSocket 或推播通知給店長
-			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "退款申請已提交，請等待店長審核");
-		} else { // 遊客操作
-			throw new RuntimeException("請先登入或請找員工處理");
-		}
-	}
-
-	// 退款實際動作: 狀態更新、點餐次數收回、優惠劵還原
-	@Transactional(rollbackFor = Exception.class)
-	private BasicRes executeFullRefund(RefundedReq req, Orders order) {
-		try {
-			// 執行訂單狀態更新
-			int result = ordersDao.updateOrderStatusAndPayStatus(req.getOrdersStatus(), req.getPayStatus(), //
-					req.getId(), req.getOrderDateId());
-			// 判斷是否成功
-			if (result > 0) {
-				// 如果是會員，次數扣回
-				if (order.getMemberId() > 1) {
-					if (order.isUseDiscount()) {
-						// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
-						membersDao.restoreCouponAndPoints(order.getMemberId());
-					} else {
-						// 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
-						int pointResult = membersDao.smartReducePoint(order.getMemberId());
-						if (pointResult == 0) {
-							log.warn("退款扣點異常 - 會員ID: {}, 訂單ID: {}, 原因: 點數不足(0)", order.getMemberId(), order.getId());
-						}
-					}
-				}
-				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-			}
-			throw new RuntimeException("更新訂單狀態失敗");
-		} catch (Exception e) {
-			throw new RuntimeException("退款流程發生錯誤: " + e.getMessage());
-		}
-	}
-
-	/* 店長審核退款 */
-	@Transactional(rollbackFor = Exception.class)
-	public BasicRes auditRefund(RefundedReq req, HttpSession httpSession) {
-		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
-		// 判斷有沒有登入
-		if (staff == null) {
-			return new BasicRes(ReplyMessage.NOT_LOGIN.getCode(), //
-					ReplyMessage.NOT_LOGIN.getMessage());
-		}
-		// 判斷是不是店長
-		if (staff.getRole() != StaffRole.REGION_MANAGER) { // 如果身分不是店長
-			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), //
-					ReplyMessage.PERMISSION_DENIED.getMessage());
-		}
-		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-		if (order == null) {
-			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
-					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
-		}
-
-		try {
-			if (PayStatus.REFUNDED.name().equalsIgnoreCase(req.getPayStatus())) {
-				return executeFullRefund(req, order);
-			} else { // 退款被駁回
-				ordersDao.updateOrderStatus("COMPLETED", req.getId(), req.getOrderDateId());
-				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-			}
-		} catch (Exception e) {
-			// 拋出 RuntimeException 觸發 Transactional Rollback
-			throw new RuntimeException("審核執行失敗：" + e.getMessage());
-		}
-	}
+	//	/* 申請退款 */
+	//	@Transactional(rollbackFor = Exception.class)
+	//	public BasicRes applyForRefund(RefundedReq req, HttpSession httpSession) {
+	//		// 抓員工資訊
+	//		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+	//		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
+	//		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
+	//		Members member = (membersRes != null) ? membersRes.getMembers() : null;
+	//		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+	//		// 防呆：只有 PAID(已付款) 才能申請退款
+	//		if (!PayStatus.PAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
+	//			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "僅完成之訂單可申請退款");
+	//		}
+	//		// 訂單狀態是已取消(退款或取消)，無法申請退款
+	//		if (OrdersStatus.CANCELLED.name().equalsIgnoreCase(order.getOrdersStatus().name())) {
+	//			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+	//					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+	//		}
+	//		// 判斷是員工現場幫客人處理退款，還是客人線上申請退款
+	//		if (staff != null) { // 員工現場幫客人處理退款
+	//			return executeFullRefund(req, order);
+	//		} else if (staff == null && member != null) { // 客人線上申請退款
+	//			if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
+	//				return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
+	//			}
+	//			// 更新為「退款處理中」，等待店長審核
+	//			ordersDao.updateOrderStatus("REFUND_PROCESSING", req.getId(), req.getOrderDateId());
+	//			// TODO: 發送 WebSocket 或推播通知給店長
+	//			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "退款申請已提交，請等待店長審核");
+	//		} else { // 遊客操作
+	//			throw new RuntimeException("請先登入或請找員工處理");
+	//		}
+	//	}
+	//
+	//	// 退款實際動作: 狀態更新、點餐次數收回、優惠劵還原
+	//	@Transactional(rollbackFor = Exception.class)
+	//	private BasicRes executeFullRefund(RefundedReq req, Orders order) {
+	//		try {
+	//			// 執行訂單狀態更新
+	//			int result = ordersDao.updateOrderStatusAndPayStatus(req.getOrdersStatus(), req.getPayStatus(), //
+	//					req.getId(), req.getOrderDateId());
+	//			// 判斷是否成功
+	//			if (result > 0) {
+	//				// 如果是會員，次數扣回
+	//				if (order.getMemberId() > 1) {
+	//					if (order.isUseDiscount()) {
+	//						// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
+	//						membersDao.restoreCouponAndPoints(order.getMemberId());
+	//					} else {
+	//						// 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
+	//						int pointResult = membersDao.smartReducePoint(order.getMemberId());
+	//						if (pointResult == 0) {
+	//							log.warn("退款扣點異常 - 會員ID: {}, 訂單ID: {}, 原因: 點數不足(0)", order.getMemberId(), order.getId());
+	//						}
+	//					}
+	//				}
+	//				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	//			}
+	//			throw new RuntimeException("更新訂單狀態失敗");
+	//		} catch (Exception e) {
+	//			throw new RuntimeException("退款流程發生錯誤: " + e.getMessage());
+	//		}
+	//	}
+	//
+	//	/* 店長審核退款 */
+	//	@Transactional(rollbackFor = Exception.class)
+	//	public BasicRes auditRefund(RefundedReq req, HttpSession httpSession) {
+	//		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+	//		// 判斷有沒有登入
+	//		if (staff == null) {
+	//			return new BasicRes(ReplyMessage.NOT_LOGIN.getCode(), //
+	//					ReplyMessage.NOT_LOGIN.getMessage());
+	//		}
+	//		// 判斷是不是店長
+	//		if (staff.getRole() != StaffRole.REGION_MANAGER) { // 如果身分不是店長
+	//			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), //
+	//					ReplyMessage.PERMISSION_DENIED.getMessage());
+	//		}
+	//		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+	//		if (order == null) {
+	//			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
+	//					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+	//		}
+	//
+	//		try {
+	//			if (PayStatus.REFUNDED.name().equalsIgnoreCase(req.getPayStatus())) {
+	//				return executeFullRefund(req, order);
+	//			} else { // 退款被駁回
+	//				ordersDao.updateOrderStatus("COMPLETED", req.getId(), req.getOrderDateId());
+	//				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	//			}
+	//		} catch (Exception e) {
+	//			// 拋出 RuntimeException 觸發 Transactional Rollback
+	//			throw new RuntimeException("審核執行失敗：" + e.getMessage());
+	//		}
+	//	}
 
 	/* 取消訂單 */
 	@Transactional(rollbackFor = Exception.class)
-	public BasicRes cancelOrder(RefundedReq req, HttpSession httpSession) {
+	public BasicRes cancelOrder(UpdateOrdersStatusReq req, HttpSession httpSession) {
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
 		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
@@ -766,5 +765,44 @@ public class OrdersService {
 		List<GetOrdersVo> result = new ArrayList<>(orderMap.values());
 
 		return new GetAllOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), result);
+	}
+
+	/* 更新訂單狀態(待取餐/已取餐) */
+	public BasicRes UpdateOrdersStatus(UpdateOrdersStatusReq req, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) { // 只有管理者才能查詢
+			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), ReplyMessage.PERMISSION_DENIED.getMessage());
+		}
+
+		// 取得該筆訂單資訊
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+		if (order == null) {
+			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), //
+					ReplyMessage.ORDER_NOT_FOUND.getMessage());
+		}
+
+		// 如果訂單狀態是已完成，那就是狀態錯誤
+		if (OrdersStatus.PICKED_UP.name().equalsIgnoreCase(order.getOrdersStatus().name())) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+		}
+
+		int result = 0;
+		// 訂單狀態更新(用於製餐中 -> 待取餐)
+		if (OrdersStatus.READY.name().equalsIgnoreCase(req.getOrdersStatus())) {
+			result = ordersDao.updateOrderStatusForReady(req.getOrdersStatus(), req.getId(), req.getOrderDateId());
+
+		} else if (OrdersStatus.PICKED_UP.name().equalsIgnoreCase(req.getOrdersStatus())) { 
+			// 訂單狀態更新(用於待取餐 -> 已取餐)
+			result = ordersDao.updateOrderStatusForPickedUp(req.getOrdersStatus(), req.getId(), req.getOrderDateId());
+
+		}
+		if (result == 0) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+		}
+
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 }

@@ -8,6 +8,7 @@ public enum PayStatus {
 
 	UNPAID("UNPAID"), // 未付款
 	PAID("PAID"), // 已付款
+	REFUND_PROCESSING("REFUND PROCESSING"), // 退款審核中
 	REFUNDED("REFUNDED"); // 退款
 
 	private String payStatus;

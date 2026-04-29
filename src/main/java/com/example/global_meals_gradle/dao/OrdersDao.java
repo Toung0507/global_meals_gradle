@@ -37,6 +37,14 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 ORDER BY id DESC LIMIT 1 FOR UPDATE",
 			nativeQuery = true)
 	public Optional<Orders> getOrderByOrderDateId(String orderDateId);
+	
+	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, pay_status = ?5 WHERE id = ?1 "
+			+ " AND order_date_id = ?2 AND pay_status = 'UNPAID'", nativeQuery = true)
+	public int updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
+			String payStatus);
 
 	/* 根據電話號碼查詢今天的訂單 */
 	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "
@@ -60,14 +68,6 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND id = ?2", nativeQuery = true)
 	public Orders getOrderByOrderDateIdAndId(String orderDateId, String id);
 
-	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, pay_status = ?5 WHERE id = ?1 "
-			+ " AND order_date_id = ?2 AND pay_status = 'UNPAID'", nativeQuery = true)
-	public int updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
-			String payStatus);
-
 	/* 查詢該會員的訂單紀錄 */
 	@Query(value = "SELECT * FROM orders WHERE member_id = ?1", nativeQuery = true)
 	public List<GetOrdersVo> getOrderByMemberId(int memberId);
@@ -81,6 +81,22 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
 	public List<Object[]> getFullOrderHistory(int memberId);
 
+	/* 訂單狀態更新(用於製餐中 -> 待取餐) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And orders_status = 'PREPARING'", nativeQuery = true)
+	public int updateOrderStatusForReady(@Param("ordersStatus") String ordersStatus, //
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
+	
+	/* 訂單狀態更新(用於待取餐 -> 已取餐) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And orders_status = 'READY'", nativeQuery = true)
+	public int updateOrderStatusForPickedUp(@Param("ordersStatus") String ordersStatus, //
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
+	
 	/* 訂單狀態更新(用於取消訂單) */
 	@Modifying
 	@Transactional
