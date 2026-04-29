@@ -23,11 +23,12 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Modifying
 	@Transactional
 	@Query(value = "INSERT INTO orders (id, order_date_id, order_cart_id, global_area_id, member_id, phone, "
-			+ " subtotal_before_tax, tax_amount, total_amount, status, is_use_discount) "
-			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)", nativeQuery = true)
+
+			+ " subtotal_before_tax, tax_amount, total_amount, orders_status, pay_status, is_use_discount) "
+			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)", nativeQuery = true)
 	public void insert(String id, String orderDateId, int orderCartId, int globalAreaId, int memberId, String phone, //
-			BigDecimal subtotalBeforeTax, //
-			BigDecimal taxAmount, BigDecimal totalAmount, String status, boolean useDiscount);
+			BigDecimal subtotalBeforeTax, BigDecimal taxAmount, BigDecimal totalAmount, //
+			String ordersStatus, String payStatus, boolean useDiscount);
 
 	/* 根據 orderDateId 查詢特定訂單 */
 	// ORDER BY id (排序)(字串排序需長度樣(補零)) DESC (倒序) LIMIT 1 (限制筆數) FOR UPDATE:
@@ -36,22 +37,39 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	// 來給出第一個號碼 0001。
 	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 ORDER BY id DESC LIMIT 1 FOR UPDATE", nativeQuery = true)
 	public Optional<Orders> getOrderByOrderDateId(String orderDateId);
+	
+	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, pay_status = ?5 WHERE id = ?1 "
+			+ " AND order_date_id = ?2 AND pay_status = 'UNPAID'", nativeQuery = true)
+	public int updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
+			String payStatus);
 
-	/* 根據電話號碼查詢最新的一筆訂單 */
-	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND phone = ?2 ORDER BY id DESC LIMIT 1", nativeQuery = true)
-	public GetOrdersVo getOrderByPhone(String orderDateId, String phone);
+
+	/* 根據電話號碼查詢今天的訂單 */
+	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "
+			+ "o.orders_status, o.pay_status, o.completed_at,"
+			+ "d.quantity, d.price, d.is_gift, d.discount_note, " + "p.name as product_name " + "FROM orders o "
+			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.order_date_id = ?1 AND o.phone = ?2 "
+			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
+	public List<Object[]> getOrdersByPhone(String orderDateId, String phone);
+	
+	/* 查詢該分店今天的所有訂單 */
+	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "
+			+ "o.orders_status, o.pay_status, o.completed_at,"
+			+ "d.quantity, d.price, d.is_gift, d.discount_note, " + "p.name as product_name " + "FROM orders o "
+			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.order_date_id = ?1 AND o.global_area_id = ?2 "
+			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
+	public List<Object[]> getTodayAllOrders(String orderDateId, int globalAreaId);
+
 
 	/* 依據訂單編號查詢該筆訂單 */
 	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND id = ?2", nativeQuery = true)
 	public Orders getOrderByOrderDateIdAndId(String orderDateId, String id);
 
-	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1 "
-			+ " AND order_date_id = ?2 AND status = 'UNPAID'", nativeQuery = true)
-	public int updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
-			String status);
 
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態，如果有使用優惠劵，則總金額需更改) */
 	@Modifying
@@ -61,24 +79,51 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	public void updatePayUseDiscount(String id, String orderDateId, String paymentMethod, String transactionId,
 			String status, BigDecimal totalAmount);
 
+
 	/* 查詢該會員的訂單紀錄 */
 	@Query(value = "SELECT * FROM orders WHERE member_id = ?1", nativeQuery = true)
 	public List<GetOrdersVo> getOrderByMemberId(int memberId);
 
 	/* 查詢該會員的訂單紀錄 */
-	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, o.status, o.completed_at,"
+	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "
+			+ "o.orders_status, o.pay_status, o.completed_at,"
 			+ "d.quantity, d.price, d.is_gift, d.discount_note, " + "p.name as product_name " + "FROM orders o "
 			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
 			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.member_id = ?1 "
 			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
 	public List<Object[]> getFullOrderHistory(int memberId);
 
-	/* 訂單狀態更新(用於退款或取消訂單) */
+	/* 訂單狀態更新(用於製餐中 -> 待取餐) */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE orders SET status = :status "
-			+ "WHERE id = :id AND order_date_id = :orderDateId", nativeQuery = true)
-	public int updateOrderStatus(@Param("status") String status, //
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And orders_status = 'PREPARING'", nativeQuery = true)
+	public int updateOrderStatusForReady(@Param("ordersStatus") String ordersStatus, //
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
+	
+	/* 訂單狀態更新(用於待取餐 -> 已取餐) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And orders_status = 'READY'", nativeQuery = true)
+	public int updateOrderStatusForPickedUp(@Param("ordersStatus") String ordersStatus, //
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
+	
+	/* 訂單狀態更新(用於取消訂單) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And pay_status = 'UNPAID'", nativeQuery = true)
+	public int updateOrderStatus(@Param("ordersStatus") String ordersStatus, //
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
+	
+	/* 訂單狀態更新(用於退款訂單) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus, pay_status = :payStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And pay_status = 'PAID'", nativeQuery = true)
+	public int updateOrderStatusAndPayStatus(@Param("ordersStatus") String ordersStatus, //
+			@Param("payStatus") String payStatus,//
 			@Param("id") String id, @Param("orderDateId") String orderDateId);
 
 	/* 更改總金額 */
@@ -130,7 +175,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	/**
 	 * 檢查這個購物車 ID 是否已經被結帳（存在於訂單表中）
 	 */
-	@Query("SELECT COUNT(o) > 0 FROM Orders o WHERE o.orderCartId = :orderCartId")
+    @Query("SELECT COUNT(o) > 0 FROM Orders o WHERE o.orderCartId = :orderCartId")
 	boolean existsByOrderCartId(@Param("orderCartId") int orderCartId);
 
 	// =====================================================================

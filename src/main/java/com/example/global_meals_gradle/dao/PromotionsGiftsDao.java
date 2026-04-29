@@ -182,4 +182,10 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
     @Query(value = "SELECT full_amount FROM promotions_gifts "
     		+ "WHERE promotions_id = ?1 AND gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
     public BigDecimal findFullAmountByGiftProductId(int promotionsId, int giftProductId);
+
+	/* 單獨關閉指定贈品（is_active 設為 0） */
+	@Modifying
+	@jakarta.transaction.Transactional
+	@Query(value = "UPDATE promotions_gifts SET is_active = 0 WHERE id = :id", nativeQuery = true)
+	void deactivateById(@Param("id") int id);
 }

@@ -3,6 +3,8 @@ package com.example.global_meals_gradle.req;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
 /**
  * 促銷活動管理用的請求參數，涵蓋以下四種用途：
  *   - 新增促銷活動（promotions 表）
@@ -23,9 +25,11 @@ public class PromotionsManageReq {
 	private String name;
 
 	// 活動開始日期：create 端點必填，不能早於今天，在 Service 裡驗證
+	@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 	private LocalDate startTime;
 
 	// 活動結束日期：create 端點必填，必須晚於 startTime，在 Service 裡驗證
+	@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 	private LocalDate endTime;
 
 	// =============================================
