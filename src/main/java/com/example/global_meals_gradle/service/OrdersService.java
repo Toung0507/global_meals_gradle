@@ -3,6 +3,7 @@ package com.example.global_meals_gradle.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -117,7 +118,7 @@ public class OrdersService {
 				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
 				// 回傳的 Java 物件實際上是 java.sql.Timestamp
 				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
-				newVo.setCompletedAt(row[6] != null ? ((java.sql.Timestamp) row[6]).toLocalDateTime() : null);
+				newVo.setCompletedAt((LocalDateTime)row[6] );
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -191,7 +192,7 @@ public class OrdersService {
 				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
 				// 回傳的 Java 物件實際上是 java.sql.Timestamp
 				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
-				newVo.setCompletedAt(row[6] != null ? ((java.sql.Timestamp) row[6]).toLocalDateTime() : null);
+				newVo.setCompletedAt((LocalDateTime)row[6] );
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -761,7 +762,7 @@ public class OrdersService {
 				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
 				// 回傳的 Java 物件實際上是 java.sql.Timestamp
 				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
-				newVo.setCompletedAt(row[6] != null ? ((java.sql.Timestamp) row[6]).toLocalDateTime() : null);
+				newVo.setCompletedAt((LocalDateTime)row[6] );
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
