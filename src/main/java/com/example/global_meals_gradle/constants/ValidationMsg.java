@@ -8,15 +8,15 @@ public class ValidationMsg {
 	// Entity Products
 	public static final String QUANTITY_CANT_BE_NEGATIVE = "Quantity Cant Be Negative!!";
 	public static final String MAX_ORDER_QUANTITY = "Max Order Quantity One At Least!!";
-	// Req UpsertRegionsTaxReq
+	// Req CreateRegionsReq
 	public static final String COUNTRY_ERROR = "Country Error!!";
 	public static final String CURRENCY_CODE_ERROR = "Currency Code Error!!";
 	public static final String COUNTRY_CODE_ERROR = "Country Code Error!!";
 	public static final String TAX_TYPE_ERROR = "Tax Type Error!!";
 	public static final String TAX_RATE_ERROR = "Tax Rate Error!!";
-	// Req UpdateRegionsUsageCapReq
-	public static final String REGIONS_ID_ERROR = "Regions Id Error!!";
 	public static final String USAGE_CAP_ERROR = "Usage Cap Must Be >= 0!!";
+	// Req UpdateRegions
+	public static final String REGIONS_ID_ERROR = "Regions Id Error!!";
 	// Req CreateGlobalAreaReq
 	public static final String BRANCH_ERROR = "Branch Error!!";
 	public static final String ADDRESS_ERROR = "Address Error!!";
@@ -71,6 +71,7 @@ public class ValidationMsg {
 	public static final String PRODUCT_CATEGORY_EMPTY = "Product Category cannot be empty";
 	public static final String PRODUCT_AREA_ID_INVALID = "Global Area Id must be at least 1";
 	public static final String PRODUCT_PRICE_INVALID = "Price must be greater than 0";
+	public static final String PRODUCT_COST_PRICE_INVALID = "Cost Price must be greater than 0";
 	public static final String PRODUCT_DESCRIPTION_EMPTY = "Description cannot be empty";
 	public static final String PRODUCT_ID_EMPTY = "Product ID cannot be empty";
 

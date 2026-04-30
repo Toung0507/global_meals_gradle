@@ -21,8 +21,13 @@ public class BranchInventoryUpdateReq {
 	@DecimalMin(value = "0.01", message = ValidationMsg.PRODUCT_PRICE_INVALID)
 	private BigDecimal basePrice;
 
+	@DecimalMin(value = "0.01", message = ValidationMsg.PRODUCT_COST_PRICE_INVALID)
+	private BigDecimal costPrice;
+
 	@Min(value = 1, message = ValidationMsg.MAX_ORDER_QUANTITY)
 	private int maxOrderQuantity;
+
+	private boolean active;
 
 	public int getProductId() {
 		return productId;
@@ -56,12 +61,28 @@ public class BranchInventoryUpdateReq {
 		this.basePrice = basePrice;
 	}
 
+	public BigDecimal getCostPrice() {
+		return costPrice;
+	}
+
+	public void setCostPrice(BigDecimal costPrice) {
+		this.costPrice = costPrice;
+	}
+
 	public int getMaxOrderQuantity() {
 		return maxOrderQuantity;
 	}
 
 	public void setMaxOrderQuantity(int maxOrderQuantity) {
 		this.maxOrderQuantity = maxOrderQuantity;
+	}
+
+	public boolean isActive() {
+		return active;
+	}
+
+	public void setActive(boolean active) {
+		this.active = active;
 	}
 
 }
