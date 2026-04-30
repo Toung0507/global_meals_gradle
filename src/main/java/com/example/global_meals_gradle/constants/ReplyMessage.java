@@ -23,18 +23,22 @@ public enum ReplyMessage {
 
 	/* 劭頴 */
 	SUCCESS(200, "Success!!"), //
-	ORDER_NOT_FOUND(404, "Order Not Found!!"), //
-	STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"), //
-	PRODUCT_NOT_FOUND(404, "Product Not Found!!"), //
-	MEMBER_NOT_FOUND(404, "Member Not Found!!"), //
-	ORDER_NUMBER_NOT_FOUND(404, "Order Number Not Found!!"), //
-	ORDERS_STATUS_ERROR(400, "Orders Status Error!!"), //
+	ORDER_NOT_FOUND(404, "Order Not Found!!"), // 訂單找不到
+	STOCK_NOT_ENOUGH(400, "Stock Not Enough!!"), // 庫存不足
+	PRODUCT_NOT_FOUND(404, "Product Not Found!!"), // 商品找不到
+	MEMBER_NOT_FOUND(404, "Member Not Found!!"), // 會員找不到
+	ORDER_NUMBER_NOT_FOUND(404, "Order Number Not Found!!"), // 訂單編號找不到
+	ORDERS_STATUS_ERROR(400, "Orders Status Error!!"), // 訂單狀態錯誤
+	PAY_STATUS_ERROR(400, "Pay Status Error!!"), // 付款狀態錯誤
 	DISCOUNT_ERROR(400, "Disscount Error!!"), //
-	MEMBER_ERROR(400, "Member ERROR!!"), //
-	TOTAL_AMOUNT_ERROR(400, "Total Amount ERROR!!"), //
+	MEMBER_ERROR(400, "Member ERROR!!"), // 會員錯誤
+	TOTAL_AMOUNT_ERROR(400, "Total Amount ERROR!!"), // 金額錯誤
 	NOT_DISCOUNT_ERROR(400, "Not Discount ERROR!!"), //
-	REPORTS_NOT_FOUND(404, "Reports Not Found!!"), //
-	PERMISSION_DENIED(403, "Permission Denied"), // 權限不足
+	REPORTS_NOT_FOUND(404, "Reports Not Found!!"), // 報表找不到
+	PERMISSION_DENIED(403, "Permission Denied!!"), // 權限不足
+	BRANCHES_DIFFERENT(403, "Branches Different!!"), // 分店不同
+	UPDATE_PAY_STATUS_ERROR(400, "Update Pay Status Error!!"), // 付款狀態更新錯誤
+	PAY_PAYMENT_METHOD_ERROR(400, "Pay Payment Method Error!!"), // 付款方式錯誤
 
 	/* 致遠 */
 	// 促銷活動相關錯誤

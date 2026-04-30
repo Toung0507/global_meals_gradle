@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
+import com.example.global_meals_gradle.req.CashPayOnSiteReq;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.UpdateOrdersStatusReq;
@@ -110,6 +111,14 @@ public class OrdersController {
 	@Operation(summary = "現金付款確認", description = "紀錄訂單已使用現金完成付款")
 	public BasicRes pay(@Valid @RequestBody PayReq req) {
 		return ordersService.pay(req);
+	}
+	
+	/* 現金現場付款成功 */
+	@PostMapping("cash_confirm")
+	@Operation(summary = "現金付款確認", description = "紀錄訂單已使用現金完成付款")
+	public BasicRes cashPayOnSite(@Valid @RequestBody CashPayOnSiteReq req, //
+			@Parameter(hidden = true) HttpSession httpSession) {
+		return ordersService.cashPayOnSite(req, httpSession);
 	}
 
 	/* 報電話號碼取餐(今天) */

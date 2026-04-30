@@ -37,6 +37,7 @@ import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.entity.Regions;
 import com.example.global_meals_gradle.entity.Staff;
+import com.example.global_meals_gradle.req.CashPayOnSiteReq;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.UpdateOrdersStatusReq;
@@ -91,15 +92,16 @@ public class OrdersService {
 		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		if (member == null) {
-			return new GetAllOrdersUncompleteRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage(), null);
+			return new GetAllOrdersUncompleteRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage(),
+					null);
 		}
 		// 取的今天的日期字串，參考成立訂單
 		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-		
+
 		List<Object[]> rawData = ordersDao.GetOrdersUncomplete(todayStr, member.getId());
-		
+
 		List<OrderInfo> ordersList = new ArrayList<>();
-		if(rawData != null) {
+		if (rawData != null) {
 			for (Object[] row : rawData) {
 				OrderInfo info = new OrderInfo();
 				info.setId(String.valueOf(row[0])); // 對應 SQL 的 id
@@ -108,8 +110,9 @@ public class OrdersService {
 				ordersList.add(info);
 			}
 		}
-		
-		return new GetAllOrdersUncompleteRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), ordersList);
+
+		return new GetAllOrdersUncompleteRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(),
+				ordersList);
 
 	}
 
@@ -548,15 +551,24 @@ public class OrdersService {
 			throw new RuntimeException("支付金額與訂單金額不符！");
 		}
 		// 檢查訂單狀態：只有「未付款」的訂單可以執行付款
-		// 如果訂單已經是 COMPLETED, 則不需要重複付款
+		// 如果訂單已經是 PAID, 則不需要重複付款
 		if (PayStatus.PAID.name().equals(order.getPayStatus().name())) {
 			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "訂單已支付完成，無需重複操作");
 		}
-		// 如果訂單是其他狀態（如 REFUNDED, CANCELLED），則不允許付款
+		// 如果訂單是其他狀態（如 CANCELLED），則不允許付款
 		if (!PayStatus.UNPAID.name().equals(order.getPayStatus().name())) {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "訂單狀態錯誤，無法付款");
 		}
 		try {
+			// 如果是現金付款，會走這裡，不會繼續往下走
+			if (req.getPaymentMethod().equalsIgnoreCase("CASH")) {
+				int result = ordersDao.updatePaymentMethod(req.getId(), req.getOrderDateId(), //
+						req.getPaymentMethod());
+				if (result > 0) {
+					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+				}
+				throw new RuntimeException("付款更新失敗");
+			}
 			// 新增(更新)的資料(付款方式、交易號碼、狀態)
 			int result = ordersDao.updatePay(req.getId(), req.getOrderDateId(), //
 					req.getPaymentMethod(), req.getTransactionId(), "PAID");
@@ -593,6 +605,198 @@ public class OrdersService {
 		} catch (Exception e) {
 			throw new RuntimeException("付款失敗：" + e.getMessage());
 		}
+	}
+
+	/* 線上訂餐選擇現金付款，到現場付款的方法 */
+	@Transactional
+	public BasicRes cashPayOnSite(CashPayOnSiteReq req, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) { // 只有管理者才能查詢
+			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(),
+					ReplyMessage.PERMISSION_DENIED.getMessage());
+		}
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+		if (order == null) {
+		    return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(),
+					ReplyMessage.ORDER_NOT_FOUND.getMessage());
+		}
+		// 如果該筆訂單所選的分店，與去取餐的分店是不同，需報錯
+		if(staff.getGlobalAreaId() != order.getGlobalAreaId()) {
+			return new BasicRes(ReplyMessage.BRANCHES_DIFFERENT.getCode(),
+					ReplyMessage.BRANCHES_DIFFERENT.getMessage());
+		}
+		// 如果該筆訂單不是未付款，則會報錯
+		if(!PayStatus.UNPAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
+			return new BasicRes(ReplyMessage.PAY_STATUS_ERROR.getCode(),
+					ReplyMessage.PAY_STATUS_ERROR.getMessage());
+		}
+		// 檢查金額
+		if(order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
+			return new BasicRes(ReplyMessage.TOTAL_AMOUNT_ERROR.getCode(),
+					ReplyMessage.TOTAL_AMOUNT_ERROR.getMessage());
+		}
+		// 檢查付款方式
+		if(!"CASH".equalsIgnoreCase(order.getPaymentMethod())) {
+			return new BasicRes(ReplyMessage.PAY_PAYMENT_METHOD_ERROR.getCode(),
+					ReplyMessage.PAY_PAYMENT_METHOD_ERROR.getMessage());
+		}
+		
+		int result = ordersDao.updateCashPayOnSite(req.getId(), req.getOrderDateId(), PayStatus.PAID.name());
+		if(result == 0) {
+			return new BasicRes(ReplyMessage.UPDATE_PAY_STATUS_ERROR.getCode(),
+					ReplyMessage.UPDATE_PAY_STATUS_ERROR.getMessage());
+		}
+
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	}
+
+	/* 取消訂單 */
+	@Transactional(rollbackFor = Exception.class)
+	public BasicRes cancelOrder(UpdateOrdersStatusReq req, HttpSession httpSession) {
+		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
+		Members member = (membersRes != null) ? membersRes.getMembers() : null;
+
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+		// 找不到該筆訂單
+		if (order == null) { // 找不到該筆訂單
+			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
+					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+		}
+		if (member == null || member.getId() < 1) {
+			throw new RuntimeException("請先登入或請找員工處理");
+		}
+		if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
+			return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
+		}
+		try {
+
+			// 取得該訂單的付款狀態(如果取得是null，後面判斷會出錯，所以轉成"")
+			String oldOrdersStatus = (order.getOrdersStatus() != null) ? order.getOrdersStatus().name() : "";
+			// 取得該訂單的狀態(如果取得是null，後面判斷會出錯，所以轉成"")
+			String oldPayStatus = (order.getPayStatus() != null) ? order.getPayStatus().name() : "";
+			String targetStatus = req.getOrdersStatus(); // 目標狀態(之後要更新的狀態)
+			// 判斷目標狀態是否為取消
+			if (!OrdersStatus.CANCELLED.name().equalsIgnoreCase(targetStatus)) {
+				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+			}
+			// 防呆：只有 PayStatus == UNPAID && OrdersStatus == PREPARING 才能取消
+			if (!OrdersStatus.PREPARING.name().equalsIgnoreCase(oldOrdersStatus) || //
+					!PayStatus.UNPAID.name().equalsIgnoreCase(oldPayStatus)) {
+				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+			}
+
+			// 執行訂單狀態更新
+			int result = ordersDao.updateOrderStatus(targetStatus, req.getId(), req.getOrderDateId());
+			// 判斷是否成功
+			if (result > 0) {
+				// 如果是會員且有使用優惠劵
+				if (order.getMemberId() > 1 && order.isUseDiscount()) {
+					// 這裡可以共用 restoreCouponAndPoints，把券設回 true 並點數設回 10
+					membersDao.restoreCouponAndPoints(order.getMemberId());
+				}
+				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			}
+			throw new RuntimeException("取消訂定單失敗");
+		} catch (Exception e) {
+			throw new RuntimeException("取消流程發生錯誤: " + e.getMessage());
+		}
+	}
+
+	/* 報電話號碼查詢今天的訂單 */
+	public GetAllOrdersRes getOrderByPhone(String phone, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) { // 只有管理者才能查詢
+			return new GetAllOrdersRes(ReplyMessage.PERMISSION_DENIED.getCode(),
+					ReplyMessage.PERMISSION_DENIED.getMessage());
+		}
+		// 取得員工的分店
+		int globalAreaId = staff.getGlobalAreaId();
+		// 取的今天的日期字串，參考成立訂單
+		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+		// 取的資料根據電話號碼跟今天日期 DAO 取得扁平化的資料
+		List<Object[]> rawData = ordersDao.getOrdersByPhone(todayStr, phone);
+		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
+		// LinkedHashMap 是為了「照順序排」，讓最新下單的排在最前面
+		Map<String, GetOrdersVo> orderMap = new LinkedHashMap<>();
+		for (Object[] row : rawData) {
+			String orderKey = row[1].toString() + row[0].toString(); // 日期 + ID
+
+			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
+				// 建立一個新的訂單物件
+				GetOrdersVo newVo = new GetOrdersVo();
+				newVo.setId(row[0].toString()); // o.id
+				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
+				newVo.setGlobalAreaId(((Number) row[2]).intValue()); // o.global_area_id
+				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
+				newVo.setOrdersStatus(row[4].toString()); // o.status
+				newVo.setPayStatus(row[5].toString());// o.status
+				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
+				// 回傳的 Java 物件實際上是 java.sql.Timestamp
+				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
+				newVo.setCompletedAt((LocalDateTime) row[6]);
+				newVo.setGetOrdersDetailVoList(new ArrayList<>());
+				return newVo;
+			});
+
+			// 建立明細並塞入該訂單的 List
+			GetOrdersDetailVo detail = new GetOrdersDetailVo();
+			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
+			detail.setQuantity(((Number) row[7]).intValue());
+			detail.setPrice((BigDecimal) row[8]);
+			detail.setGift(((Number) row[9]).intValue() == 1); // 回傳0或1，在 Java 是數字，透過比較運算產生 true/false
+			detail.setDiscountNote(row[10] != null ? row[10].toString() : "");
+			detail.setName(row[11].toString()); // 產品名稱已經在 SQL 抓好了
+
+			vo.getGetOrdersDetailVoList().add(detail);
+		}
+		// 把 Map 的值轉換成 List
+		List<GetOrdersVo> result = new ArrayList<>(orderMap.values());
+
+		return new GetAllOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), result);
+	}
+
+	/* 更新訂單狀態(待取餐/已取餐) */
+	public BasicRes UpdateOrdersStatus(UpdateOrdersStatusReq req, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) { // 只有管理者才能查詢
+			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), ReplyMessage.PERMISSION_DENIED.getMessage());
+		}
+
+		// 取得該筆訂單資訊
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+		if (order == null) {
+			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), //
+					ReplyMessage.ORDER_NOT_FOUND.getMessage());
+		}
+
+		// 如果訂單狀態是已取餐，那就是狀態錯誤
+		if (OrdersStatus.PICKED_UP.name().equalsIgnoreCase(order.getOrdersStatus().name())) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+		}
+
+		int result = 0;
+		// 訂單狀態更新(用於製餐中 -> 待取餐)
+		if (OrdersStatus.READY.name().equalsIgnoreCase(req.getOrdersStatus())) {
+			result = ordersDao.updateOrderStatusForReady(req.getOrdersStatus(), req.getId(), req.getOrderDateId());
+
+		} else if (OrdersStatus.PICKED_UP.name().equalsIgnoreCase(req.getOrdersStatus())) {
+			// 訂單狀態更新(用於待取餐 -> 已取餐)
+			result = ordersDao.updateOrderStatusForPickedUp(req.getOrdersStatus(), req.getId(), req.getOrderDateId());
+
+		}
+		if (result == 0) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+		}
+
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
 	// /* 申請退款 */
@@ -703,151 +907,5 @@ public class OrdersService {
 	// throw new RuntimeException("審核執行失敗：" + e.getMessage());
 	// }
 	// }
-
-	/* 取消訂單 */
-	@Transactional(rollbackFor = Exception.class)
-	public BasicRes cancelOrder(UpdateOrdersStatusReq req, HttpSession httpSession) {
-		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
-		Members member = (membersRes != null) ? membersRes.getMembers() : null;
-
-		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-		// 找不到該筆訂單
-		if (order == null) { // 找不到該筆訂單
-			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
-					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
-		}
-		if (member == null || member.getId() < 1) {
-			throw new RuntimeException("請先登入或請找員工處理");
-		}
-		if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
-			return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
-		}
-		try {
-
-			// 取得該訂單的付款狀態(如果取得是null，後面判斷會出錯，所以轉成"")
-			String oldOrdersStatus = (order.getOrdersStatus() != null) ? order.getOrdersStatus().name() : "";
-			// 取得該訂單的狀態(如果取得是null，後面判斷會出錯，所以轉成"")
-			String oldPayStatus = (order.getPayStatus() != null) ? order.getPayStatus().name() : "";
-			String targetStatus = req.getOrdersStatus(); // 目標狀態(之後要更新的狀態)
-			// 判斷目標狀態是否為取消
-			if (!OrdersStatus.CANCELLED.name().equalsIgnoreCase(targetStatus)) {
-				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
-			}
-			// 防呆：只有 PayStatus == UNPAID && OrdersStatus == PREPARING 才能取消
-			if (!OrdersStatus.PREPARING.name().equalsIgnoreCase(oldOrdersStatus) || //
-					!PayStatus.UNPAID.name().equalsIgnoreCase(oldPayStatus)) {
-				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
-			}
-
-			// 執行訂單狀態更新
-			int result = ordersDao.updateOrderStatus(targetStatus, req.getId(), req.getOrderDateId());
-			// 判斷是否成功
-			if (result > 0) {
-				// 如果是會員且有使用優惠劵
-				if (order.getMemberId() > 1 && order.isUseDiscount()) {
-					// 這裡可以共用 restoreCouponAndPoints，把券設回 true 並點數設回 10
-					membersDao.restoreCouponAndPoints(order.getMemberId());
-				}
-				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-			}
-			throw new RuntimeException("取消訂定單失敗");
-		} catch (Exception e) {
-			throw new RuntimeException("取消流程發生錯誤: " + e.getMessage());
-		}
-	}
-
-	/* 報電話號碼查詢今天的訂單 */
-	public GetAllOrdersRes getOrderByPhone(String phone, HttpSession httpSession) {
-		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
-		if (staff == null) { // 只有管理者才能查詢
-			return new GetAllOrdersRes(ReplyMessage.PERMISSION_DENIED.getCode(),
-					ReplyMessage.PERMISSION_DENIED.getMessage());
-		}
-		// 取的今天的日期字串，參考成立訂單
-		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-		// 取的資料根據電話號碼跟今天日期 DAO 取得扁平化的資料
-		List<Object[]> rawData = ordersDao.getOrdersByPhone(todayStr, phone);
-		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
-		// LinkedHashMap 是為了「照順序排」，讓最新下單的排在最前面
-		Map<String, GetOrdersVo> orderMap = new LinkedHashMap<>();
-		for (Object[] row : rawData) {
-			String orderKey = row[1].toString() + row[0].toString(); // 日期 + ID
-
-			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
-				// 建立一個新的訂單物件
-				GetOrdersVo newVo = new GetOrdersVo();
-				newVo.setId(row[0].toString()); // o.id
-				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
-				newVo.setGlobalAreaId(((Number) row[2]).intValue()); // o.global_area_id
-				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
-				newVo.setOrdersStatus(row[4].toString()); // o.status
-				newVo.setPayStatus(row[5].toString());// o.status
-				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
-				// 回傳的 Java 物件實際上是 java.sql.Timestamp
-				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
-				newVo.setCompletedAt((LocalDateTime) row[6]);
-				newVo.setGetOrdersDetailVoList(new ArrayList<>());
-				return newVo;
-			});
-
-			// 建立明細並塞入該訂單的 List
-			GetOrdersDetailVo detail = new GetOrdersDetailVo();
-			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
-			detail.setQuantity(((Number) row[7]).intValue());
-			detail.setPrice((BigDecimal) row[8]);
-			detail.setGift(((Number) row[9]).intValue() == 1); // 回傳0或1，在 Java 是數字，透過比較運算產生 true/false
-			detail.setDiscountNote(row[10] != null ? row[10].toString() : "");
-			detail.setName(row[11].toString()); // 產品名稱已經在 SQL 抓好了
-
-			vo.getGetOrdersDetailVoList().add(detail);
-		}
-		// 把 Map 的值轉換成 List
-		List<GetOrdersVo> result = new ArrayList<>(orderMap.values());
-
-		return new GetAllOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), result);
-	}
-
-	/* 更新訂單狀態(待取餐/已取餐) */
-	public BasicRes UpdateOrdersStatus(UpdateOrdersStatusReq req, HttpSession httpSession) {
-		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
-		if (staff == null) { // 只有管理者才能查詢
-			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), ReplyMessage.PERMISSION_DENIED.getMessage());
-		}
-
-		// 取得該筆訂單資訊
-		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-		if (order == null) {
-			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), //
-					ReplyMessage.ORDER_NOT_FOUND.getMessage());
-		}
-
-		// 如果訂單狀態是已取餐，那就是狀態錯誤
-		if (OrdersStatus.PICKED_UP.name().equalsIgnoreCase(order.getOrdersStatus().name())) {
-			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
-		}
-
-		int result = 0;
-		// 訂單狀態更新(用於製餐中 -> 待取餐)
-		if (OrdersStatus.READY.name().equalsIgnoreCase(req.getOrdersStatus())) {
-			result = ordersDao.updateOrderStatusForReady(req.getOrdersStatus(), req.getId(), req.getOrderDateId());
-
-		} else if (OrdersStatus.PICKED_UP.name().equalsIgnoreCase(req.getOrdersStatus())) {
-			// 訂單狀態更新(用於待取餐 -> 已取餐)
-			result = ordersDao.updateOrderStatusForPickedUp(req.getOrdersStatus(), req.getId(), req.getOrderDateId());
-
-		}
-		if (result == 0) {
-			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
-					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
-		}
-
-		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-	}
 
 }

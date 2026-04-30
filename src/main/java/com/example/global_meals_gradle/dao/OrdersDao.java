@@ -38,6 +38,20 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			nativeQuery = true)
 	public Optional<Orders> getOrderByOrderDateId(String orderDateId);
 	
+	/* 選擇現金付款新增(更新)的資料(付款方式) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET payment_method = ?3 WHERE id = ?1 " //
+			+ " AND order_date_id = ?2 AND pay_status = 'UNPAID'", nativeQuery = true)
+	public int updatePaymentMethod(String id, String orderDateId, String paymentMethod);
+	
+	/* 現場現金付款完成新增(更新)的資料(付款狀態) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET pay_status = ?3 WHERE id = ?1 "
+			+ " AND order_date_id = ?2 AND pay_status = 'UNPAID'", nativeQuery = true)
+	public int updateCashPayOnSite(String id, String orderDateId, String payStatus);
+	
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
 	@Modifying
 	@Transactional
