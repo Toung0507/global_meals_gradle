@@ -115,7 +115,7 @@ public class OrdersController {
 	}
 
 	/* 報電話號碼取餐(今天) */
-	@GetMapping("get_by_phone")
+	@GetMapping("get_order_by_phone")
 	@Operation(summary = "手機號碼取餐", description = "根據電話號碼查詢今日待取餐訂單")
 	public GetAllOrdersRes getOrderByPhone(@RequestParam("phone") String phone, //
 			@Parameter(hidden = true) HttpSession httpSession) {
