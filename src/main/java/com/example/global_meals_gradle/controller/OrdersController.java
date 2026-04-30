@@ -109,8 +109,8 @@ public class OrdersController {
 	/* 現金付款成功 */
 	@PostMapping("pay")
 	@Operation(summary = "現金付款確認", description = "紀錄訂單已使用現金完成付款")
-	public BasicRes pay(@Valid @RequestBody PayReq req) {
-		return ordersService.pay(req);
+	public BasicRes pay(@Valid @RequestBody PayReq req, HttpSession httpSession) {
+		return ordersService.pay(req, httpSession);
 	}
 	
 	/* 現金現場付款成功 */
@@ -150,7 +150,8 @@ public class OrdersController {
 	/* 接收金流公司傳的付款成功通知 */
 	@PostMapping("/payment/callback")
 	@Operation(summary = "金流回呼通知", description = "接收綠界等第三方金流的付款結果回傳 (內部 API)")
-	public String handlePaymentNotify(@RequestParam Map<String, String> params) {
+	public String handlePaymentNotify(@RequestParam Map<String, String> params, //
+			@Parameter(hidden = true) HttpSession httpSession) {
 		// 取得金流公司傳回來的結果 (RtnCode 是綠界的標準)
 		String rtnCode = params.get("RtnCode");
 		// 注意：因為我們在發起支付時，MerchantTradeNo 通常會加隨機碼防止重複 (如: 202604110001T123)
@@ -187,7 +188,7 @@ public class OrdersController {
 			}
 			// 呼叫「收錢結案」的共用 Service
 			// 不論現金或刷卡，收完錢都是跑這一支
-			BasicRes res = ordersService.pay(req);
+			BasicRes res = ordersService.pay(req, httpSession);
 
 			if (res.getCode() == 200) {
 				return "1|OK"; // 綠界要求：成功必須回傳 1|OK，不然它會間隔發送通知直到 24 小時
@@ -203,10 +204,11 @@ public class OrdersController {
 	@Operation(summary = "LinePay 付款確認", description = "接收 LinePay 支付完成後的確認導回")
 	public String linePayConfirm(@RequestParam("transactionId") String transactionId, // LINE Pay 給的交易序號
 			@RequestParam("orderDateId") String orderDateId, // 我們自己傳過去的參數 (透傳)
-			@RequestParam("id") String id, @RequestParam("amount") int amount) {
+			@RequestParam("id") String id, @RequestParam("amount") int amount, //
+			@Parameter(hidden = true) HttpSession httpSession) {
 		try {
 			// 執行確認扣款
-			linePayService.confirmPayment(transactionId, amount, orderDateId, id);
+			linePayService.confirmPayment(transactionId, amount, orderDateId, id, httpSession);
 
 			// 扣款成功後，將客人導向前端的成功頁面
 			return "redirect:https://your-frontend.com/payment-success";

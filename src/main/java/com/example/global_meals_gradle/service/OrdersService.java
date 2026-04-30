@@ -539,7 +539,9 @@ public class OrdersService {
 
 	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
 	@Transactional(rollbackFor = Exception.class)
-	public BasicRes pay(PayReq req) {
+	public BasicRes pay(PayReq req, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
 		// 參數檢查(有在Req那裏自動檢查)
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
 		if (order == null) {
@@ -560,8 +562,8 @@ public class OrdersService {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "訂單狀態錯誤，無法付款");
 		}
 		try {
-			// 如果是現金付款，會走這裡，不會繼續往下走
-			if (req.getPaymentMethod().equalsIgnoreCase("CASH")) {
+			// 如果線上選現金付款，會走這裡，不會繼續往下走
+			if (req.getPaymentMethod().equalsIgnoreCase("CASH") && staff == null) {
 				int result = ordersDao.updatePaymentMethod(req.getId(), req.getOrderDateId(), //
 						req.getPaymentMethod());
 				if (result > 0) {
@@ -613,37 +615,34 @@ public class OrdersService {
 		// 抓員工資訊
 		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
 		if (staff == null) { // 只有管理者才能查詢
-			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(),
-					ReplyMessage.PERMISSION_DENIED.getMessage());
+			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), ReplyMessage.PERMISSION_DENIED.getMessage());
 		}
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
 		if (order == null) {
-		    return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(),
-					ReplyMessage.ORDER_NOT_FOUND.getMessage());
+			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), ReplyMessage.ORDER_NOT_FOUND.getMessage());
 		}
 		// 如果該筆訂單所選的分店，與去取餐的分店是不同，需報錯
-		if(staff.getGlobalAreaId() != order.getGlobalAreaId()) {
+		if (staff.getGlobalAreaId() != order.getGlobalAreaId()) {
 			return new BasicRes(ReplyMessage.BRANCHES_DIFFERENT.getCode(),
 					ReplyMessage.BRANCHES_DIFFERENT.getMessage());
 		}
 		// 如果該筆訂單不是未付款，則會報錯
-		if(!PayStatus.UNPAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
-			return new BasicRes(ReplyMessage.PAY_STATUS_ERROR.getCode(),
-					ReplyMessage.PAY_STATUS_ERROR.getMessage());
+		if (!PayStatus.UNPAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
+			return new BasicRes(ReplyMessage.PAY_STATUS_ERROR.getCode(), ReplyMessage.PAY_STATUS_ERROR.getMessage());
 		}
 		// 檢查金額
-		if(order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
+		if (order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
 			return new BasicRes(ReplyMessage.TOTAL_AMOUNT_ERROR.getCode(),
 					ReplyMessage.TOTAL_AMOUNT_ERROR.getMessage());
 		}
 		// 檢查付款方式
-		if(!"CASH".equalsIgnoreCase(order.getPaymentMethod())) {
+		if (!"CASH".equalsIgnoreCase(order.getPaymentMethod())) {
 			return new BasicRes(ReplyMessage.PAY_PAYMENT_METHOD_ERROR.getCode(),
 					ReplyMessage.PAY_PAYMENT_METHOD_ERROR.getMessage());
 		}
-		
+
 		int result = ordersDao.updateCashPayOnSite(req.getId(), req.getOrderDateId(), PayStatus.PAID.name());
-		if(result == 0) {
+		if (result == 0) {
 			return new BasicRes(ReplyMessage.UPDATE_PAY_STATUS_ERROR.getCode(),
 					ReplyMessage.UPDATE_PAY_STATUS_ERROR.getMessage());
 		}
