@@ -51,6 +51,11 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	        + "WHERE CONCAT(order_date_id, id) IN (?1) " //
 	        + "AND o.orders_status IN ('PREPARING', 'READY')", nativeQuery = true)
 	public List<Object[]> GetOrdersUncomplete(List<String> combinedIds);
+	
+	/* 取的該會員的今天訂單 */
+	@Query(value = "SELECT id, order_date_id, orders_status FROM orders  " //
+			+ "WHERE order_date_id = ?1 AND member_id = ?2 ", nativeQuery = true)
+	public List<Object[]> GetOrdersUncomplete(String orderDateId, int memberId);
 
 	/* 根據電話號碼查詢今天的訂單 */
 	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "

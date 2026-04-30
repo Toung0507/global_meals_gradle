@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
-import com.example.global_meals_gradle.req.GetStatusUncompleteReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.UpdateOrdersStatusReq;
 import com.example.global_meals_gradle.res.BasicRes;
@@ -44,10 +43,17 @@ public class OrdersController {
 	@Autowired
 	private LinePayService linePayService;
 
+	/* 取的該會員的今天所有訂單 */
+	@GetMapping("get_all_orders_list")
+	@Operation(summary = "取得會員歷史訂單", description = "查詢該會員的所有歷史訂單記錄")
+	public GetAllOrdersUncompleteRes getTodayOrdersListByMember(@Parameter(hidden = true) HttpSession httpSession) {
+		return ordersService.getTodayOrdersListByMember(httpSession);
+	}
+	
 	/* 取的該會員的歷史訂單 */
 	@GetMapping("get_all_orders_list")
 	@Operation(summary = "取得會員歷史訂單", description = "查詢該會員的所有歷史訂單記錄")
-	public GetAllOrdersRes getAllOrdersList(@RequestParam("memberId") Integer memberId, //
+	public GetAllOrdersRes getAllOrdersListByMember(@RequestParam("memberId") Integer memberId, //
 			@Parameter(hidden = true) HttpSession httpSession) {
 		return ordersService.getAllOrders(memberId, httpSession);
 	}
@@ -55,7 +61,7 @@ public class OrdersController {
 	/* 取的該分店今天所有訂單 */
 	@GetMapping("get_today_all_orders_list")
 	@Operation(summary = "取得今天所有訂單", description = "查詢今天所有訂單記錄")
-	public GetAllOrdersRes getAllOrdersList(@Parameter(hidden = true) HttpSession httpSession) {
+	public GetAllOrdersRes getTodayAllOrdersListByBranch(@Parameter(hidden = true) HttpSession httpSession) {
 		return ordersService.getTodayAllOrders(httpSession);
 	}
 
@@ -79,7 +85,7 @@ public class OrdersController {
 	// }
 	// }
 
-	/* 更改訂單狀態: 待取餐/已取餐/取消 */
+	/* 更改訂單狀態: 待取餐(店員操作)/已取餐(店員操作)/取消(顧客操作) */
 	@PostMapping("orders_status")
 	@Operation(summary = "更改訂單狀態", description = "將訂單狀態更新為 READY (餐點完成/待取餐) 或 PICKED_UP (已取餐)")
 	public BasicRes UpdateOrdersStatus(@Valid @RequestBody UpdateOrdersStatusReq req, //
@@ -91,14 +97,6 @@ public class OrdersController {
 		}
 	}
 	
-	/* 取得這些訂單的狀態 */
-	@PostMapping("get_orders_status")
-	@Operation(summary = "取得訂單狀態", description = "取得訂單的狀態")
-	public GetAllOrdersUncompleteRes getAllOrdersUncomplete(@Valid @RequestBody GetStatusUncompleteReq req, //
-			@Parameter(hidden = true) HttpSession httpSession) {
-		return ordersService.getAllOrdersUncomplete(req, httpSession);
-	}
-
 	/* 成立訂單(未結帳) */
 	@PostMapping("create_orders")
 	@Operation(summary = "建立新訂單", description = "新增一筆未結帳的訂單")

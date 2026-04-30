@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -39,7 +38,6 @@ import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.entity.Regions;
 import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
-import com.example.global_meals_gradle.req.GetStatusUncompleteReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.UpdateOrdersStatusReq;
 import com.example.global_meals_gradle.res.BasicRes;
@@ -86,6 +84,35 @@ public class OrdersService {
 	@Lazy // 加上 @Lazy 避免某些 Spring 版本出現循環依賴的警告
 	private OrdersService self;
 
+	/* 取的該會員的今天訂單 */
+	@Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
+	public GetAllOrdersUncompleteRes getTodayOrdersListByMember(HttpSession httpSession) {
+		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
+		Members member = (membersRes != null) ? membersRes.getMembers() : null;
+		if (member == null) {
+			return new GetAllOrdersUncompleteRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage(), null);
+		}
+		// 取的今天的日期字串，參考成立訂單
+		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+		
+		List<Object[]> rawData = ordersDao.GetOrdersUncomplete(todayStr, member.getId());
+		
+		List<OrderInfo> ordersList = new ArrayList<>();
+		if(rawData != null) {
+			for (Object[] row : rawData) {
+				OrderInfo info = new OrderInfo();
+				info.setId(String.valueOf(row[0])); // 對應 SQL 的 id
+				info.setOrderDateId(String.valueOf(row[1])); // 對應 SQL 的 order_date_id
+				info.setOrderStatus(String.valueOf(row[2])); // 對應 SQL 的 orders_status
+				ordersList.add(info);
+			}
+		}
+		
+		return new GetAllOrdersUncompleteRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), ordersList);
+
+	}
+
 	/* 查詢該分店今日所有訂單 */
 	@Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
 	public GetAllOrdersRes getTodayAllOrders(HttpSession httpSession) {
@@ -118,7 +145,7 @@ public class OrdersService {
 				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
 				// 回傳的 Java 物件實際上是 java.sql.Timestamp
 				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
-				newVo.setCompletedAt((LocalDateTime)row[6] );
+				newVo.setCompletedAt((LocalDateTime) row[6]);
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -159,7 +186,7 @@ public class OrdersService {
 		} else {
 			// 既不是員工也不是會員 -> 先登入才能查詢歷史訂單
 			return new GetAllOrdersRes(ReplyMessage.NOT_LOGIN.getCode(), //
-	        		ReplyMessage.NOT_LOGIN.getMessage());
+					ReplyMessage.NOT_LOGIN.getMessage());
 		}
 		List<Object[]> rawData = ordersDao.getFullOrderHistory(memberId);
 		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
@@ -192,7 +219,7 @@ public class OrdersService {
 				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
 				// 回傳的 Java 物件實際上是 java.sql.Timestamp
 				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
-				newVo.setCompletedAt((LocalDateTime)row[6] );
+				newVo.setCompletedAt((LocalDateTime) row[6]);
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -233,7 +260,7 @@ public class OrdersService {
 		} else { // 代表是遊客
 			if (req.getMemberId() > 1) { // 可能是會員，但session失效(登出) "連線已逾時，請重新登入後再結帳"
 				return new CreateOrdersRes(ReplyMessage.NOT_LOGIN.getCode(), //
-		        		ReplyMessage.NOT_LOGIN.getMessage());
+						ReplyMessage.NOT_LOGIN.getMessage());
 			}
 			req.setMemberId(1);
 		}
@@ -762,7 +789,7 @@ public class OrdersService {
 				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
 				// 回傳的 Java 物件實際上是 java.sql.Timestamp
 				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
-				newVo.setCompletedAt((LocalDateTime)row[6] );
+				newVo.setCompletedAt((LocalDateTime) row[6]);
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -799,7 +826,7 @@ public class OrdersService {
 					ReplyMessage.ORDER_NOT_FOUND.getMessage());
 		}
 
-		// 如果訂單狀態是已完成，那就是狀態錯誤
+		// 如果訂單狀態是已取餐，那就是狀態錯誤
 		if (OrdersStatus.PICKED_UP.name().equalsIgnoreCase(order.getOrdersStatus().name())) {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
 					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
@@ -821,40 +848,6 @@ public class OrdersService {
 		}
 
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-	}
-
-	/* 取得訂單狀態(狀態是PREPARING/READY) */
-	public GetAllOrdersUncompleteRes getAllOrdersUncomplete(GetStatusUncompleteReq req, HttpSession httpSession) {
-		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
-		Members member = (membersRes != null) ? membersRes.getMembers() : null;
-		if (member == null) {
-			return new GetAllOrdersUncompleteRes(ReplyMessage.NOT_LOGIN.getCode(), //
-	        		ReplyMessage.NOT_LOGIN.getMessage());
-		}
-		// 準備字串清單 (例如: ["20260429001", "20260429002"])
-		List<String> combinedIds = req.getOrdersIdList().stream().map(vo -> vo.getOrderDateId() + vo.getId())
-				.collect(Collectors.toList());
-		// 查詢清單是「空的」時的情況
-		if (combinedIds.isEmpty()) {  
-	        return new GetAllOrdersUncompleteRes(ReplyMessage.SUCCESS.getCode(), //
-	        		ReplyMessage.SUCCESS.getMessage(), new ArrayList<>());
-	    }
-		
-		// 查詢這些訂單的狀態
-	    List<Object[]> rawData = ordersDao.GetOrdersUncomplete(combinedIds);
-
-	    List<OrderInfo> ordersList = new ArrayList<>();
-	    for(Object[] row : rawData) {
-	    	OrderInfo info = new OrderInfo();
-	        info.setId(String.valueOf(row[0]));          // 對應 SQL 的 o.id
-	        info.setOrderDateId(String.valueOf(row[1])); // 對應 SQL 的 o.order_date_id
-	        info.setOrderStatus(String.valueOf(row[2])); // 對應 SQL 的 o.orders_status
-	        ordersList.add(info);
-	    }
-
-		return new GetAllOrdersUncompleteRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(),
-				ordersList);
 	}
 
 }
