@@ -24,8 +24,11 @@ public class MonthlyFinancialReports {
 	@Column(name = "regions_id")
 	private int regionsId;
 
-	@Column(name = "total_amount", precision = 12, scale = 2)
+	@Column(name = "total_amount", precision = 19, scale = 4)
 	private BigDecimal totalAmount;
+	
+	@Column(name = "total_cost", precision = 19, scale = 4)
+	private BigDecimal totalCost;
 
 	public int getId() {
 		return id;
@@ -65,5 +68,13 @@ public class MonthlyFinancialReports {
 
 	public void setTotalAmount(BigDecimal totalAmount) {
 		this.totalAmount = totalAmount;
+	}
+
+	public BigDecimal getTotalCost() {
+		return totalCost;
+	}
+
+	public void setTotalCost(BigDecimal totalCost) {
+		this.totalCost = totalCost;
 	}
 }

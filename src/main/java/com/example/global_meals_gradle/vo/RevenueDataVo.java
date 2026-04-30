@@ -9,6 +9,8 @@ public class RevenueDataVo {
 	private String regionsName;
 	
 	private BigDecimal totalAmount;
+	
+	private BigDecimal totalCost;
 
 	public String getBranchName() {
 		return branchName;
@@ -32,6 +34,14 @@ public class RevenueDataVo {
 
 	public void setTotalAmount(BigDecimal totalAmount) {
 		this.totalAmount = totalAmount;
+	}
+
+	public BigDecimal getTotalCost() {
+		return totalCost;
+	}
+
+	public void setTotalCost(BigDecimal totalCost) {
+		this.totalCost = totalCost;
 	}
 	
 }

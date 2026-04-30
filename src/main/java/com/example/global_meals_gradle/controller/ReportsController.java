@@ -30,7 +30,8 @@ public class ReportsController {
 	// 預設查詢一個月份時，會傳該月與上個月的營業額
 	@PostMapping("find_monthly_reports")
 	@Operation(summary = "查詢月度報表", description = "查詢指定月份的營業額，通常包含該月與上個月的對比數據")
-	public MonthlyReportRes findMonthlyReports(@RequestBody MonthlyReportReq req, HttpSession session) {
+	public MonthlyReportRes findMonthlyReports(@RequestBody MonthlyReportReq req, //
+			@Parameter(hidden = true) HttpSession session) {
 		return monthlyFinancialReportsService.getMonthlyReport(req, session);
 	}
 	
@@ -45,7 +46,8 @@ public class ReportsController {
 	// 取的特定期間的營業額(以日為單位)
 	@PostMapping("get_revenue_reports")
 	@Operation(summary = "查詢每日營業額", description = "取得特定期間內，以「天」為單位的營業額明細")
-	public RevenueQueryRes getRevenueReports(@RequestBody RevenueQueryReq req) {
-		return monthlyFinancialReportsService.getRevenueReports(req);
+	public RevenueQueryRes getRevenueReports(@RequestBody RevenueQueryReq req, //
+			@Parameter(hidden = true) HttpSession session) {
+		return monthlyFinancialReportsService.getRevenueReports(req, session);
 	}
 }
