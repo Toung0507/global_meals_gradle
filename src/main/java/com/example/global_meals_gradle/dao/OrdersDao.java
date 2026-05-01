@@ -153,42 +153,42 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	public Object[] findRevenueAndCostByGlobalAreaId(int branchId, LocalDateTime start, LocalDateTime end);
 
 	// 查詢某分店的營業額(一個區間)(for 店長)
-	@Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.total_amount) AS totalAmount, " //
-			+ "SUM(d.quantity * p.product_cost) AS totalCost " //
-			+ "FROM orders o " //
-			+ "JOIN global_area g ON o.global_area_id = g.id " //
-			+ "JOIN regions r ON g.regions_id = r.id " //
-			+ "JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id " // 
-			+ "JOIN product p ON d.product_id = p.id " // 
-			+ "WHERE o.global_area_id = ?1 " //
-			+ "AND o.create_time BETWEEN ?2 AND ?3 " //
-			+ "GROUP BY g.id, g.name, r.name", nativeQuery = true)
+	@Query(value = "SELECT g.name AS branchName, r.name AS regionsName, "
+	        + "SUM(o.total_amount) AS totalAmount, " 
+	        + "SUM(o.total_cost) AS totalCost "
+	        + "FROM orders o "
+	        + "JOIN global_area g ON o.global_area_id = g.id "
+	        + "JOIN regions r ON g.regions_id = r.id "
+	        + "WHERE o.global_area_id = ?1 "
+	        + "AND o.orders_status = 'PICKED UP' " // 狀態過濾
+	        + "AND o.completed_at BETWEEN ?2 AND ?3 " // 改用完成時間
+	        + "GROUP BY g.id, g.name, r.name", nativeQuery = true)
 	public List<Object[]> findSingleBranchRevenue(Integer branchId, LocalDateTime start, LocalDateTime end);
 
 	// 查詢特定國家內，每一間分店的營業額(一個區間)(for 老闆)
-	@Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.total_amount) AS totalAmount, " //
-			+ "SUM(d.quantity * p.product_cost) AS totalCost " //
-			+ "FROM orders o " //
-			+ "JOIN global_area g ON o.global_area_id = g.id " //
-			+ "JOIN regions r ON g.regions_id = r.id " //
-			+ "JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id " // 
-			+ "JOIN product p ON d.product_id = p.id " // 
-			+ "WHERE r.id = ?1 " //
-			+ "AND o.create_time BETWEEN ?2 AND ?3 " //
-			+ "GROUP BY g.id, g.name, r.name", nativeQuery = true)
+	@Query(value = "SELECT g.name AS branchName, r.name AS regionsName, "
+	        + "SUM(o.total_amount) AS totalAmount, " 
+	        + "SUM(o.total_cost) AS totalCost "
+	        + "FROM orders o "
+	        + "JOIN global_area g ON o.global_area_id = g.id "
+	        + "JOIN regions r ON g.regions_id = r.id "
+	        + "WHERE r.id = ?1 "
+	        + "AND o.orders_status = 'PICKED UP' " // 狀態過濾
+	        + "AND o.completed_at BETWEEN ?2 AND ?3 " // 改用完成時間
+	        + "GROUP BY g.id, g.name, r.name", nativeQuery = true)
 	public List<Object[]> findRevenueByRegionGroupedByBranch(Integer regionsId, //
 			LocalDateTime start, LocalDateTime end);
 
 	// 查詢每一間分店的營業額(一個區間)(for 老闆)
-	@Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.total_amount) AS totalAmount, " //
-			+ "SUM(d.quantity * p.product_cost) AS totalCost " //
-			+ "FROM orders o " //
-			+ "JOIN global_area g ON o.global_area_id = g.id " //
-			+ "JOIN regions r ON g.regions_id = r.id " //
-			+ "JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id " // 
-			+ "JOIN product p ON d.product_id = p.id " // 
-			+ "WHERE o.create_time BETWEEN ?2 AND ?3 " //
-			+ "GROUP BY g.id, g.name, r.name", nativeQuery = true)
+	@Query(value = "SELECT g.name AS branchName, r.name AS regionsName, "
+	        + "SUM(o.total_amount) AS totalAmount, " 
+	        + "SUM(o.total_cost) AS totalCost "
+	        + "FROM orders o "
+	        + "JOIN global_area g ON o.global_area_id = g.id "
+	        + "JOIN regions r ON g.regions_id = r.id "
+	        + "WHERE o.orders_status = 'PICKED UP' " // 狀態過濾
+	        + "AND o.completed_at BETWEEN ?1 AND ?2 " // 改用完成時間
+	        + "GROUP BY g.id, g.name, r.name", nativeQuery = true)
 	public List<Object[]> findRevenue(LocalDateTime start, LocalDateTime end);
 
 	/**

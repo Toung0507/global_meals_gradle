@@ -157,7 +157,7 @@ public class MonthlyFinancialReportsService {
 			data.setBranchName((String) result[0]);
 			data.setRegionsName((String) result[1]);
 			data.setTotalAmount((BigDecimal) result[2]);
-			data.setTotalAmount((BigDecimal) result[3]);
+			data.setTotalCost((BigDecimal) result[3]);
 			return data;
 		}).collect(Collectors.toList());
 		return new RevenueQueryRes(ReplyMessage.SUCCESS.getCode(), //
