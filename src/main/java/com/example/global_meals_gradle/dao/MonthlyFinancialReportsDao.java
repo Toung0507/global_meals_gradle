@@ -33,7 +33,7 @@ public interface MonthlyFinancialReportsDao extends JpaRepository<MonthlyFinanci
 
 	// 取的特定分店的月營業額(某月某月~某年某月)(for 店長)
 	@Query(value = "SELECT reports.report_date AS reportDate, g.name AS branchName, " //
-			+ "r.name AS regionsName, reports.total_amount AS totalAmount " //
+			+ "r.name AS regionsName, reports.total_amount AS totalAmount, " //
 			+ "reports.total_cost AS totalCost " //
 			+ "FROM monthly_financial_reports reports " //
 			+ "JOIN global_area g ON reports.branch_id = g.id " //
@@ -44,7 +44,7 @@ public interface MonthlyFinancialReportsDao extends JpaRepository<MonthlyFinanci
 
 	// 取的特定分店的月營業額(某月某月~某年某月)(for 老闆)
 	@Query(value = "SELECT reports.report_date AS reportDate, g.name AS branchName, " //
-			+ "r.name AS regionsName, reports.total_amount AS totalAmount " //
+			+ "r.name AS regionsName, reports.total_amount AS totalAmount, " //
 			+ "reports.total_cost AS totalCost " //
 			+ "FROM monthly_financial_reports reports " //
 			+ "JOIN global_area g ON reports.branch_id = g.id " //
