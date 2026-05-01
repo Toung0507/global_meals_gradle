@@ -41,6 +41,9 @@ public class Orders {
 	@Column(name = "total_amount", precision = 12, scale = 2) // DECIMAL(12,2)
 	private BigDecimal totalAmount;
 
+	@Column(name = "total_cost", precision = 12, scale = 2) // DECIMAL(12,2)
+	private BigDecimal totalCost;
+
 	@Column(name = "payment_method")
 	private String paymentMethod;
 
@@ -54,13 +57,13 @@ public class Orders {
 	@Enumerated(EnumType.STRING) // 關鍵：存儲字串
 	@Column(name = "pay_status")
 	private PayStatus payStatus;
-	
+
 	@Column(name = "completed_at")
 	private LocalDateTime completedAt;
-	
+
 	@Column(name = "is_use_discount")
 	private boolean useDiscount;
-	
+
 	public String getId() {
 		return id;
 	}
@@ -133,6 +136,14 @@ public class Orders {
 		this.totalAmount = totalAmount;
 	}
 
+	public BigDecimal getTotalCost() {
+		return totalCost;
+	}
+
+	public void setTotalCost(BigDecimal totalCost) {
+		this.totalCost = totalCost;
+	}
+
 	public String getPaymentMethod() {
 		return paymentMethod;
 	}
@@ -148,7 +159,7 @@ public class Orders {
 	public void setTransactionId(String transactionId) {
 		this.transactionId = transactionId;
 	}
-	
+
 	public OrdersStatus getOrdersStatus() {
 		return ordersStatus;
 	}

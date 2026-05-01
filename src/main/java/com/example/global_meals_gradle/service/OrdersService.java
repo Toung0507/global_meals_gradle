@@ -393,6 +393,7 @@ public class OrdersService {
 		BigDecimal finalSubtotal = BigDecimal.ZERO; // 最終未稅金額
 		BigDecimal taxAmount = BigDecimal.ZERO; // 稅額
 		BigDecimal afterTax = BigDecimal.ZERO; // 含稅
+		BigDecimal totalCost = BigDecimal.ZERO; // 成本價
 		// 取的該分店的所在國家的折扣金額上限
 		BigDecimal highestDiscountAmount = BigDecimal.valueOf(region.getUsageCap());
 		BigDecimal discountOff = BigDecimal.ZERO; // 最終實際折掉的金額
@@ -400,12 +401,13 @@ public class OrdersService {
 		// ====== 金額計算/贈品id儲存 ======
 		// 不是贈品的才要計算金額 / 贈品的Id要存進贈品清單
 		for (OrderCartDetails detail : cartDetailsList) {
+			// 取的該商品在該分店的價格(未稅)
+			BranchInventory inv = branchInventoryDao
+					.findByProductIdAndGlobalAreaId(detail.getProductId(), req.getGlobalAreaId())
+					.orElseThrow(() -> new RuntimeException("該分店未上架商品 ID: " + detail.getProductId()));
+			BigDecimal qty = BigDecimal.valueOf(detail.getQuantity()); // 取的商品購買數量
+			totalCost = totalCost.add(inv.getCostPrice().multiply(qty)); // 計算成本
 			if (!detail.isGift()) {
-				// 取的該商品在該分店的價格(未稅)
-				BranchInventory inv = branchInventoryDao
-						.findByProductIdAndGlobalAreaId(detail.getProductId(), req.getGlobalAreaId())
-						.orElseThrow(() -> new RuntimeException("該分店未上架商品 ID: " + detail.getProductId()));
-				BigDecimal qty = BigDecimal.valueOf(detail.getQuantity()); // 取的商品購買數量
 				// 把取的商品金額做迴圈相加，內含稅國家取得的是含稅價格1;外加稅國家取得的是未稅價格
 				subtotal = subtotal.add(inv.getBasePrice().multiply(qty));
 			} else {
@@ -464,6 +466,8 @@ public class OrdersService {
 				}
 			}
 		}
+		
+		// 計算成本
 
 		String newId = ""; // 先宣告變數
 		try {
@@ -522,8 +526,9 @@ public class OrdersService {
 			newId = String.format("%04d", nextSeq);
 
 			// ====== 執行新增主訂單 ======
-			ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
-					req.getPhone(), finalSubtotal, taxAmount, afterTax, "PREPARING", "UNPAID", req.isUseDiscount());
+			ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(), //
+					req.getPhone(), finalSubtotal, taxAmount, afterTax, totalCost, //
+					"PREPARING", "UNPAID", req.isUseDiscount());
 			log.info("【產單成功】購物車: {} -> 訂單編號: {}-{}", req.getOrderCartId(), todayStr, newId);
 
 			// 成功後回傳結果

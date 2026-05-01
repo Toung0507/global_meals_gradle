@@ -6,8 +6,6 @@ import com.example.global_meals_gradle.constants.ValidationMsg;
 import com.fasterxml.jackson.annotation.JsonAlias;
 
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 public class UpdateRegionsReq {
 	
