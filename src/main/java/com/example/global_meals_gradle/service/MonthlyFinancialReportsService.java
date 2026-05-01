@@ -26,7 +26,6 @@ import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.MonthRangeReportsReq;
 import com.example.global_meals_gradle.req.MonthlyReportReq;
 import com.example.global_meals_gradle.req.RevenueQueryReq;
-import com.example.global_meals_gradle.res.GetAllOrdersUncompleteRes;
 import com.example.global_meals_gradle.res.MonthRangeReportsRes;
 import com.example.global_meals_gradle.res.MonthlyReportRes;
 import com.example.global_meals_gradle.res.RevenueQueryRes;
@@ -96,20 +95,18 @@ public class MonthlyFinancialReportsService {
 		LocalDateTime start = lastMonth.atDay(1).atStartOfDay();
 		LocalDateTime end = lastMonth.atEndOfMonth().atTime(23, 59, 59);
 		// 取的該店該月的總營業額
-		BigDecimal monthlyTotalAmount = ordersDao //
-				.findTotalAmountByGlobalAreaId(branchId, start, end);
-		// 取得該店該月總成本
-		BigDecimal monthlyTotalCost = ordersDao //
-				.findTotalCostByGlobalAreaId(branchId, start, end);
+		Object[] result = ordersDao //
+				.findRevenueAndCostByGlobalAreaId(branchId, start, end);
 
 		MonthlyFinancialReports monthReports = new MonthlyFinancialReports();
+		
 		monthReports.setReportDate(reportDate);
 		monthReports.setBranchId(branchId);
 		monthReports.setRegionsId(regionsId);
-		monthReports.setTotalAmount(monthlyTotalAmount != null ? //
-				monthlyTotalAmount : BigDecimal.ZERO);
-		monthReports.setTotalCost(monthlyTotalCost != null ? //
-				monthlyTotalCost : BigDecimal.ZERO);
+		monthReports.setTotalAmount((result != null && result[0] != null) ? //
+				(BigDecimal) result[0] : BigDecimal.ZERO);
+		monthReports.setTotalCost((result != null && result[1] != null) ? //
+				(BigDecimal) result[1] : BigDecimal.ZERO);
 		return monthReports;
 	}
 

@@ -23,10 +23,10 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Modifying
 	@Transactional
 	@Query(value = "INSERT INTO orders (id, order_date_id, order_cart_id, global_area_id, member_id, phone, "
-			+ " subtotal_before_tax, tax_amount, total_amount, orders_status, pay_status, is_use_discount) "
-			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)", nativeQuery = true)
+			+ " subtotal_before_tax, tax_amount, total_amount, total_cost, orders_status, pay_status, is_use_discount) "
+			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)", nativeQuery = true)
 	public void insert(String id, String orderDateId, int orderCartId, int globalAreaId, int memberId, String phone, //
-			BigDecimal subtotalBeforeTax, BigDecimal taxAmount, BigDecimal totalAmount, //
+			BigDecimal subtotalBeforeTax, BigDecimal taxAmount, BigDecimal totalAmount, BigDecimal totalCost,//
 			String ordersStatus, String payStatus, boolean useDiscount);
 
 	/* 根據 orderDateId 查詢特定訂單 */
@@ -144,18 +144,13 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "UPDATE total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
 	public void upDateTotalAmount(String id, String orderDateId, BigDecimal totalAmount);
 
-	// 從訂單表加總該分店、該月份、訂單狀態為「已取餐」的訂單
-	@Query(value = "SELECT SUM(total_amount) FROM orders" + " WHERE global_area_id = ?1 " + "And orders_status = 'PICKED UP' "
-			+ "And completed_at BETWEEN ?2 AND ?3", nativeQuery = true)
-	public BigDecimal findTotalAmountByGlobalAreaId(int branchId, LocalDateTime start, LocalDateTime end);
-
-	// 查詢某分店的一個月食材成本
-	@Query(value = "SELECT SUM(d.quantity * p.cost_price) " + "FROM orders o "
-			+ "JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
-			+ "JOIN branch_inventory p ON d.product_id = p.product_id AND o.global_area_id = p.global_area_id "
-			+ "WHERE o.global_area_id = ?1 " + "And o.orders_status = 'PICKED UP' "
-			+ "AND o.completed_at BETWEEN ?2 AND ?3", nativeQuery = true)
-	public BigDecimal findTotalCostByGlobalAreaId(int branchId, LocalDateTime start, LocalDateTime end);
+	// 一次取得該分店、該月份、已取餐訂單的總營業額與總成本
+	@Query(value = "SELECT SUM(total_amount) AS totalAmount, SUM(total_cost) AS totalCost " //
+	        + "FROM orders " //
+	        + "WHERE global_area_id = ?1 " //
+	        + "AND orders_status = 'PICKED UP' " //
+	        + "AND completed_at BETWEEN ?2 AND ?3", nativeQuery = true)
+	public Object[] findRevenueAndCostByGlobalAreaId(int branchId, LocalDateTime start, LocalDateTime end);
 
 	// 查詢某分店的營業額(一個區間)(for 店長)
 	@Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.total_amount) AS totalAmount, " //
