@@ -6,6 +6,7 @@ public class InventoryDetailVo {
 
 	private int productId;
 	private String productName; // 補上這欄位，方便分店長確認他在改什麼，但在管理者 AdminProductRes 底下，這個欄位設定為 Null
+	private String category;
 	private int globalAreaId;
 	private String branchName; // 關鍵：我們幫前端查好的分店名稱
 	private BigDecimal basePrice;
@@ -26,6 +27,14 @@ public class InventoryDetailVo {
 
 	public void setProductName(String productName) {
 		this.productName = productName;
+	}
+
+	public String getCategory() {
+		return category;
+	}
+
+	public void setCategory(String category) {
+		this.category = category;
 	}
 
 	public int getGlobalAreaId() {

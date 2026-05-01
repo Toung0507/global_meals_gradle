@@ -47,6 +47,12 @@ public class PromotionDetailVo {
 	// 每一個元素是 GiftDetailVo，包含門檻金額、庫存、商品名稱等
 	private List<GiftDetailVo> gifts;
 
+	// AI 文案，對應 promotions.description
+	private String description;
+
+	// 封面圖片，對應 promotions.promotion_img，回傳 Base64 字串（前端補 data URL 前綴）
+	private String promotionImg;
+
 	public int getId() {
 		return id;
 	}
@@ -118,6 +124,22 @@ public class PromotionDetailVo {
 
 	public void setGifts(List<GiftDetailVo> gifts) {
 		this.gifts = gifts;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public String getPromotionImg() {
+		return promotionImg;
+	}
+
+	public void setPromotionImg(String promotionImg) {
+		this.promotionImg = promotionImg;
 	}
 
 }

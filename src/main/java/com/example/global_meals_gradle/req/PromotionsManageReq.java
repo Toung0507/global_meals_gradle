@@ -3,6 +3,8 @@ package com.example.global_meals_gradle.req;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
 /**
  * 促銷活動管理用的請求參數，涵蓋以下四種用途：
  *   - 新增促銷活動（promotions 表）
@@ -22,19 +24,15 @@ public class PromotionsManageReq {
 	// 活動名稱：create 端點必填，不能空白，在 Service 裡驗證
 	private String name;
 
-	// 日文活動名稱（選填，null 時前端顯示 fallback 至 name）
-	private String nameJP;
-
-	// 韓文活動名稱（選填）
-	private String nameKR;
-
-	// 分店 ID：0 或 null = 全球活動（老闆建立）；有值 = 分店專屬
-	private Integer globalAreaId;
+	// 活動 AI 文案：create 端點選填，直接存入 promotions.description
+	private String description;
 
 	// 活動開始日期：create 端點必填，不能早於今天，在 Service 裡驗證
+	@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 	private LocalDate startTime;
 
 	// 活動結束日期：create 端點必填，必須晚於 startTime，在 Service 裡驗證
+	@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 	private LocalDate endTime;
 
 	// =============================================
@@ -69,17 +67,6 @@ public class PromotionsManageReq {
 	//   false → 關閉活動（promotions.is_active = 0），同步把底下所有贈品 is_active 設為 0
 	private boolean active;
 
-	// =============================================
-	// 更新活動資訊（description + 封面圖）用的欄位
-	// =============================================
-
-	// 活動文案（AI 生成或手動填寫）：update_info 端點使用
-	private String description;
-
-	// 封面圖片 Base64 字串（data URL 格式或純 Base64）：update_info 端點使用
-	// 不傳或空字串表示不更新圖片
-	private String promotionImg;
-
 	public String getName() {
 		return name;
 	}
@@ -88,14 +75,13 @@ public class PromotionsManageReq {
 		this.name = name;
 	}
 
-	public String getNameJP() { return nameJP; }
-	public void setNameJP(String nameJP) { this.nameJP = nameJP; }
+	public String getDescription() {
+		return description;
+	}
 
-	public String getNameKR() { return nameKR; }
-	public void setNameKR(String nameKR) { this.nameKR = nameKR; }
-
-	public Integer getGlobalAreaId() { return globalAreaId; }
-	public void setGlobalAreaId(Integer globalAreaId) { this.globalAreaId = globalAreaId; }
+	public void setDescription(String description) {
+		this.description = description;
+	}
 
 	public LocalDate getStartTime() {
 		return startTime;
@@ -151,22 +137,6 @@ public class PromotionsManageReq {
 
 	public void setActive(boolean active) {
 		this.active = active;
-	}
-
-	public String getDescription() {
-		return description;
-	}
-
-	public void setDescription(String description) {
-		this.description = description;
-	}
-
-	public String getPromotionImg() {
-		return promotionImg;
-	}
-
-	public void setPromotionImg(String promotionImg) {
-		this.promotionImg = promotionImg;
 	}
 
 }

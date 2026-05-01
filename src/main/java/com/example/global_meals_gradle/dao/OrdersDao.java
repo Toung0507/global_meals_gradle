@@ -23,11 +23,11 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Modifying
 	@Transactional
 	@Query(value = "INSERT INTO orders (id, order_date_id, order_cart_id, global_area_id, member_id, phone, "
-			+ " subtotal_before_tax, tax_amount, total_amount, status, is_use_discount) "
-			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)", nativeQuery = true)
-	public void insert(String id, String orderDateId, String orderCartId, int globalAreaId, int memberId, String phone, //
-			BigDecimal subtotalBeforeTax, //
-			BigDecimal taxAmount, BigDecimal totalAmount, String status, boolean useDiscount);
+			+ " subtotal_before_tax, tax_amount, total_amount, orders_status, pay_status, is_use_discount) "
+			+ "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)", nativeQuery = true)
+	public void insert(String id, String orderDateId, int orderCartId, int globalAreaId, int memberId, String phone, //
+			BigDecimal subtotalBeforeTax, BigDecimal taxAmount, BigDecimal totalAmount, //
+			String ordersStatus, String payStatus, boolean useDiscount);
 
 	/* 根據 orderDateId 查詢特定訂單 */
 	// ORDER BY id (排序)(字串排序需長度樣(補零)) DESC (倒序) LIMIT 1 (限制筆數) FOR UPDATE:
@@ -37,144 +37,214 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 ORDER BY id DESC LIMIT 1 FOR UPDATE",
 			nativeQuery = true)
 	public Optional<Orders> getOrderByOrderDateId(String orderDateId);
+	
+	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, pay_status = ?5 WHERE id = ?1 "
+			+ " AND order_date_id = ?2 AND pay_status = 'UNPAID'", nativeQuery = true)
+	public int updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
+			String payStatus);
+	
+	/* 查詢這些訂單的狀態（依 combinedId 清單） */
+	@Query(value = "SELECT id, order_date_id, orders_status FROM orders "
+	        + "WHERE CONCAT(order_date_id, id) IN (?1) "
+	        + "AND orders_status IN ('PREPARING', 'READY')", nativeQuery = true)
+	public List<Object[]> GetOrdersUncomplete(List<String> combinedIds);
 
-	/* 根據電話號碼查詢最新的一筆訂單 */
-	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND phone = ?2 ORDER BY id DESC LIMIT 1", 
-			nativeQuery = true)
-	public GetOrdersVo getOrderByPhone(String orderDateId, String phone);
+	/* 查詢會員今日未完成訂單（for 顧客追蹤頁輪詢） */
+	@Query(value = "SELECT id, order_date_id, orders_status FROM orders "
+	        + "WHERE order_date_id = ?1 AND member_id = ?2", nativeQuery = true)
+	public List<Object[]> GetOrdersUncomplete(String orderDateId, int memberId);
+
+	/* 店員現場確認現金收款（pay_status: UNPAID → PAID） */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET pay_status = ?3, payment_method = 'CASH' "
+	        + "WHERE id = ?1 AND order_date_id = ?2 AND pay_status = 'UNPAID'", nativeQuery = true)
+	public int updateCashPayOnSite(String id, String orderDateId, String payStatus);
+
+	/* 計算某分店某區間的原料成本（SUM of quantity * cost_price） */
+	@Query(value = "SELECT SUM(d.quantity * p.cost_price) FROM orders o "
+	        + "JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+	        + "JOIN branch_inventory p ON d.product_id = p.product_id AND o.global_area_id = p.global_area_id "
+	        + "WHERE o.global_area_id = ?1 AND o.pay_status = 'PAID' "
+	        + "AND o.completed_at BETWEEN ?2 AND ?3", nativeQuery = true)
+	public BigDecimal findTotalCostByGlobalAreaId(int branchId, LocalDateTime start, LocalDateTime end);
+
+	/* 根據電話號碼查詢今天的訂單 */
+	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "
+			+ "o.orders_status, o.pay_status, o.completed_at,"
+			+ "d.quantity, d.price, d.is_gift, d.discount_note, " + "p.name as product_name " + "FROM orders o "
+			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.order_date_id = ?1 AND o.phone = ?2 "
+			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
+	public List<Object[]> getOrdersByPhone(String orderDateId, String phone);
+	
+	/* 查詢該分店今天的所有訂單 */
+	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "
+			+ "o.orders_status, o.pay_status, o.completed_at,"
+			+ "d.quantity, d.price, d.is_gift, d.discount_note, " + "p.name as product_name " + "FROM orders o "
+			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.order_date_id = ?1 AND o.global_area_id = ?2 "
+			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
+	public List<Object[]> getTodayAllOrders(String orderDateId, int globalAreaId);
 
 	/* 依據訂單編號查詢該筆訂單 */
 	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND id = ?2", nativeQuery = true)
 	public Orders getOrderByOrderDateIdAndId(String orderDateId, String id);
-
-	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1 "
-			+ " AND order_date_id = ?2 AND status = 'UNPAID'", nativeQuery = true)
-	public int updatePay(String id, String orderDateId, String paymentMethod, String transactionId,
-			String status);
-	
-	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態，如果有使用優惠劵，則總金額需更改) */
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1,"
-			+ "total_amount = ?6 AND order_date_id = ?2", nativeQuery = true)
-	public void updatePayUseDiscount(String id, String orderDateId, String paymentMethod, String transactionId,
-			String status, BigDecimal totalAmount);
 
 	/* 查詢該會員的訂單紀錄 */
 	@Query(value = "SELECT * FROM orders WHERE member_id = ?1", nativeQuery = true)
 	public List<GetOrdersVo> getOrderByMemberId(int memberId);
 
 	/* 查詢該會員的訂單紀錄 */
-	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, o.status, o.completed_at,"
+	@Query(value = "SELECT o.id, o.order_date_id, o.global_area_id, o.total_amount, "
+			+ "o.orders_status, o.pay_status, o.completed_at,"
 			+ "d.quantity, d.price, d.is_gift, d.discount_note, " + "p.name as product_name " + "FROM orders o "
 			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
 			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.member_id = ?1 "
 			+ "ORDER BY o.order_date_id DESC, o.id DESC", nativeQuery = true)
 	public List<Object[]> getFullOrderHistory(int memberId);
 
-	/* 訂單狀態更新（用於退款或取消訂單）*/
+	/* 廚房狀態更新：PREPARING→COOKING 或 COOKING→READY */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE orders SET status = :status WHERE id = :id AND order_date_id = :orderDateId", nativeQuery = true)
-	public int updateOrderStatus(@Param("status") String status,
+	@Query(value = "UPDATE orders SET orders_status = :newStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId "
+			+ "AND orders_status IN ('PREPARING', 'COOKING')", nativeQuery = true)
+	public int updateKitchenStatus(@Param("newStatus") String newStatus,
 			@Param("id") String id, @Param("orderDateId") String orderDateId);
 
+	/* 訂單狀態更新(用於製餐中 -> 待取餐) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And orders_status = 'PREPARING'", nativeQuery = true)
+	public int updateOrderStatusForReady(@Param("ordersStatus") String ordersStatus, //
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
+	
+	/* 訂單狀態更新(用於待取餐 -> 已取餐) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And orders_status = 'READY'", nativeQuery = true)
+	public int updateOrderStatusForPickedUp(@Param("ordersStatus") String ordersStatus, //
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
+	
+	/* 訂單狀態更新(用於取消訂單) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And pay_status = 'UNPAID'", nativeQuery = true)
+	public int updateOrderStatus(@Param("ordersStatus") String ordersStatus, //
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
+	
+	/* 訂單狀態更新(用於退款訂單) */
+	@Modifying
+	@Transactional
+	@Query(value = "UPDATE orders SET orders_status = :ordersStatus, pay_status = :payStatus "
+			+ "WHERE id = :id AND order_date_id = :orderDateId And pay_status = 'PAID'", nativeQuery = true)
+	public int updateOrderStatusAndPayStatus(@Param("ordersStatus") String ordersStatus, //
+			@Param("payStatus") String payStatus,//
+			@Param("id") String id, @Param("orderDateId") String orderDateId);
+	
 	/* 更改總金額 */
+	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE orders SET total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
+	@Query(value = "UPDATE total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
 	public void upDateTotalAmount(String id, String orderDateId, BigDecimal totalAmount);
+	
+	// 從訂單表加總該分店、該月份、狀態為「已完成」的訂單
+	@Query(value = "SELECT SUM(total_amount) FROM orders"
+			+ " WHERE global_area_id = ?1 "
+			+ "AND pay_status = 'PAID' "
+			+ "AND completed_at BETWEEN ?2 AND ?3",
+			nativeQuery = true)
+	public BigDecimal findTotalAmountByGlobalAreaId(int branchId, LocalDateTime start, LocalDateTime end);
 
-	/* 取得今日所有已付款或待付款現金訂單（POS 看板用）
-	 * COMPLETED = 已付款；PENDING_CASH = 客戶端現金訂單等待現場收款
+	// 查詢某分店的營業額(一個區間)
+	@Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.total_amount) AS totalAmount " +
+            "FROM orders o " +
+            "JOIN global_area g ON o.global_area_id = g.id " +
+            "JOIN regions r ON g.regions_id = r.id " +
+            "WHERE o.global_area_id = ?1 " +
+            "AND o.completed_at BETWEEN ?2 AND ?3 " +
+            "AND o.pay_status = 'PAID' " +
+            "GROUP BY g.id, g.name, r.name", nativeQuery = true)
+    public List<Object[]> findSingleBranchRevenue(Integer branchId, LocalDateTime start, LocalDateTime end);
+
+	// 查詢特定國家內，每一間分店的營業額(一個區間)
+    @Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.total_amount) AS totalAmount " +
+            "FROM orders o " +
+            "JOIN global_area g ON o.global_area_id = g.id " +
+            "JOIN regions r ON g.regions_id = r.id " +
+            "WHERE r.id = ?1 " +
+            "AND o.completed_at BETWEEN ?2 AND ?3 " +
+            "AND o.pay_status = 'PAID' " +
+            "GROUP BY g.id, g.name, r.name", nativeQuery = true)
+    public List<Object[]> findRevenueByRegionGroupedByBranch(Integer regionsId, //
+    		LocalDateTime start, LocalDateTime end);
+
+    // 查詢每一間分店的營業額(一個區間)
+    @Query(value = "SELECT g.name AS branchName, r.name AS regionsName, SUM(o.total_amount) AS totalAmount " +
+    		"FROM orders o " +
+    		"JOIN global_area g ON o.global_area_id = g.id " +
+    		"JOIN regions r ON g.regions_id = r.id " +
+    		"WHERE o.completed_at BETWEEN ?1 AND ?2 " +
+    		"AND o.pay_status = 'PAID' " +
+    		"GROUP BY g.id, g.name, r.name", nativeQuery = true)
+    public List<Object[]> findRevenue(LocalDateTime start, LocalDateTime end);
+	/**
+	 * 檢查這個購物車 ID 是否已經被結帳（存在於訂單表中）
+	 * 
+	 * 條件說明：
+	 *   order_cart_id = :orderCartId → 尋找這台購物車
+	 * SELECT EXISTS 會回傳 boolean（1 或 0），效能最好
 	 */
-	@Query(value = "SELECT * FROM orders WHERE order_date_id = ?1 AND status IN ('COMPLETED', 'PENDING_CASH') ORDER BY id ASC", nativeQuery = true)
-	public List<Orders> getTodayCompletedOrders(String orderDateId);
+    @Query("SELECT COUNT(o) > 0 FROM Orders o WHERE o.orderCartId = :orderCartId")
+	boolean existsByOrderCartId(@Param("orderCartId") int orderCartId);
+	// =====================================================================
+	// 功能A：分店長用 - 查某年某月「指定分店」所有商品銷售量
+	// 說明：
+	//   AND o.global_area_id = :globalAreaId → 只算該分店的訂單
+	// =====================================================================
+	@Query(value = "SELECT p.name AS productName, SUM(d.quantity) AS totalQuantity "
+	        + "FROM orders o "
+	        + "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+	        + "LEFT JOIN products p ON d.product_id = p.id "
+	        + "WHERE o.order_date_id LIKE :yearMonth "
+	        + "AND o.global_area_id = :globalAreaId "
+	        + "AND o.pay_status = 'PAID' "
+	        + "AND d.is_gift = 0 "
+	        + "GROUP BY d.product_id, p.name "
+	        + "ORDER BY totalQuantity DESC",
+	        nativeQuery = true)
+	List<Object[]> getMonthlySalesByBranch(
+	        @Param("yearMonth") String yearMonth,
+	        @Param("globalAreaId") int globalAreaId);
 
-	/* 付款確認：允許 UNPAID 或 PENDING_CASH 的訂單轉為 COMPLETED */
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE orders SET payment_method = ?3, transaction_id = ?4, status = ?5 WHERE id = ?1 "
-			+ " AND order_date_id = ?2 AND status IN ('UNPAID', 'PENDING_CASH')", nativeQuery = true)
-	public int updatePayAnyPending(String id, String orderDateId, String paymentMethod, String transactionId,
-			String status);
+	// =====================================================================
+	// 功能B：老闆用 - 查某年某月「指定國家」所有分店銷售前5名商品
+	// =====================================================================
+	@Query(value = "SELECT p.name AS productName, SUM(d.quantity) AS totalQuantity "
+	        + "FROM orders o "
+	        + "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
+	        + "LEFT JOIN products p ON d.product_id = p.id "
+	        + "LEFT JOIN global_area ga ON o.global_area_id = ga.id "
+	        + "LEFT JOIN regions r ON ga.regions_id = r.id "
+	        + "WHERE o.order_date_id LIKE :yearMonth "
+	        + "AND r.id = :regionId "
+	        + "AND o.pay_status = 'PAID' "
+	        + "AND d.is_gift = 0 "
+	        + "GROUP BY d.product_id, p.name "
+	        + "ORDER BY totalQuantity DESC "
+	        + "LIMIT 5",
+	        nativeQuery = true)
+	List<Object[]> getTop5MonthlySalesByRegion(
+	        @Param("yearMonth") String yearMonth,
+	        @Param("regionId") int regionId);
 
-	/* 更新廚房狀態（WAITING / COOKING / READY）*/
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE orders SET kitchen_status = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
-	public int updateKitchenStatus(String id, String orderDateId, String kitchenStatus);
 
-	/* 查詢單筆訂單的廚房狀態（客戶端輪詢用）*/
-	@Query(value = "SELECT kitchen_status FROM orders WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
-	public String findKitchenStatus(String id, String orderDateId);
-
-	/* ── 月報表排程：統計各店月營收（MonthlyFinancialReportsService 使用）── */
-
-	/* 加總特定分店在指定時間區間內已付款訂單的總金額 */
-	@Query(value = "SELECT COALESCE(SUM(total_amount), 0) FROM orders "
-			+ "WHERE global_area_id = ?1 AND completed_at BETWEEN ?2 AND ?3 "
-			+ "AND status = 'COMPLETED'", nativeQuery = true)
-	public BigDecimal findTotalAmountByGlobalAreaId(int globalAreaId, LocalDateTime start, LocalDateTime end);
-
-	/* 查詢單店在時間區間內的日營收（[店名, 國家名, 金額]，for RevenueQueryRes）*/
-	@Query(value = "SELECT g.branch AS branchName, r.country AS regionsName, "
-			+ "COALESCE(SUM(o.total_amount), 0) AS totalAmount "
-			+ "FROM orders o "
-			+ "JOIN global_area g ON o.global_area_id = g.id "
-			+ "JOIN regions r ON g.regions_id = r.id "
-			+ "WHERE o.global_area_id = ?1 AND o.completed_at BETWEEN ?2 AND ?3 "
-			+ "AND o.status = 'COMPLETED' "
-			+ "GROUP BY g.branch, r.country", nativeQuery = true)
-	public List<Object[]> findSingleBranchRevenue(int globalAreaId, LocalDateTime beginTime, LocalDateTime endTime);
-
-	/* 查詢同一國家所有分店在時間區間內的日營收（[店名, 國家名, 金額]）*/
-	@Query(value = "SELECT g.branch AS branchName, r.country AS regionsName, "
-			+ "COALESCE(SUM(o.total_amount), 0) AS totalAmount "
-			+ "FROM orders o "
-			+ "JOIN global_area g ON o.global_area_id = g.id "
-			+ "JOIN regions r ON g.regions_id = r.id "
-			+ "WHERE g.regions_id = ?1 AND o.completed_at BETWEEN ?2 AND ?3 "
-			+ "AND o.status = 'COMPLETED' "
-			+ "GROUP BY g.branch, r.country", nativeQuery = true)
-	public List<Object[]> findRevenueByRegionGroupedByBranch(int regionsId, LocalDateTime beginTime, LocalDateTime endTime);
-
-	/* 查詢全球所有分店在時間區間內的日營收（[店名, 國家名, 金額]）*/
-	@Query(value = "SELECT g.branch AS branchName, r.country AS regionsName, "
-			+ "COALESCE(SUM(o.total_amount), 0) AS totalAmount "
-			+ "FROM orders o "
-			+ "JOIN global_area g ON o.global_area_id = g.id "
-			+ "JOIN regions r ON g.regions_id = r.id "
-			+ "WHERE o.completed_at BETWEEN ?1 AND ?2 "
-			+ "AND o.status = 'COMPLETED' "
-			+ "GROUP BY g.branch, r.country", nativeQuery = true)
-	public List<Object[]> findRevenue(LocalDateTime beginTime, LocalDateTime endTime);
-
-	/* 確認購物車 ID 是否已對應到某筆訂單（防止重複提交）*/
-	boolean existsByOrderCartId(int orderCartId);
-
-	/* 查詢指定分店在指定月份的商品銷售量（分店長月報表用，yearMonth 例如 "202604%"）*/
-	@Query(value = "SELECT p.name, SUM(d.quantity) "
-			+ "FROM orders o "
-			+ "JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
-			+ "JOIN products p ON d.product_id = p.id "
-			+ "WHERE o.order_date_id LIKE ?1 AND o.global_area_id = ?2 AND o.status = 'COMPLETED' "
-			+ "GROUP BY p.id, p.name "
-			+ "ORDER BY SUM(d.quantity) DESC", nativeQuery = true)
-	public List<Object[]> getMonthlySalesByBranch(String yearMonth, int globalAreaId);
-
-	/* 查詢指定國家在指定月份銷售前5名商品（老闆月報表用）*/
-	@Query(value = "SELECT p.name, SUM(d.quantity) "
-			+ "FROM orders o "
-			+ "JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
-			+ "JOIN products p ON d.product_id = p.id "
-			+ "JOIN global_area g ON o.global_area_id = g.id "
-			+ "WHERE o.order_date_id LIKE ?1 AND g.regions_id = ?2 AND o.status = 'COMPLETED' "
-			+ "GROUP BY p.id, p.name "
-			+ "ORDER BY SUM(d.quantity) DESC "
-			+ "LIMIT 5", nativeQuery = true)
-	public List<Object[]> getTop5MonthlySalesByRegion(String yearMonth, Integer regionId);
 }

@@ -12,6 +12,8 @@ public class MonthlyReportDetailVo {
 	
 	private BigDecimal totalAmount;
 
+	private BigDecimal totalCost;
+
 	public String getReportDate() {
 		return reportDate;
 	}
@@ -43,5 +45,12 @@ public class MonthlyReportDetailVo {
 	public void setTotalAmount(BigDecimal totalAmount) {
 		this.totalAmount = totalAmount;
 	}
-	
+
+	public BigDecimal getTotalCost() {
+		return totalCost;
+	}
+
+	public void setTotalCost(BigDecimal totalCost) {
+		this.totalCost = totalCost;
+	}
 }

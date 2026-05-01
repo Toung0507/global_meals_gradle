@@ -91,18 +91,16 @@ public class MonthlyFinancialReportsService {
 	// 從訂單表加總該分店、該月份、狀態為「已完成」的訂單
 	private MonthlyFinancialReports generateIndividualBranchReport(//
 			int branchId, int regionsId, String reportDate, YearMonth lastMonth) {
-		// 設定該月的啟始與結束時間 (例如 2026-03-01 00:00:00 到 2026-03-31 23:59:59)
 		LocalDateTime start = lastMonth.atDay(1).atStartOfDay();
 		LocalDateTime end = lastMonth.atEndOfMonth().atTime(23, 59, 59);
-		// 取的該店該月的總營業額
-		BigDecimal monthlyTotalAmount = ordersDao //
-				.findTotalAmountByGlobalAreaId(branchId, start, end);
+		BigDecimal monthlyTotalAmount = ordersDao.findTotalAmountByGlobalAreaId(branchId, start, end);
+		BigDecimal monthlyTotalCost = ordersDao.findTotalCostByGlobalAreaId(branchId, start, end);
 		MonthlyFinancialReports monthReports = new MonthlyFinancialReports();
 		monthReports.setReportDate(reportDate);
 		monthReports.setBranchId(branchId);
 		monthReports.setRegionsId(regionsId);
-		monthReports.setTotalAmount(monthlyTotalAmount != null ? //
-				monthlyTotalAmount : BigDecimal.ZERO);
+		monthReports.setTotalAmount(monthlyTotalAmount != null ? monthlyTotalAmount : BigDecimal.ZERO);
+		monthReports.setTotalCost(monthlyTotalCost != null ? monthlyTotalCost : BigDecimal.ZERO);
 		return monthReports;
 	}
 
@@ -189,6 +187,7 @@ public class MonthlyFinancialReportsService {
 			data.setBranchName((String) result[1]);
 			data.setRegionsName((String) result[2]);
 			data.setTotalAmount((BigDecimal) result[3]);
+			data.setTotalCost(result.length > 4 && result[4] != null ? (BigDecimal) result[4] : java.math.BigDecimal.ZERO);
 
 			// 判斷這筆是本月還是上月，塞進對應的變數
 			if (reportDate.equals(req.getReportDate())) {
@@ -234,6 +233,7 @@ public class MonthlyFinancialReportsService {
 			data.setBranchName((String) result[1]);
 			data.setRegionsName((String) result[2]);
 			data.setTotalAmount((BigDecimal) result[3]);
+			data.setTotalCost(result.length > 4 && result[4] != null ? (BigDecimal) result[4] : java.math.BigDecimal.ZERO);
 			currentMonth.add(data);
 		});
 

@@ -132,4 +132,21 @@ public class MembersService {
 				ReplyMessage.UPDATE_FAILED.getMessage());
 	}
 
+	// POS 根據手機號碼查詢正式會員
+	public MembersRes getMemberByPhone(String phone) {
+		// 支援本地格式：09XXXXXXXX → +886XXXXXXXXX
+		String normalized = phone.replaceAll("-", "").trim();
+		if (normalized.matches("^09\\d{8}$")) {
+			normalized = "+886" + normalized.substring(1);
+		}
+		Members member = membersDao.getByPhone(normalized);
+		// 只回傳正式會員（非訪客 id=1、且有密碼）
+		if (member != null && member.getId() != 1 && member.getPassword() != null) {
+			member.setPassword(null);
+			return new MembersRes(ReplyMessage.SUCCESS.getCode(),
+					ReplyMessage.SUCCESS.getMessage(), member);
+		}
+		return new MembersRes(404, "查無此會員");
+	}
+
 }

@@ -11,9 +11,9 @@ import com.example.global_meals_gradle.entity.MonthlyFinancialReports;
 @Repository
 public interface MonthlyFinancialReportsDao extends JpaRepository<MonthlyFinancialReports, Integer> {
 
-	// 取得特定分店的月營業額（for 店長）
-	@Query(value = "SELECT reports.report_date AS reportDate, g.branch AS branchName, " //
-			+ "r.country AS regionsName, reports.total_amount AS totalAmount " //
+	// 取的特定分店的月營業額(for 店長)
+	@Query(value = "SELECT reports.report_date AS reportDate, g.name AS branchName, " //
+			+ "r.name AS regionsName, reports.total_amount AS totalAmount, reports.total_cost AS totalCost " //
 			+ "FROM monthly_financial_reports reports " //
 			+ "JOIN global_area g ON reports.branch_id = g.id " //
 			+ "JOIN regions r ON g.regions_id = r.id " //
@@ -21,18 +21,17 @@ public interface MonthlyFinancialReportsDao extends JpaRepository<MonthlyFinanci
 			+ "AND reports.branch_id = ?2 ", nativeQuery = true)
 	public List<Object[]> getReportByDateIdAndBranchId(List<String> reportDate, int branchId);
 
-	// 取得所有分店的月營業額（for 老闆）
-	@Query(value = "SELECT reports.report_date AS reportDate, g.branch AS branchName, " //
-			+ "r.country AS regionsName, reports.total_amount AS totalAmount " //
+	// 取的所有分店的月營業額(for 老闆)
+	@Query(value = "SELECT reports.report_date AS reportDate, g.name AS branchName, " //
+			+ "r.name AS regionsName, reports.total_amount AS totalAmount, reports.total_cost AS totalCost " //
 			+ "FROM monthly_financial_reports reports " //
 			+ "JOIN global_area g ON reports.branch_id = g.id " //
 			+ "JOIN regions r ON g.regions_id = r.id " //
 			+ "WHERE reports.report_date IN (?1) ", nativeQuery = true)
 	public List<Object[]> getReportByDateId(List<String> reportDate);
 
-	// 取得特定分店的區間月營業額（for 店長）
-	@Query(value = "SELECT reports.report_date AS reportDate, g.branch AS branchName, " //
-			+ "r.country AS regionsName, reports.total_amount AS totalAmount " //
+	@Query(value = "SELECT reports.report_date AS reportDate, g.name AS branchName, " //
+			+ "r.name AS regionsName, reports.total_amount AS totalAmount, reports.total_cost AS totalCost " //
 			+ "FROM monthly_financial_reports reports " //
 			+ "JOIN global_area g ON reports.branch_id = g.id " //
 			+ "JOIN regions r ON g.regions_id = r.id " //
@@ -40,9 +39,8 @@ public interface MonthlyFinancialReportsDao extends JpaRepository<MonthlyFinanci
 			+ "AND reports.branch_id = ?3 ", nativeQuery = true)
 	public List<Object[]> getReportByDateRangeAndBranchId(String startMonth, String endMonth, int branchId);
 
-	// 取得所有分店的區間月營業額（for 老闆）
-	@Query(value = "SELECT reports.report_date AS reportDate, g.branch AS branchName, " //
-			+ "r.country AS regionsName, reports.total_amount AS totalAmount " //
+	@Query(value = "SELECT reports.report_date AS reportDate, g.name AS branchName, " //
+			+ "r.name AS regionsName, reports.total_amount AS totalAmount, reports.total_cost AS totalCost " //
 			+ "FROM monthly_financial_reports reports " //
 			+ "JOIN global_area g ON reports.branch_id = g.id " //
 			+ "JOIN regions r ON g.regions_id = r.id " //

@@ -56,12 +56,13 @@ public class WebConfig implements WebMvcConfigurer {
 		// 把保全註冊進去
 		registry.addInterceptor(loginInterceptor)
 				// 1. 攔截哪些路徑？
-				// "/**" 代表攔截這個路徑下的所有 API
-				// 根據你的 Controller，需要權限的都是 /api/admin 開頭的
-				.addPathPatterns("/lazybaobao/api/admin/**") //
-				.addPathPatterns("/lazybaobao/api/staff/**")
+				// StaffController 已改為 @RequestMapping("/staff")，
+				// 加上 WebConfig 的 /lazybaobao 前綴，實際路徑為 /lazybaobao/staff/...
+				.addPathPatterns("/lazybaobao/staff/admin/**")
+				.addPathPatterns("/lazybaobao/staff/staff/**")
 
 				// 2. 排除哪些路徑？(不查票的白名單)
-				.excludePathPatterns("/lazybaobao/api/auth/login", "/lazybaobao/api/auth/logout");
+				// 登入和登出本來就不需要登入就能按，所以絕對要排除！
+				.excludePathPatterns("/lazybaobao/staff/auth/login", "/lazybaobao/staff/auth/logout");
 	}
 }

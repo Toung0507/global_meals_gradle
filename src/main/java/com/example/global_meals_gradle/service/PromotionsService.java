@@ -88,39 +88,38 @@ public class PromotionsService {
 			PromotionsGifts selectedGift = promotionsGiftsDao.validateSelectedGift(
 					req.getSelectedGiftId(), originalAmount);
 
-			// 驗證不過（回傳 null）→ 這筆贈品不合法，擋下
-			if (selectedGift == null) {
-				throw new RuntimeException(ReplyMessage.PROMOTION_GIFTS_NOT_FOUND.getMessage());
-			}
+			// 驗證不過（回傳 null）→ 贈品已失效／庫存不足／未達門檻，跳過，不中斷結帳
+			if (selectedGift != null) {
 
-			// 記錄這筆贈品對應的促銷活動 ID（promotions.id）
-			appliedPromotionIds.add(selectedGift.getPromotionsId());
+				// 記錄這筆贈品對應的促銷活動 ID（promotions.id）
+				appliedPromotionIds.add(selectedGift.getPromotionsId());
 
-			// 用 gift_product_id 去 products 表查商品名稱
-			// 使用 ProductsTempDao 是為了避免把 MEDIUMBLOB（圖片）也一起撈出來
-			String productName = productsDao.findNameById(selectedGift.getGiftProductId());
+				// 用 gift_product_id 去 products 表查商品名稱
+				// 使用 ProductsTempDao 是為了避免把 MEDIUMBLOB（圖片）也一起撈出來
+				String productName = productsDao.findNameById(selectedGift.getGiftProductId());
 
-			// 組成 GiftItem 放進回傳清單
-			GiftItemVo item = new GiftItemVo();
-			item.setPromotionsGiftsId(selectedGift.getId());
-			item.setProductId(selectedGift.getGiftProductId());
+				// 組成 GiftItem 放進回傳清單
+				GiftItemVo item = new GiftItemVo();
+				item.setPromotionsGiftsId(selectedGift.getId());
+				item.setProductId(selectedGift.getGiftProductId());
 
-			// 若查不到名稱（例如商品已被刪除），給預設值
-			item.setProductName(productName != null ? productName : "活動贈品");
+				// 若查不到名稱（例如商品已被刪除），給預設值
+				item.setProductName(productName != null ? productName : "活動贈品");
 
-			// 數量處理：
-			//   quantity = -1 → 無限供應，回傳 -1 讓前端決定如何顯示
-			//   quantity > 0  → 有限供應，回傳實際數字
-			item.setQuantity(selectedGift.getQuantity());
+				// 數量處理：
+				//   quantity = -1 → 無限供應，回傳 -1 讓前端決定如何顯示
+				//   quantity > 0  → 有限供應，回傳實際數字
+				item.setQuantity(selectedGift.getQuantity());
 
-			receivedGifts.add(item);
+				receivedGifts.add(item);
 
-			// 扣減贈品配額：
-			//   quantity = -1 → 無限供應，不扣
-			//   quantity > 0  → 扣 1，若扣完到 0 則同時把 is_active 設為 0（自動下架）
-			if (selectedGift.getQuantity() > 0) {
-				// 一條 SQL 同時完成扣減與下架判斷，避免中間狀態
-				promotionsGiftsDao.decreaseQuantityAndDeactivateIfEmpty(selectedGift.getId());
+				// 扣減贈品配額：
+				//   quantity = -1 → 無限供應，不扣
+				//   quantity > 0  → 扣 1，若扣完到 0 則同時把 is_active 設為 0（自動下架）
+				if (selectedGift.getQuantity() > 0) {
+					// 一條 SQL 同時完成扣減與下架判斷，避免中間狀態
+					promotionsGiftsDao.decreaseQuantityAndDeactivateIfEmpty(selectedGift.getId());
+				}
 			}
 		}
 

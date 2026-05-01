@@ -6,12 +6,11 @@ public enum ReplyMessage {
 	// Service RegionsService
 	REGIONS_ID_ERROR(400, "Regions Id Error!!"), //
 	REGIONS_ID_NOT_FOUND(404, "Regions Id Not Found!!"), //
-	// Service MonthlyFinancialReportsService
-	REPORTS_NOT_FOUND(404, "Reports Not Found!!"), //
+	TAX_TYPE_ERROR(400, "Tax Type Error!!"), //
+	TAX_RATE_ERROR(400, "Tax Rate Error!!"), //
 	// Service GlobalAreaService
 	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
 	GLOBAL_AREA_ID_NOT_FOUND(404, "Global Area Id Not Found!!"), //
-	TAX_TYPE_ERROR(400, "Tax Type Error!!"), //
 	// Service MembersService
 	PHONE_ERROR(400, "Phone Error!!"), //
 	PHONE_HAS_EXISTED(400, "Phone Has Existed!!"), // 電話號碼已存在
@@ -34,6 +33,11 @@ public enum ReplyMessage {
 	MEMBER_ERROR(400, "Member ERROR!!"), //
 	TOTAL_AMOUNT_ERROR(400, "Total Amount ERROR!!"), //
 	NOT_DISCOUNT_ERROR(400, "Not Discount ERROR!!"), //
+	REPORTS_NOT_FOUND(404, "Reports Not Found!!"), //
+	PERMISSION_DENIED(403, "Permission Denied"), // 權限不足
+	BRANCHES_DIFFERENT(400, "Branches Different!!"), // 員工分店與訂單分店不同
+	UPDATE_PAY_STATUS_ERROR(400, "Update Pay Status Error!!"), // 付款狀態更新失敗
+	PAY_PAYMENT_METHOD_ERROR(400, "Pay Payment Method Error!!"), // 付款方式錯誤
 
 	/* 致遠 */
 	// 促銷活動相關錯誤
@@ -44,6 +48,7 @@ public enum ReplyMessage {
 	PROMOTION_DATE_ERROR(400, "Promotion Date Error!!"), // 活動日期不合法（開始日期已過期或結束日期早於開始日期）
 	PROMOTION_GIFT_PARAM_ERROR(400, "Promotion Gift Param Error!!"), // 贈品參數不合法（門檻金額 <= 0 或數量 = 0）
 	PROMOTION_NAME_ERROR(400, "Promotion Name Error!!"), // 活動名稱為空或空白
+	PROMOTION_IMG_REQUIRED(400, "Promotion Image Required!!"), // 建立活動時圖片為必填
 	COUNTRY_ERROR(400, "Country Error!!"), // 使用折扣券時國家欄位為空
 
 	/* 艷羽 */
@@ -78,24 +83,28 @@ public enum ReplyMessage {
 	// 帳號生成錯誤
 	REPEAT_ERROR(500, "Repeat Error"), // 翻譯:重複錯誤
 	// 副店長相關
-	DEPUTY_OPERATE_ERROR(403, "Deputy Operate Error"), //
-	TARGET_NOT_STAFF(400, "Target Not Staff"), //
-	TARGET_NOT_DEPUTY(400, "Target Not Deputy"), //
-	PROMOTE_TARGET_ERROR(400, "Promote Target Error"), //
+	DEPUTY_OPERATE_ERROR(403, "Deputy Operate Error"), // 翻譯:副店長無法執行此操作
+	TARGET_NOT_STAFF(400, "Target Not Staff"), // 目標人物必須是員工
+	TARGET_NOT_DEPUTY(400, "Target Not Deputy"), // 目標人物不是副店長
+	PROMOTE_TARGET_ERROR(400, "Promote Target Error"), // 提升目標錯誤
+	// 首次登入要修改密碼
+	FIRST_LOGIN_CHANGE_PASSWORD(403, "First Login Change Password"),
+	OLD_AND_NEW_PASSWORD_SAME(400, "Old And New Password Same"), // 新舊密碼相同
+	INITAL_PASSWORD_SAME(400,"Inital Password Same"),// 初始密碼相同
 
-	/* 思云 - 商品管理 & 庫存 */
+	/* 思云 */
+	// 商品表 & 庫存表
 	PRODUCT_EXISTS(400, "Product name already exists!"), //
 	IMAGE_TOO_LARGE(400, "Image size exceeds 5MB!"), //
 	INVALID_PRICE(400, "Price must be between 1 and 5000!"), //
 	BRANCH_NOT_FOUND(500, "No branches found to initialize inventory!"), //
 	IMAGE_ERROR(500, "Image processing error!"), //
-	SYSTEM_ERROR(500, "System error occurred: "), //
+	SYSTEM_ERROR(500, "System error occurred: "), // 後面會動態接訊息
 	PRODUCT_CREATE_SUCCESS(200, "Product created and inventory synced successfully!"), //
 	PRODUCT_UPDATE_SUCCESS(200, "Product Update successfully!"), //
 	PRODUCT_DELETE_SUCCESS(200, "Product delete successfully!"), //
 	INVENTORY_NOT_FOUND(404, "Inventory not found for this product/branch!"), //
-	INVENTORY_UPDATE_SUCCESS(200, "Inventory Update successfully!")
-	;
+	INVENTORY_UPDATE_SUCCESS(200, "Inventory Update successfully!");
 
 	private int code;
 

@@ -3,7 +3,6 @@ package com.example.global_meals_gradle.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,10 +19,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
+import com.example.global_meals_gradle.constants.PayStatus;
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.constants.StaffRole;
+import com.example.global_meals_gradle.controller.MembersController;
+import com.example.global_meals_gradle.controller.StaffController;
 import com.example.global_meals_gradle.dao.BranchInventoryDao;
 import com.example.global_meals_gradle.dao.MembersDao;
-import com.example.global_meals_gradle.dao.OrderCartDetailsDao;
 import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
@@ -36,18 +38,13 @@ import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.entity.Regions;
 import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
-import com.example.global_meals_gradle.req.HistoricalOrdersReq;
-import com.example.global_meals_gradle.req.KitchenStatusReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.RefundedReq;
+import com.example.global_meals_gradle.req.UpdateOrdersStatusReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.CreateOrdersRes;
 import com.example.global_meals_gradle.res.GetAllOrdersRes;
-import com.example.global_meals_gradle.res.GetOrdersByPhoneRes;
-import com.example.global_meals_gradle.res.GetTodayOrdersRes;
 import com.example.global_meals_gradle.res.MembersRes;
-import com.example.global_meals_gradle.res.TodayOrderDetailVo;
-import com.example.global_meals_gradle.res.TodayOrderVo;
 import com.example.global_meals_gradle.vo.GetOrdersDetailVo;
 import com.example.global_meals_gradle.vo.GetOrdersVo;
 
@@ -73,9 +70,6 @@ public class OrdersService {
 	private MembersDao membersDao;
 
 	@Autowired
-	private OrderCartDetailsDao orderCartDetailsDao;
-
-	@Autowired
 	private PromotionsGiftsDao promotionsGiftsDao;
 
 	@Autowired
@@ -89,67 +83,88 @@ public class OrdersService {
 	@Lazy // 加上 @Lazy 避免某些 Spring 版本出現循環依賴的警告
 	private OrdersService self;
 
-	// /* 查詢歷史訂單 */
-	// @Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
-	// public GetAllOrdersRes getAllOrders(HistoricalOrdersReq req) {
-	// /* 判斷會員id是否存在 */
-	//
-	//
-	// try {
-	// /* 取得主表(Orders)該會員的歷史訂單 */
-	// List<GetOrdersVo> orderList =
-	// ordersDao.getOrderByMemberId(req.getMemberId());
-	// /* 第一層迴圈跑每一筆訂單拿到各自的明細 */
-	// for (GetOrdersVo order : orderList) {
-	// // 根據購物車id，拿到該訂單的明細
-	// List<OrderCartDetails> detailEntities = orderCartDetailsDao
-	// .getProductByOrderCartId(order.getOrderCartId());
-	// // 要把上面拿到的資料，放進vo裡
-	// List<GetOrdersDetailVo> detailVoList = new ArrayList<>();
-	// /* 第二層迴圈，利用產品id 去products表取得產品名稱 */
-	// for (OrderCartDetails entity : detailEntities) {
-	// GetOrdersDetailVo vo = new GetOrdersDetailVo();
-	// // 產品id 去products表取得產品名稱
-	// String productName = productsDao.getProductsNameById(entity.getProductId());
-	// // 把各個資料塞進去vo
-	// vo.setName(productName); // 塞進去上個步驟取的名子
-	// vo.setQuantity(entity.getQuantity());
-	// vo.setPrice(entity.getPrice());
-	// vo.setGift(entity.isGift());
-	// vo.setDiscountNote(entity.getDiscountNote());
-	// // 把整理好的資料裝進voList裡
-	// detailVoList.add(vo);
-	// }
-	// // 把整理好的訂單明細，塞進去欄位
-	// order.setGetOrdersDetailVoList(detailVoList);
-	// }
-	// return new GetAllOrdersRes(ReplyMessage.SUCCESS.getCode(), //
-	// ReplyMessage.SUCCESS.getMessage(), orderList);
-	// } catch (Exception e) {
-	// throw e;
-	// }
-	// }
+	/* 查詢該分店今日所有訂單 */
+	@Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
+	public GetAllOrdersRes getTodayAllOrders(HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) { // 只有管理者才能查詢
+			return new GetAllOrdersRes(ReplyMessage.PERMISSION_DENIED.getCode(),
+					ReplyMessage.PERMISSION_DENIED.getMessage());
+		}
+		// 取的今天的日期字串，參考成立訂單
+		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+		// 取得所在分店
+		int globalAreaId = staff.getGlobalAreaId();
+		List<Object[]> rawData = ordersDao.getTodayAllOrders(todayStr, globalAreaId);
+		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
+		// LinkedHashMap 是為了「照順序排」，讓最新下單的排在最前面
+		Map<String, GetOrdersVo> orderMap = new LinkedHashMap<>();
+		for (Object[] row : rawData) {
+			String orderKey = row[1].toString() + row[0].toString(); // 日期 + ID
+
+			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
+				// 建立一個新的訂單物件
+				GetOrdersVo newVo = new GetOrdersVo();
+				newVo.setId(row[0].toString()); // o.id
+				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
+				newVo.setGlobalAreaId(((Number) row[2]).intValue()); // o.global_area_id
+				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
+				newVo.setOrdersStatus(row[4].toString()); // o.status
+				newVo.setPayStatus(row[5].toString());// o.status
+				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
+				// 回傳的 Java 物件實際上是 java.sql.Timestamp
+				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
+				if (row[6] != null) {
+					if (row[6] instanceof java.sql.Timestamp) {
+						newVo.setCompletedAt(((java.sql.Timestamp) row[6]).toLocalDateTime());
+					} else {
+						newVo.setCompletedAt((java.time.LocalDateTime) row[6]);
+					}
+				}
+				newVo.setGetOrdersDetailVoList(new ArrayList<>());
+				return newVo;
+			});
+
+			// 建立明細並塞入該訂單的 List（LEFT JOIN 無細項時 row[7] 為 null，跳過）
+			if (row[7] != null) {
+				GetOrdersDetailVo detail = new GetOrdersDetailVo();
+				// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
+				detail.setQuantity(((Number) row[7]).intValue());
+				detail.setPrice((BigDecimal) row[8]);
+				detail.setGift(Boolean.TRUE.equals(row[9]) || (row[9] instanceof Number && ((Number) row[9]).intValue() == 1));
+				detail.setDiscountNote(row[10] != null ? row[10].toString() : "");
+				detail.setName(row[11] != null ? row[11].toString() : "贈品");
+				vo.getGetOrdersDetailVoList().add(detail);
+			}
+		}
+		// 把 Map 的值轉換成 List
+		List<GetOrdersVo> result = new ArrayList<>(orderMap.values());
+
+		return new GetAllOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), result);
+
+	}
 
 	/* 查詢歷史訂單(有分員工或會員查詢) */
 	@Transactional(readOnly = true) // 只有查詢，寫這段對效能比較好
-	public GetAllOrdersRes getAllOrders(HistoricalOrdersReq req, HttpSession httpSession) {
+	public GetAllOrdersRes getAllOrders(Integer memberId, HttpSession httpSession) {
 		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute("loginStaff");
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute("check_result");
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		if (staff != null) { // 代表是員工操作 // MemberId是設Integer，如果是int就要判斷是否 ==0
-			if (req.getMemberId() == null || membersDao.findById(req.getMemberId()) == null) {
+			if (memberId == null || membersDao.findById(memberId) == null) {
 				return new GetAllOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
 						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
 			}
 		} else if (member != null) { // 代表會員操作，只能查自己的歷史訂單紀錄
-			req.setMemberId(member.getId());
+			memberId = member.getId();
 		} else {
 			// 既不是員工也不是會員 -> 攔截
-			return new GetAllOrdersRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage());
+			throw new RuntimeException("請先登入以查詢歷史訂單");
 		}
-		List<Object[]> rawData = ordersDao.getFullOrderHistory(req.getMemberId());
+		List<Object[]> rawData = ordersDao.getFullOrderHistory(memberId);
 		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
 		// LinkedHashMap 是為了「照順序排」，讓最新下單的排在最前面
 		Map<String, GetOrdersVo> orderMap = new LinkedHashMap<>();
@@ -173,24 +188,35 @@ public class OrdersService {
 				GetOrdersVo newVo = new GetOrdersVo();
 				newVo.setId(row[0].toString()); // o.id
 				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
-				newVo.setGlobalAreaId((Integer) row[2]); // o.global_area_id
+				newVo.setGlobalAreaId(((Number) row[2]).intValue()); // o.global_area_id
 				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
-				newVo.setStatus(row[4].toString()); // o.status
-				newVo.setCompletedAt((LocalDateTime) row[5]);
+				newVo.setOrdersStatus(row[4].toString()); // o.status
+				newVo.setPayStatus(row[5].toString());// o.status
+				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
+				// 回傳的 Java 物件實際上是 java.sql.Timestamp
+				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
+				if (row[6] != null) {
+					if (row[6] instanceof java.sql.Timestamp) {
+						newVo.setCompletedAt(((java.sql.Timestamp) row[6]).toLocalDateTime());
+					} else {
+						newVo.setCompletedAt((java.time.LocalDateTime) row[6]);
+					}
+				}
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
 
-			// 建立明細並塞入該訂單的 List
-			GetOrdersDetailVo detail = new GetOrdersDetailVo();
-			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
-			detail.setQuantity(((Number) row[6]).intValue());
-			detail.setPrice((BigDecimal) row[7]);
-			detail.setGift((Boolean) row[8]);
-			detail.setDiscountNote((String) row[9]);
-			detail.setName((String) row[10]); // 產品名稱已經在 SQL 抓好了
-
-			vo.getGetOrdersDetailVoList().add(detail);
+			// 建立明細並塞入該訂單的 List（LEFT JOIN 無細項時 row[7] 為 null，跳過）
+			if (row[7] != null) {
+				GetOrdersDetailVo detail = new GetOrdersDetailVo();
+				// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
+				detail.setQuantity(((Number) row[7]).intValue());
+				detail.setPrice((BigDecimal) row[8]);
+				detail.setGift(Boolean.TRUE.equals(row[9]) || (row[9] instanceof Number && ((Number) row[9]).intValue() == 1));
+				detail.setDiscountNote(row[10] != null ? row[10].toString() : "");
+				detail.setName(row[11] != null ? row[11].toString() : "贈品");
+				vo.getGetOrdersDetailVoList().add(detail);
+			}
 		}
 		// 把 Map 的值轉換成 List
 		List<GetOrdersVo> result = new ArrayList<>(orderMap.values());
@@ -203,9 +229,9 @@ public class OrdersService {
 	// 這個方法「不加」@Transactional，這樣裡面的 try-catch 才能重複執行。
 	public CreateOrdersRes createOrders(CreateOrdersReq req, HttpSession httpSession) {
 		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute("loginStaff");
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute("check_result");
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		if (staff != null) { // 代表是員工操作
 			if (req.getMemberId() == 0 || membersDao.findById(req.getMemberId()) == null) {
@@ -215,7 +241,7 @@ public class OrdersService {
 		} else if (member != null) { // 代表會員操作
 			req.setMemberId(member.getId());
 		} else { // 代表是遊客
-			if(req.getMemberId() >1) {  // 可能是會員，但session失效(登出)
+			if (req.getMemberId() > 1) { // 可能是會員，但session失效(登出)
 				throw new RuntimeException("連線已逾時，請重新登入後再結帳");
 			}
 			req.setMemberId(1);
@@ -231,7 +257,7 @@ public class OrdersService {
 				throw new RuntimeException("無優惠可使用");
 			}
 		}
-		if (ordersDao.existsByOrderCartId(Integer.parseInt(req.getOrderCartId()))) {
+		if (ordersDao.existsByOrderCartId(req.getOrderCartId())) {
 			throw new RuntimeException("該購物車已轉換為訂單，請勿重複提交");
 		}
 
@@ -251,13 +277,14 @@ public class OrdersService {
 				// 判斷是否為「可重試」的異常
 				String msg = e.getMessage();
 				// 購物車Id在資料庫有設UQ，所以如果連續點擊，會有錯誤訊息，到這裡就會傳送錯誤訊息給前端
-				if (msg != null && msg.contains("Duplicate") && msg.contains("order_cart_id")) {
+				if (msg != null && msg.contains("order_cart_id")) {
 					throw new RuntimeException("該購物車已轉換為訂單，請勿重複提交");
 				}
 				// 只有當訊息包含「衝突」(樂觀鎖失敗) 或 「Duplicate」(序號重複) 時才進入重試
 				if (msg != null && (msg.contains("衝突") || msg.contains("Duplicate")//
 						|| msg.contains("Primary"))) {
-					log.info("【訂單重試】購物車 ID: {} 發生衝突，準備進行第 {} 次重試... 原因: {}", req.getOrderCartId(), i + 1, msg);
+					log.info("【訂單重試】購物車 ID: {} 發生衝突，準備進行第 {} 次重試... 原因: {}", //
+							req.getOrderCartId(), i + 1, msg);
 					// 如果還沒超過重試次數，就繼續跑下一輪 for 迴圈。
 					if (i == maxRetries - 1) {
 						// 如果重試了 5 次都還是失敗，才拋出錯誤。
@@ -307,15 +334,18 @@ public class OrdersService {
 		// Key: 產品ID, Value: 總數量 (商品 + 贈品)
 		Map<Integer, Integer> stockToReduceMap = new HashMap<>();
 
-		/*
-		 * 這是一般的 if-else 寫法 for (OrderCartDetails detail : cartDetailsList) { int pid =
-		 * detail.getProductId(); int qty = detail.getQuantity();
-		 * 
-		 * 檢查 Map 裡是不是已經有這個商品 ID 了 if (stockToReduceMap.containsKey(pid)) { //
-		 * 【情況A】：已經有了（例如之前跑過商品，現在跑贈品） int oldQty = stockToReduceMap.get(pid); // 取出舊的數量
-		 * stockToReduceMap.put(pid, oldQty + qty); // 加完後更新進去 } else { // 【情況 B】：還沒出現過
-		 * stockToReduceMap.put(pid, qty); // 直接放進去 } }
-		 */
+		// 這是一般的 if-else 寫法
+		// for (OrderCartDetails detail : cartDetailsList) {
+		// int pid = detail.getProductId();
+		// int qty = detail.getQuantity();
+		// 檢查 Map 裡是不是已經有這個商品 ID 了
+		// if (stockToReduceMap.containsKey(pid)) { // 情況A】：已經有了（例如之前跑過商品，現在跑贈品）
+		// int oldQty = stockToReduceMap.get(pid); // 取出舊的數量
+		// stockToReduceMap.put(pid, oldQty + qty); // 加完後更新進去
+		// } else { // 【情況 B】：還沒出現過
+		// stockToReduceMap.put(pid, qty); // 直接放進去
+		// }
+		// }
 
 		/*
 		 * merge 方法的三個參數意義： detail.getProductId()：我要找哪個 ID？ detail.getQuantity()：如果這個 ID
@@ -337,7 +367,7 @@ public class OrdersService {
 		}
 		BigDecimal taxRate = region.getTaxRate(); // 稅率
 		String taxType = region.getTaxType().name(); // 稅制
-		// 初始化未稅金額 (使用 BigDecimal.ZERO 確保精準度)
+		// 初始化金額 (使用 BigDecimal.ZERO 確保精準度)
 		BigDecimal subtotal = BigDecimal.ZERO;
 		BigDecimal finalSubtotal = BigDecimal.ZERO; // 最終未稅金額
 		BigDecimal taxAmount = BigDecimal.ZERO; // 稅額
@@ -355,18 +385,8 @@ public class OrdersService {
 						.findByProductIdAndGlobalAreaId(detail.getProductId(), req.getGlobalAreaId())
 						.orElseThrow(() -> new RuntimeException("該分店未上架商品 ID: " + detail.getProductId()));
 				BigDecimal qty = BigDecimal.valueOf(detail.getQuantity()); // 取的商品購買數量
-				if ("INCLUSIVE".equals(taxType)) {
-					// --- 內含稅：單價先乘稅率並無條件進位 (產生標價) ---
-					BigDecimal priceWithTax = inv.getBasePrice() // priceWithTax = 商品含稅價格
-							.multiply(BigDecimal.ONE.add(taxRate)) // 1 * 稅率
-							.setScale(0, RoundingMode.UP); // 無條件進位
-					// 累加含稅總額
-					subtotal = subtotal.add(priceWithTax.multiply(qty));
-				} else {
-					// --- 外加稅：直接用未稅單價累加 ---
-					subtotal = subtotal.add(inv.getBasePrice().multiply(qty));
-				}
-
+				// 把取的商品金額做迴圈相加，內含稅國家取得的是含稅價格1;外加稅國家取得的是未稅價格
+				subtotal = subtotal.add(inv.getBasePrice().multiply(qty));
 			} else {
 				giftProductIds.add(detail.getProductId());
 			}
@@ -398,12 +418,12 @@ public class OrdersService {
 		// 反推「未稅金額」(總額 / (1 + 稅率))
 		BigDecimal beforeTax = afterTax.divide(BigDecimal.ONE.add(taxRate), 4, RoundingMode.HALF_UP);
 		// 稅額 = 總共付的錢 - 原始餐點的錢
-		taxAmount = afterTax.subtract(beforeTax).setScale(0, RoundingMode.UP);
+		taxAmount = afterTax.subtract(beforeTax).setScale(0, RoundingMode.HALF_UP);
 		// 定義「最終未稅小計」
 		finalSubtotal = afterTax.subtract(taxAmount);
 		// [DEBUG] 記錄金額計算結果，這在對帳出錯時非常重要
-		log.debug("【金額計算】購物車: {} -> 最終未稅: {}, 稅額: {}, 含稅: {}, 折扣: {}", req.getOrderCartId(), finalSubtotal, taxAmount,
-				afterTax, discountOff);
+		log.debug("【金額計算】購物車: {} -> 最終未稅: {}, 稅額: {}, 含稅: {}, 折扣: {}", //
+				req.getOrderCartId(), finalSubtotal, taxAmount, afterTax, discountOff);
 
 		// ====== 贈品門檻檢查 ======
 		if (!giftProductIds.isEmpty()) { // 判斷贈品清單有沒有資料
@@ -435,8 +455,11 @@ public class OrdersService {
 				// 根據商品 id 分店 id 去商品表搜尋庫存
 				Products product = productsDao.findById(productId);
 				// 1. 查詢該分店的庫存快照
-				BranchInventory inv = branchInventoryDao //
-						.findByProductIdAndGlobalAreaId(productId, req.getGlobalAreaId()) //
+				Optional<BranchInventory> invOpt = branchInventoryDao
+						.findByProductIdAndGlobalAreaId(productId, req.getGlobalAreaId());
+				// 贈品若此分店無 branch_inventory 紀錄，跳過 stock 扣除（配額由 promotions_gifts 管控）
+				if (invOpt.isEmpty() && giftProductIds.contains(productId)) continue;
+				BranchInventory inv = invOpt
 						.orElseThrow(() -> new RuntimeException("找不到分店庫存資料"));
 				// 庫存檢查：如果庫存 比要買的數量還少
 				if (inv.getStockQuantity() < quantityToBuy) {
@@ -456,19 +479,6 @@ public class OrdersService {
 				}
 			}
 
-			// ====== 執行贈品配額扣除 ======
-			if (!giftProductIds.isEmpty()) {
-				for (Integer giftId : giftProductIds) {
-					// 執行原子扣除
-					int affectedGiftRows = promotionsGiftsDao.reduceGiftQuota(req.getPromotionsId(), giftId);
-
-					if (affectedGiftRows == 0) {
-						// 代表這秒鐘剛好被別人領完了
-						throw new RuntimeException("很抱歉，贈品已全數兌換完畢");
-					}
-				}
-			}
-
 			// ====== 產生新訂單編號 (悲觀鎖排隊入口) ======
 			// 去資料庫找今天最後一筆訂單 (DAO 裡面要有 ORDER BY id DESC LIMIT 1)
 			Optional<Orders> lastOrder = ordersDao.getOrderByOrderDateId(todayStr);
@@ -481,10 +491,8 @@ public class OrdersService {
 			newId = String.format("%04d", nextSeq);
 
 			// ====== 執行新增主訂單 ======
-			// 客戶端傳 paymentMethod=CASH 時，建立 PENDING_CASH（等現場收款）；其他一律 UNPAID
-			String initialStatus = "CASH".equalsIgnoreCase(req.getPaymentMethod()) ? "PENDING_CASH" : "UNPAID";
 			ordersDao.insert(newId, todayStr, req.getOrderCartId(), req.getGlobalAreaId(), req.getMemberId(),
-					req.getPhone(), finalSubtotal, taxAmount, afterTax, initialStatus, req.isUseDiscount());
+					req.getPhone(), finalSubtotal, taxAmount, afterTax, "PREPARING", "UNPAID", req.isUseDiscount());
 			log.info("【產單成功】購物車: {} -> 訂單編號: {}-{}", req.getOrderCartId(), todayStr, newId);
 
 			// 成功後回傳結果
@@ -508,32 +516,38 @@ public class OrdersService {
 					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 		}
 		// 金額檢查: 使用 compareTo == 0 來比對 BigDecimal，避免 100.0 跟 100 判定不一致的問題
-		if (req.getTotalAmount() != null && order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
+		if (order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
 			throw new RuntimeException("支付金額與訂單金額不符！");
 		}
 		// 檢查訂單狀態：只有「未付款」的訂單可以執行付款
 		// 如果訂單已經是 COMPLETED, 則不需要重複付款
-		if (OrdersStatus.COMPLETED.equals(order.getStatus())) {
+		if (PayStatus.PAID.name().equals(order.getPayStatus().name())) {
 			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "訂單已支付完成，無需重複操作");
 		}
 		// 如果訂單是其他狀態（如 REFUNDED, CANCELLED），則不允許付款
-		if (!OrdersStatus.UNPAID.equals(order.getStatus()) && !OrdersStatus.PENDING_CASH.equals(order.getStatus())) {
+		if (!PayStatus.UNPAID.name().equals(order.getPayStatus().name())) {
 			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "訂單狀態錯誤，無法付款");
 		}
 		try {
 			// 新增(更新)的資料(付款方式、交易號碼、狀態)
-			// updatePayAnyPending 允許 UNPAID 或 PENDING_CASH 的訂單付款
-			int result = ordersDao.updatePayAnyPending(req.getId(), req.getOrderDateId(), //
-					req.getPaymentMethod(), req.getTransactionId(), "COMPLETED");
+			int result = ordersDao.updatePay(req.getId(), req.getOrderDateId(), //
+					req.getPaymentMethod(), req.getTransactionId(), "PAID");
 			if (result > 0) {
 				// ====== 會員邏輯(點數處理) ======
 				// 判斷是會員(> 1)還是訪客(= 1)
 				if (order.getMemberId() > 1) {
-					// 利用會員id 撈取並鎖定會員資料(點數、9折卷)
+					// 利用會員id 撈取會員資料(點數、9折卷)
 					Members member = membersDao.findById(order.getMemberId());
 					// 如果是 null 則代表沒有這筆會員資料
 					if (member == null) {
 						throw new RuntimeException(order.getMemberId() + "錯誤，查無會員資料");
+					}
+					if (order.isUseDiscount()) { // 如果有使用優惠劵，須把它關閉、次數歸0
+						int updated = membersDao.useDiscount(member.getId());
+						if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
+							throw new RuntimeException("優惠券已被使用或不存在");
+						}
+						return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 					}
 					int addResult = membersDao.addPoint(member.getId()); // 加次數(如果次數 < 9或 > 9 )
 					if (addResult == 0) { // 加點失敗，可能次數剛好是 9
@@ -543,161 +557,333 @@ public class OrdersService {
 							throw new RuntimeException("會員次數更新失敗");
 						}
 					}
-					if (order.isUseDiscount()) { // 如果有使用優惠劵，須把它關閉、點數變1
-						int updated = membersDao.useDiscount(member.getId());
-						if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
-							throw new RuntimeException("優惠券已被使用或不存在");
-						}
-					}
+
 				}
 				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			}
 			throw new RuntimeException("付款更新失敗");
 		} catch (Exception e) {
-			throw new RuntimeException("付款失敗");
+			throw new RuntimeException("付款失敗：" + e.getMessage());
 		}
 	}
 
-	/* 訂單狀態: 退款或取消 */
+	//	/* 申請退款 */
+	//	@Transactional(rollbackFor = Exception.class)
+	//	public BasicRes applyForRefund(RefundedReq req, HttpSession httpSession) {
+	//		// 抓員工資訊
+	//		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+	//		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
+	//		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
+	//		Members member = (membersRes != null) ? membersRes.getMembers() : null;
+	//		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+	//		// 防呆：只有 PAID(已付款) 才能申請退款
+	//		if (!PayStatus.PAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
+	//			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "僅完成之訂單可申請退款");
+	//		}
+	//		// 訂單狀態是已取消(退款或取消)，無法申請退款
+	//		if (OrdersStatus.CANCELLED.name().equalsIgnoreCase(order.getOrdersStatus().name())) {
+	//			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+	//					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+	//		}
+	//		// 判斷是員工現場幫客人處理退款，還是客人線上申請退款
+	//		if (staff != null) { // 員工現場幫客人處理退款
+	//			return executeFullRefund(req, order);
+	//		} else if (staff == null && member != null) { // 客人線上申請退款
+	//			if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
+	//				return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
+	//			}
+	//			// 更新為「退款處理中」，等待店長審核
+	//			ordersDao.updateOrderStatus("REFUND_PROCESSING", req.getId(), req.getOrderDateId());
+	//			// TODO: 發送 WebSocket 或推播通知給店長
+	//			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "退款申請已提交，請等待店長審核");
+	//		} else { // 遊客操作
+	//			throw new RuntimeException("請先登入或請找員工處理");
+	//		}
+	//	}
+	//
+	//	// 退款實際動作: 狀態更新、點餐次數收回、優惠劵還原
+	//	@Transactional(rollbackFor = Exception.class)
+	//	private BasicRes executeFullRefund(RefundedReq req, Orders order) {
+	//		try {
+	//			// 執行訂單狀態更新
+	//			int result = ordersDao.updateOrderStatusAndPayStatus(req.getOrdersStatus(), req.getPayStatus(), //
+	//					req.getId(), req.getOrderDateId());
+	//			// 判斷是否成功
+	//			if (result > 0) {
+	//				// 如果是會員，次數扣回
+	//				if (order.getMemberId() > 1) {
+	//					if (order.isUseDiscount()) {
+	//						// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
+	//						membersDao.restoreCouponAndPoints(order.getMemberId());
+	//					} else {
+	//						// 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
+	//						int pointResult = membersDao.smartReducePoint(order.getMemberId());
+	//						if (pointResult == 0) {
+	//							log.warn("退款扣點異常 - 會員ID: {}, 訂單ID: {}, 原因: 點數不足(0)", order.getMemberId(), order.getId());
+	//						}
+	//					}
+	//				}
+	//				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	//			}
+	//			throw new RuntimeException("更新訂單狀態失敗");
+	//		} catch (Exception e) {
+	//			throw new RuntimeException("退款流程發生錯誤: " + e.getMessage());
+	//		}
+	//	}
+	//
+	//	/* 店長審核退款 */
+	//	@Transactional(rollbackFor = Exception.class)
+	//	public BasicRes auditRefund(RefundedReq req, HttpSession httpSession) {
+	//		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+	//		// 判斷有沒有登入
+	//		if (staff == null) {
+	//			return new BasicRes(ReplyMessage.NOT_LOGIN.getCode(), //
+	//					ReplyMessage.NOT_LOGIN.getMessage());
+	//		}
+	//		// 判斷是不是店長
+	//		if (staff.getRole() != StaffRole.REGION_MANAGER) { // 如果身分不是店長
+	//			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), //
+	//					ReplyMessage.PERMISSION_DENIED.getMessage());
+	//		}
+	//		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+	//		if (order == null) {
+	//			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
+	//					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
+	//		}
+	//
+	//		try {
+	//			if (PayStatus.REFUNDED.name().equalsIgnoreCase(req.getPayStatus())) {
+	//				return executeFullRefund(req, order);
+	//			} else { // 退款被駁回
+	//				ordersDao.updateOrderStatus("COMPLETED", req.getId(), req.getOrderDateId());
+	//				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	//			}
+	//		} catch (Exception e) {
+	//			// 拋出 RuntimeException 觸發 Transactional Rollback
+	//			throw new RuntimeException("審核執行失敗：" + e.getMessage());
+	//		}
+	//	}
+
+	/* 取消訂單 */
 	@Transactional(rollbackFor = Exception.class)
-	public BasicRes ordersStatus(RefundedReq req, HttpSession httpSession) {
-		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute("loginStaff");
+	public BasicRes cancelOrder(UpdateOrdersStatusReq req, HttpSession httpSession) {
 		// 抓會員資訊(因為會員登入那邊存的是res，所以會多一層)
-		MembersRes membersRes = (MembersRes) httpSession.getAttribute("check_result");
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
-		
+
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
 		// 找不到該筆訂單
 		if (order == null) { // 找不到該筆訂單
 			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 		}
-		
-		if(staff != null) {  // 員工操作
-			member = membersDao.findById(order.getMemberId());
-			if (member == null) {
-				return new BasicRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(), //
-						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
-			}
-		}else if(member != null) {  // 會員操作
-			if(member.getId() != order.getMemberId()) {  // 如果與該訂單的會員ID不相符
-				return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(),
-						ReplyMessage.MEMBER_ERROR.getMessage());
-			}
-		}else {  // 遊客操作
+		if (member == null || member.getId() < 1) {
 			throw new RuntimeException("請先登入或請找員工處理");
 		}
-		
+		if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
+			return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
+		}
 		try {
-			
-			String oldStatus = order.getStatus().toString(); // 目前狀態
-			String targetStatus = req.getStatus().toString(); // 目標狀態(之後要更新的狀態)
-			// 防呆：只有 COMPLETED 才能退款；只有 UNPAID 才能取消
-			if (targetStatus.equalsIgnoreCase("REFUNDED") && !oldStatus.equals("COMPLETED")) {
+
+			// 取得該訂單的付款狀態(如果取得是null，後面判斷會出錯，所以轉成"")
+			String oldOrdersStatus = (order.getOrdersStatus() != null) ? order.getOrdersStatus().name() : "";
+			// 取得該訂單的狀態(如果取得是null，後面判斷會出錯，所以轉成"")
+			String oldPayStatus = (order.getPayStatus() != null) ? order.getPayStatus().name() : "";
+			String targetStatus = req.getOrdersStatus(); // 目標狀態(之後要更新的狀態)
+			// 判斷目標狀態是否為取消
+			if (!OrdersStatus.CANCELLED.name().equalsIgnoreCase(targetStatus)) {
 				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
 						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
-			if (targetStatus.equalsIgnoreCase("CANCELLED") && !oldStatus.equals("UNPAID") && !oldStatus.equals("PENDING_CASH")) {
+			// 防呆：只有 PayStatus == UNPAID && OrdersStatus == PREPARING 才能取消
+			if (!OrdersStatus.PREPARING.name().equalsIgnoreCase(oldOrdersStatus) || //
+					!PayStatus.UNPAID.name().equalsIgnoreCase(oldPayStatus)) {
 				return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
 						ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 			}
 
 			// 執行訂單狀態更新
-			int result = ordersDao.updateOrderStatus(req.getStatus(), req.getId(), req.getOrderDateId());
+			int result = ordersDao.updateOrderStatus(targetStatus, req.getId(), req.getOrderDateId());
 			// 判斷是否成功
 			if (result > 0) {
-				// 如果是退款要把次數退回(取消不用走這裡)
-				if (targetStatus.equalsIgnoreCase("REFUNDED")) {
-					// 如果是會員，次數扣回
-					if (order.getMemberId() > 1) {
-						if (order.isUseDiscount()) {
-							// 【情況 A】：當初有使用優惠券 -> 還原券並將次數設回 10
-							membersDao.restoreCouponAndPoints(order.getMemberId());
-						} else {
-							// 【情況 B】：當初沒用優惠券 -> 正常扣回這單加的 1 次數
-							membersDao.smartReducePoint(order.getMemberId());
-						}
-					}
-					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-				} else if (targetStatus.equalsIgnoreCase("CANCELLED")) {
-					// 如果是會員且有使用優惠劵
-					if (order.getMemberId() > 1 && order.isUseDiscount()) {
-						// 這裡可以共用 restoreCouponAndPoints，把券設回 true 並點數設回 10
-						membersDao.restoreCouponAndPoints(order.getMemberId());
-					}
-					return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+				// 如果是會員且有使用優惠劵
+				if (order.getMemberId() > 1 && order.isUseDiscount()) {
+					// 這裡可以共用 restoreCouponAndPoints，把券設回 true 並點數設回 10
+					membersDao.restoreCouponAndPoints(order.getMemberId());
 				}
+				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			}
-			throw new RuntimeException("更新訂單狀態失敗");
+			throw new RuntimeException("取消訂定單失敗");
 		} catch (Exception e) {
-			throw new RuntimeException("退款流程發生錯誤: " + e.getMessage());
+			throw new RuntimeException("取消流程發生錯誤: " + e.getMessage());
 		}
 	}
 
 	/* 報電話號碼查詢今天的訂單 */
-	public GetOrdersByPhoneRes getOrderByPhone(String phone) {
+	public GetAllOrdersRes getOrderByPhone(String phone, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) { // 只有管理者才能查詢
+			return new GetAllOrdersRes(ReplyMessage.PERMISSION_DENIED.getCode(),
+					ReplyMessage.PERMISSION_DENIED.getMessage());
+		}
+		// 取的今天的日期字串，參考成立訂單
 		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-		GetOrdersVo order = ordersDao.getOrderByPhone(todayStr, phone);
+		// 取的資料根據電話號碼跟今天日期 DAO 取得扁平化的資料
+		List<Object[]> rawData = ordersDao.getOrdersByPhone(todayStr, phone);
+		// 用 Map 來群組化，Key 是 "日期+ID"，Value 是訂單 VO
+		// LinkedHashMap 是為了「照順序排」，讓最新下單的排在最前面
+		Map<String, GetOrdersVo> orderMap = new LinkedHashMap<>();
+		for (Object[] row : rawData) {
+			String orderKey = row[1].toString() + row[0].toString(); // 日期 + ID
 
-		return new GetOrdersByPhoneRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), //
-				order.getId(), order.getOrderDateId(), order.getTotalAmount(), order.getStatus());
-	}
-
-	/* POS 看板：取得今日所有已付款訂單（含品項與廚房狀態）*/
-	public GetTodayOrdersRes getTodayOrders() {
-		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-		List<Orders> todayOrders = ordersDao.getTodayCompletedOrders(todayStr);
-		List<TodayOrderVo> voList = new ArrayList<>();
-
-		for (Orders order : todayOrders) {
-			TodayOrderVo vo = new TodayOrderVo();
-			vo.setId(order.getId());
-			vo.setOrderDateId(order.getOrderDateId());
-			vo.setTotalAmount(order.getTotalAmount());
-			vo.setKitchenStatus(order.getKitchenStatus() != null ? order.getKitchenStatus() : "WAITING");
-			vo.setPhone(order.getPhone());
-			vo.setPaymentStatus(order.getStatus().toString());
-
-			List<TodayOrderDetailVo> items = new ArrayList<>();
-			orderCartDetailsDao.findAllByCartId(order.getOrderCartId()).forEach(detail -> {
-				TodayOrderDetailVo detailVo = new TodayOrderDetailVo();
-				Products _p = productsDao.findById(detail.getProductId());
-				if (_p != null) detailVo.setProductName(_p.getName());
-				detailVo.setQuantity(detail.getQuantity());
-				detailVo.setGift(detail.isGift());
-				items.add(detailVo);
+			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
+				// 建立一個新的訂單物件
+				GetOrdersVo newVo = new GetOrdersVo();
+				newVo.setId(row[0].toString()); // o.id
+				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
+				newVo.setGlobalAreaId(((Number) row[2]).intValue()); // o.global_area_id
+				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
+				newVo.setOrdersStatus(row[4].toString()); // o.status
+				newVo.setPayStatus(row[5].toString());// o.status
+				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
+				// 回傳的 Java 物件實際上是 java.sql.Timestamp
+				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
+				if (row[6] != null) {
+					if (row[6] instanceof java.sql.Timestamp) {
+						newVo.setCompletedAt(((java.sql.Timestamp) row[6]).toLocalDateTime());
+					} else {
+						newVo.setCompletedAt((java.time.LocalDateTime) row[6]);
+					}
+				}
+				newVo.setGetOrdersDetailVoList(new ArrayList<>());
+				return newVo;
 			});
-			vo.setItems(items);
-			voList.add(vo);
+
+			// 建立明細並塞入該訂單的 List（LEFT JOIN 無細項時 row[7] 為 null，跳過）
+			if (row[7] != null) {
+				GetOrdersDetailVo detail = new GetOrdersDetailVo();
+				// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
+				detail.setQuantity(((Number) row[7]).intValue());
+				detail.setPrice((BigDecimal) row[8]);
+				detail.setGift(Boolean.TRUE.equals(row[9]) || (row[9] instanceof Number && ((Number) row[9]).intValue() == 1));
+				detail.setDiscountNote(row[10] != null ? row[10].toString() : "");
+				detail.setName(row[11] != null ? row[11].toString() : "贈品");
+				vo.getGetOrdersDetailVoList().add(detail);
+			}
 		}
-		return new GetTodayOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), voList);
+		// 把 Map 的值轉換成 List
+		List<GetOrdersVo> result = new ArrayList<>(orderMap.values());
+
+		return new GetAllOrdersRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), result);
 	}
 
-	/* POS 看板：更新廚房狀態（WAITING / COOKING / READY）*/
-	@Transactional
-	public BasicRes updateKitchenStatus(KitchenStatusReq req) {
-		String status = req.getKitchenStatus();
-		if (!status.equals("WAITING") && !status.equals("COOKING") && !status.equals("READY")) {
-			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), "廚房狀態值無效，請傳入 WAITING / COOKING / READY");
+	/* 更新訂單狀態(待取餐/已取餐) */
+	public BasicRes UpdateOrdersStatus(UpdateOrdersStatusReq req, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) { // 只有管理者才能查詢
+			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), ReplyMessage.PERMISSION_DENIED.getMessage());
 		}
-		int updated = ordersDao.updateKitchenStatus(req.getId(), req.getOrderDateId(), status);
-		if (updated == 0) {
-			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), "找不到對應訂單");
+
+		// 取得該筆訂單資訊
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+		if (order == null) {
+			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), //
+					ReplyMessage.ORDER_NOT_FOUND.getMessage());
+		}
+
+		// 如果訂單狀態是已完成，那就是狀態錯誤
+		if (OrdersStatus.PICKED_UP.name().equalsIgnoreCase(order.getOrdersStatus().name())) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+		}
+
+		int result = 0;
+		// 訂單狀態更新(用於製餐中 -> 待取餐)
+		if (OrdersStatus.READY.name().equalsIgnoreCase(req.getOrdersStatus())) {
+			result = ordersDao.updateOrderStatusForReady(req.getOrdersStatus(), req.getId(), req.getOrderDateId());
+
+		} else if (OrdersStatus.PICKED_UP.name().equalsIgnoreCase(req.getOrdersStatus())) { 
+			// 訂單狀態更新(用於待取餐 -> 已取餐)
+			result = ordersDao.updateOrderStatusForPickedUp(req.getOrdersStatus(), req.getId(), req.getOrderDateId());
+
+		}
+		if (result == 0) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), //
+					ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
+		}
+
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	}
+
+	/* 廚房狀態更新：PREPARING→COOKING 或 COOKING→READY */
+	public BasicRes updateKitchenStatus(String id, String orderDateId, String status) {
+		int rows = ordersDao.updateKitchenStatus(status, id, orderDateId);
+		if (rows == 0) {
+			return new BasicRes(ReplyMessage.ORDERS_STATUS_ERROR.getCode(), ReplyMessage.ORDERS_STATUS_ERROR.getMessage());
 		}
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 	}
 
-	/* 客戶端輪詢：查詢自己訂單的廚房狀態（含 PENDING_CASH 待付款狀態） */
+	/* 顧客端輪詢單筆訂單狀態 */
 	public BasicRes getOrderStatus(String id, String orderDateId) {
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(orderDateId, id);
 		if (order == null) {
-			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), "找不到對應訂單");
+			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), ReplyMessage.ORDER_NOT_FOUND.getMessage());
 		}
-		if (OrdersStatus.PENDING_CASH.equals(order.getStatus())) {
-			return new BasicRes(ReplyMessage.SUCCESS.getCode(), "PENDING_CASH");
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), order.getOrdersStatus().name());
+	}
+
+	/* 店員現場確認現金收款（取餐時現付）：驗證分店、金額後更新 pay_status */
+	public BasicRes cashPayOnSite(com.example.global_meals_gradle.req.CashPayOnSiteReq req, HttpSession httpSession) {
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) {
+			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), ReplyMessage.PERMISSION_DENIED.getMessage());
 		}
-		String kitchenStatus = order.getKitchenStatus() != null ? order.getKitchenStatus() : "WAITING";
-		return new BasicRes(ReplyMessage.SUCCESS.getCode(), kitchenStatus);
+		if (!"CASH".equalsIgnoreCase(req.getPaymentMethod())) {
+			return new BasicRes(ReplyMessage.PAY_PAYMENT_METHOD_ERROR.getCode(), ReplyMessage.PAY_PAYMENT_METHOD_ERROR.getMessage());
+		}
+		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+		if (order == null) {
+			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), ReplyMessage.ORDER_NOT_FOUND.getMessage());
+		}
+		if (order.getGlobalAreaId() != staff.getGlobalAreaId()) {
+			return new BasicRes(ReplyMessage.BRANCHES_DIFFERENT.getCode(), ReplyMessage.BRANCHES_DIFFERENT.getMessage());
+		}
+		if (!PayStatus.UNPAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
+			return new BasicRes(ReplyMessage.UPDATE_PAY_STATUS_ERROR.getCode(), ReplyMessage.UPDATE_PAY_STATUS_ERROR.getMessage());
+		}
+		if (req.getTotalAmount().compareTo(order.getTotalAmount()) != 0) {
+			return new BasicRes(ReplyMessage.TOTAL_AMOUNT_ERROR.getCode(), ReplyMessage.TOTAL_AMOUNT_ERROR.getMessage());
+		}
+		int result = ordersDao.updateCashPayOnSite(req.getId(), req.getOrderDateId(), PayStatus.PAID.name());
+		if (result == 0) {
+			return new BasicRes(ReplyMessage.UPDATE_PAY_STATUS_ERROR.getCode(), ReplyMessage.UPDATE_PAY_STATUS_ERROR.getMessage());
+		}
+		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+	}
+
+	/* 查詢登入會員今日訂單狀態清單（顧客追蹤頁輪詢用） */
+	public com.example.global_meals_gradle.res.GetAllOrdersUncompleteRes getTodayOrdersListByMember(HttpSession httpSession) {
+		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
+		Members member = (membersRes != null) ? membersRes.getMembers() : null;
+		if (member == null) {
+			return new com.example.global_meals_gradle.res.GetAllOrdersUncompleteRes(
+					ReplyMessage.PERMISSION_DENIED.getCode(), ReplyMessage.PERMISSION_DENIED.getMessage());
+		}
+		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+		List<Object[]> rawData = ordersDao.GetOrdersUncomplete(todayStr, member.getId());
+		List<com.example.global_meals_gradle.res.GetAllOrdersUncompleteRes.OrderInfo> list = new ArrayList<>();
+		for (Object[] row : rawData) {
+			com.example.global_meals_gradle.res.GetAllOrdersUncompleteRes.OrderInfo info =
+					new com.example.global_meals_gradle.res.GetAllOrdersUncompleteRes.OrderInfo();
+			info.setId(row[0].toString());
+			info.setOrderDateId(row[1].toString());
+			info.setOrderStatus(row[2] != null ? row[2].toString() : "");
+			list.add(info);
+		}
+		return new com.example.global_meals_gradle.res.GetAllOrdersUncompleteRes(
+				ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), list);
 	}
 }

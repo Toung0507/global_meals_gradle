@@ -6,11 +6,11 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 @JsonFormat(with = JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_PROPERTIES)
 public enum OrdersStatus {
 
-	UNPAID("UNPAID"), //
-	PENDING_CASH("PENDING_CASH"), // 客戶端現金訂單：已建立但等待現場收款
-	COMPLETED("COMPLETED"), //
-	CANCELLED("CANCELLED"), //
-	REFUNDED("REFUNDED");
+	PREPARING("PREPARING"), // 備餐中（初始狀態，尚未開始製作）
+	COOKING("COOKING"),    // 製作中（廚房已開始製作）
+	READY("READY"), // 餐點完成/待取餐
+	PICKED_UP("PICKED UP"), // 已取餐
+	CANCELLED("CANCELLED"); // 已取消(退款跟取消)
 
 	private String ordersStatus;
 

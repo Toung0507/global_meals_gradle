@@ -84,7 +84,11 @@ public class StaffController {
 	 * ================================================================= */
 	@GetMapping("/api/auth/logout")
 	public BasicRes logout(HttpSession session) {
-		session.invalidate();
+		try {
+			session.invalidate();
+		} catch (Exception ignored) {
+			// Session 已失效或被 Spring Security 再次存取，安全忽略
+		}
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage());
 	}
