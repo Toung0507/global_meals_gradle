@@ -574,36 +574,11 @@ public class OrdersService {
 			// 新增(更新)的資料(付款方式、交易號碼、狀態)
 			int result = ordersDao.updatePay(req.getId(), req.getOrderDateId(), //
 					req.getPaymentMethod(), req.getTransactionId(), "PAID");
-			if (result > 0) {
-				// ====== 會員邏輯(點數處理) ======
-				// 判斷是會員(> 1)還是訪客(= 1)
-				if (order.getMemberId() > 1) {
-					// 利用會員id 撈取會員資料(點數、9折卷)
-					Members member = membersDao.findById(order.getMemberId());
-					// 如果是 null 則代表沒有這筆會員資料
-					if (member == null) {
-						throw new RuntimeException(order.getMemberId() + "錯誤，查無會員資料");
-					}
-					if (order.isUseDiscount()) { // 如果有使用優惠劵，須把它關閉、次數歸0
-						int updated = membersDao.useDiscount(member.getId());
-						if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
-							throw new RuntimeException("優惠券已被使用或不存在");
-						}
-						return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-					}
-					int addResult = membersDao.addPoint(member.getId()); // 加次數(如果次數 < 9或 > 9 )
-					if (addResult == 0) { // 加點失敗，可能次數剛好是 9
-						// 次數剛好是9，加完變10 開券
-						int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId());
-						if (couponResult == 0) {
-							throw new RuntimeException("會員次數更新失敗");
-						}
-					}
-
-				}
-				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			if (result == 0) {
+				throw new RuntimeException("付款更新失敗");
 			}
-			throw new RuntimeException("付款更新失敗");
+			processMemberLoyalty(order);
+			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 		} catch (Exception e) {
 			throw new RuntimeException("付款失敗：" + e.getMessage());
 		}
@@ -612,42 +587,86 @@ public class OrdersService {
 	/* 線上訂餐選擇現金付款，到現場付款的方法 */
 	@Transactional
 	public BasicRes cashPayOnSite(CashPayOnSiteReq req, HttpSession httpSession) {
-		// 抓員工資訊
-		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
-		if (staff == null) { // 只有管理者才能查詢
-			return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), ReplyMessage.PERMISSION_DENIED.getMessage());
-		}
-		Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
-		if (order == null) {
-			return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), ReplyMessage.ORDER_NOT_FOUND.getMessage());
-		}
-		// 如果該筆訂單所選的分店，與去取餐的分店是不同，需報錯
-		if (staff.getGlobalAreaId() != order.getGlobalAreaId()) {
-			return new BasicRes(ReplyMessage.BRANCHES_DIFFERENT.getCode(),
-					ReplyMessage.BRANCHES_DIFFERENT.getMessage());
-		}
-		// 如果該筆訂單不是未付款，則會報錯
-		if (!PayStatus.UNPAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
-			return new BasicRes(ReplyMessage.PAY_STATUS_ERROR.getCode(), ReplyMessage.PAY_STATUS_ERROR.getMessage());
-		}
-		// 檢查金額
-		if (order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
-			return new BasicRes(ReplyMessage.TOTAL_AMOUNT_ERROR.getCode(),
-					ReplyMessage.TOTAL_AMOUNT_ERROR.getMessage());
-		}
-		// 檢查付款方式
-		if (!"CASH".equalsIgnoreCase(order.getPaymentMethod())) {
-			return new BasicRes(ReplyMessage.PAY_PAYMENT_METHOD_ERROR.getCode(),
-					ReplyMessage.PAY_PAYMENT_METHOD_ERROR.getMessage());
-		}
+		try {
+			// 抓員工資訊
+			Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+			if (staff == null) { // 只有管理者才能查詢
+				return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), ReplyMessage.PERMISSION_DENIED.getMessage());
+			}
+			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
+			if (order == null) {
+				return new BasicRes(ReplyMessage.ORDER_NOT_FOUND.getCode(), ReplyMessage.ORDER_NOT_FOUND.getMessage());
+			}
+			// 如果該筆訂單所選的分店，與去取餐的分店是不同，需報錯
+			if (staff.getGlobalAreaId() != order.getGlobalAreaId()) {
+				return new BasicRes(ReplyMessage.BRANCHES_DIFFERENT.getCode(),
+						ReplyMessage.BRANCHES_DIFFERENT.getMessage());
+			}
+			// 如果該筆訂單不是未付款，則會報錯
+			if (!PayStatus.UNPAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
+				return new BasicRes(ReplyMessage.PAY_STATUS_ERROR.getCode(), ReplyMessage.PAY_STATUS_ERROR.getMessage());
+			}
+			// 檢查金額
+			if (order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
+				return new BasicRes(ReplyMessage.TOTAL_AMOUNT_ERROR.getCode(),
+						ReplyMessage.TOTAL_AMOUNT_ERROR.getMessage());
+			}
+			// 檢查付款方式
+			if (!"CASH".equalsIgnoreCase(order.getPaymentMethod())) {
+				return new BasicRes(ReplyMessage.PAY_PAYMENT_METHOD_ERROR.getCode(),
+						ReplyMessage.PAY_PAYMENT_METHOD_ERROR.getMessage());
+			}
 
-		int result = ordersDao.updateCashPayOnSite(req.getId(), req.getOrderDateId(), PayStatus.PAID.name());
-		if (result == 0) {
-			return new BasicRes(ReplyMessage.UPDATE_PAY_STATUS_ERROR.getCode(),
-					ReplyMessage.UPDATE_PAY_STATUS_ERROR.getMessage());
-		}
+			int result = ordersDao.updateCashPayOnSite(req.getId(), req.getOrderDateId(), PayStatus.PAID.name());
+			if (result == 0) {
+				return new BasicRes(ReplyMessage.UPDATE_PAY_STATUS_ERROR.getCode(),
+						ReplyMessage.UPDATE_PAY_STATUS_ERROR.getMessage());
+			}
+			// 點數扣除邏輯方法
+			processMemberLoyalty(order);
 
-		return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+		} catch (RuntimeException e) {
+			//			// 關鍵】因為我們想 return 包裝好的 JSON，所以必須手動標記回滾
+			//	        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+			//	        // 回傳友善訊息給前端
+			//	        return new BasicRes(500, "操作失敗：" + e.getMessage());
+	        
+			throw new RuntimeException("現場付款失敗：" + e.getMessage());
+		}catch (Exception e) {
+	        log.error("非預期錯誤: ", e);
+	        throw new RuntimeException("系統錯誤，請洽工程人員" + e.getMessage());
+	    }
+		
+	}
+	
+	/* 會員次數邏輯 */
+	private void processMemberLoyalty(Orders order) {
+		// 不是會員
+	    if (order.getMemberId() <= 1) return;
+	    // 取得會員資料
+	    Members member = membersDao.findById(order.getMemberId());
+	    if (member == null) {
+	        // 拋出異常，觸發外層 Transactional 回滾
+	        throw new RuntimeException("會員資料異常，ID: " + order.getMemberId());
+	    }
+	    // 如果有使用優惠劵，須把它關閉、次數歸0
+	    if (order.isUseDiscount()) {
+	        int updated = membersDao.useDiscount(member.getId());
+	        if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
+	            throw new RuntimeException("優惠券核銷失敗");
+	        }
+	    } else {
+	    	 // 加次數(如果次數 < 9 或 > 9 會成功，否則回傳 0)
+	        int addResult = membersDao.addPoint(member.getId());
+	        if (addResult == 0) {
+	        	// 代表會員次數加上這筆訂單會剛好來到10次，那就要把優惠劵打開
+	            int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId());
+	            if (couponResult == 0) {
+	                throw new RuntimeException("會員點數更新失敗");
+	            }
+	        }
+	    }
 	}
 
 	/* 取消訂單 */
