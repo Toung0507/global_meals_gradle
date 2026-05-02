@@ -212,7 +212,7 @@ public class StaffService {
 	 *  - 目標必須是同一個 globalAreaId 的 STAFF
 	 *  - 採用原地晉升：保留 ID，只改 role + account
 	 * ===================================================== */
-	@Transactional(rollbackFor = Exception.class)
+/*	@Transactional(rollbackFor = Exception.class)
 	public StaffSearchRes promoteToManagerAgent(int targetId, Staff operator) {
 		
 		// 1. 權限檢查：只有正牌店長 (RM) 或是 老闆 (ADMIN) 可以提拔人
@@ -246,9 +246,9 @@ public class StaffService {
 	
 	// (2) 手動變更帳號前綴 (例：ST0168 -> MA0168)
 	// 這裡利用 replace 將第一個遇到的 ST 換成 MA
-	String oldAccount = targetStaff.getAccount();
+//	String oldAccount = targetStaff.getAccount();
 	//		String newAccount = oldAccount.replace("ST", "MA");//只替換第一個出現的 "ST"
-	String newAccount = "MA" + oldAccount.substring(2);//直接加上 "MA"，然後把舊帳號從第 2 個字元開始擷取
+	String newAccount = generateAccount(StaffRole.MANAGER_AGENT);//呼叫自動產生器，去資料庫找目前 MA 最大的號碼，然後 +1 配發給他
 	targetStaff.setAccount(newAccount);
 	
 	// 6. 存檔：JPA save 會執行 UPDATE
@@ -257,10 +257,10 @@ public class StaffService {
 	return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage(), List.of(targetStaff));
 	}
-	/* =====================================================
-	 * 【職務降級】 (下去)
-	 * 邏輯：RM 將所屬區域的 MA 降級為 ST
-	 * ===================================================== */
+	// =====================================================
+	// 【職務降級】 (下去)
+	//  邏輯：RM 將所屬區域的 MA 降級為 ST
+	//  ===================================================== 
 	@Transactional(rollbackFor = Exception.class)
 	public StaffSearchRes demoteToStaff(int targetId, Staff operator) {
 		
@@ -300,9 +300,9 @@ public class StaffService {
 		staffDao.save(targetStaff);
 	
 		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), List.of(targetStaff));
-	}
+	}*/
 	
-	// 切換身分邏輯
+	// 合併晉/降級
 	@Transactional(rollbackFor = Exception.class)
 	public StaffSearchRes toggleManagerAgentRole(int targetId, Staff operator) {
 
@@ -325,24 +325,23 @@ public class StaffService {
 	    // 4. 根據當前角色執行對應邏輯
 	    if (targetStaff.getRole() == StaffRole.STAFF) {
 	        // --- [升級邏輯] ---
-	        targetStaff.setRole(StaffRole.MANAGER_AGENT);
 	        
-	        // 變更帳號前綴
-	        String oldAccount = targetStaff.getAccount();
-	        String newAccount = "MA" + oldAccount.substring(2);
+	        // 變更帳號前綴使用統一的自動發號器，絕對不撞號！
+	        String newAccount = generateAccount(StaffRole.MANAGER_AGENT);
 	        targetStaff.setAccount(newAccount);
+	        targetStaff.setRole(StaffRole.MANAGER_AGENT);
 
 	    } else if (targetStaff.getRole() == StaffRole.MANAGER_AGENT) {
 	        // --- [降級邏輯] ---
-	        targetStaff.setRole(StaffRole.STAFF);
 	        
 	        // 重新配發帳號 (使用現有的 generateAccount 工具)
 	        String newAccount = generateAccount(StaffRole.STAFF);
 	        targetStaff.setAccount(newAccount);
+	        targetStaff.setRole(StaffRole.STAFF);
 
 	    } else {
 	        // 其他角色 (如 ADMIN 或其他不應被操作的角色)
-	        return new StaffSearchRes(ReplyMessage.PROMOTE_TARGET_ERROR.getCode(), "此員工無法進行角色切換操作");
+	        return new StaffSearchRes(ReplyMessage.PROMOTE_TARGET_ERROR.getCode(), ReplyMessage.PROMOTE_TARGET_ERROR.getMessage());
 	    }
 
 	    // 5. 存檔並回傳 (共用)
