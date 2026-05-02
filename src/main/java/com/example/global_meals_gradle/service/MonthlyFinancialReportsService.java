@@ -95,19 +95,28 @@ public class MonthlyFinancialReportsService {
 		LocalDateTime start = lastMonth.atDay(1).atStartOfDay();
 		LocalDateTime end = lastMonth.atEndOfMonth().atTime(23, 59, 59);
 		// 取的該店該月的總營業額
-		BigDecimal monthlyTotalAmount = ordersDao //
-				.findTotalAmountByGlobalAreaId(branchId, start, end);
+		Object[] result = ordersDao //
+				.findRevenueAndCostByGlobalAreaId(branchId, start, end);
+
 		MonthlyFinancialReports monthReports = new MonthlyFinancialReports();
+		
 		monthReports.setReportDate(reportDate);
 		monthReports.setBranchId(branchId);
 		monthReports.setRegionsId(regionsId);
-		monthReports.setTotalAmount(monthlyTotalAmount != null ? //
-				monthlyTotalAmount : BigDecimal.ZERO);
+		monthReports.setTotalAmount((result != null && result[0] != null) ? //
+				(BigDecimal) result[0] : BigDecimal.ZERO);
+		monthReports.setTotalCost((result != null && result[1] != null) ? //
+				(BigDecimal) result[1] : BigDecimal.ZERO);
 		return monthReports;
 	}
 
 	// 取的特定期間的營業額(以日為單位)
-	public RevenueQueryRes getRevenueReports(RevenueQueryReq req) {
+	public RevenueQueryRes getRevenueReports(RevenueQueryReq req, HttpSession session) {
+		// 從 Session 取得目前登入者的資訊
+		Staff loginStaff = (Staff) session.getAttribute("SESSION_KEY");
+		if (loginStaff == null) {
+			return new RevenueQueryRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage());
+		}
 
 		// 1. 處理日期邊界 (避免漏掉最後一天的訂單)
 		// LocalDate.parse: 把字串變為 LocalDate
@@ -118,18 +127,23 @@ public class MonthlyFinancialReportsService {
 
 		// 宣告一個清單來裝結果
 		List<Object[]> rawData;
-		// 2. 根據 ID 是否為 null (或 0) 來決定查詢維度
-		if (req.getBranchId() != null && req.getBranchId() != 0) {
+		if (StaffRole.REGION_MANAGER == loginStaff.getRole()) { // 店長
 			// A. 查單店：回傳該店名稱與金額
-			rawData = ordersDao.findSingleBranchRevenue(req.getBranchId(), beginTime, endTime);
-		} else if (req.getRegionsId() != null && req.getRegionsId() != 0) {
-			// B. 查國家：回傳該國家下所有分店的列表
-			rawData = ordersDao //
-					.findRevenueByRegionGroupedByBranch(req.getRegionsId(), beginTime, endTime);
+			rawData = ordersDao.findSingleBranchRevenue(loginStaff.getGlobalAreaId(), beginTime, endTime);
+		} else if (StaffRole.ADMIN == loginStaff.getRole()) { // 老闆
+			if (req.getRegionsId() != null) {
+				// B. 查國家：回傳該國家下所有分店的列表
+				rawData = ordersDao //
+						.findRevenueByRegionGroupedByBranch(req.getRegionsId(), beginTime, endTime);
+			} else {
+				// C. 查全球：回傳所有分店的列表
+				rawData = ordersDao.findRevenue(beginTime, endTime);
+			}
 		} else {
-			// B. 查全球：回傳所有分店的列表
-			rawData = ordersDao.findRevenue(beginTime, endTime);
+			return new RevenueQueryRes(ReplyMessage.PERMISSION_DENIED.getCode(), //
+					ReplyMessage.PERMISSION_DENIED.getMessage());
 		}
+
 		// 判斷是否為空的 List
 		if (rawData == null || rawData.isEmpty()) {
 			return new RevenueQueryRes(ReplyMessage.REPORTS_NOT_FOUND.getCode(), //
@@ -137,12 +151,13 @@ public class MonthlyFinancialReportsService {
 		}
 		// rawData.stream(): 把這個清單(rawData) 變成一個「流（Stream）」，準備一個一個加工
 		// .map(result -> { ... }): 舊的東西轉成新的東西
-		// resule: 這是一個 Object[] 陣列，裡面裝著 [店名, 國家名, 金額]
+		// resule: 這是一個 Object[] 陣列，裡面裝著 [店名, 國家名, 營業額, 成本]
 		List<RevenueDataVo> dataList = rawData.stream().map(result -> {
 			RevenueDataVo data = new RevenueDataVo();
 			data.setBranchName((String) result[0]);
 			data.setRegionsName((String) result[1]);
 			data.setTotalAmount((BigDecimal) result[2]);
+			data.setTotalCost((BigDecimal) result[3]);
 			return data;
 		}).collect(Collectors.toList());
 		return new RevenueQueryRes(ReplyMessage.SUCCESS.getCode(), //
@@ -154,7 +169,7 @@ public class MonthlyFinancialReportsService {
 		// 從 Session 取得目前登入者的資訊
 		Staff loginStaff = (Staff) session.getAttribute("SESSION_KEY");
 		if (loginStaff == null) {
-			throw new RuntimeException("請先登入");
+			return new MonthlyReportRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage());
 		}
 		// 準備「本月」與「上月」的日期清單
 		String currentMonth = req.getReportDate();
@@ -163,11 +178,11 @@ public class MonthlyFinancialReportsService {
 
 		List<Object[]> rawData; // 裝報表資料用的
 		// 如果是店長，只能查自己的店，所以分店id一律是自己的店id
-		if (loginStaff.getRole() == StaffRole.REGION_MANAGER) { // ENUM 建議用 ==
+		if (StaffRole.REGION_MANAGER == loginStaff.getRole()) { // ENUM 建議用 ==
 			log.info("店長身分驗證成功，自動鎖定查詢分店 ID: {}", loginStaff.getGlobalAreaId());
 			rawData = monthlyFinancialReportsDao //
 					.getReportByDateIdAndBranchId(dateList, loginStaff.getGlobalAreaId());
-		} else if (loginStaff.getRole() == StaffRole.ADMIN) { // 老闆查詢所有分店的月營業額
+		} else if (StaffRole.ADMIN == loginStaff.getRole()) { // 老闆查詢所有分店的月營業額
 			rawData = monthlyFinancialReportsDao //
 					.getReportByDateId(dateList);
 		} else {
@@ -190,6 +205,7 @@ public class MonthlyFinancialReportsService {
 			data.setBranchName((String) result[1]);
 			data.setRegionsName((String) result[2]);
 			data.setTotalAmount((BigDecimal) result[3]);
+			data.setTotalCost((BigDecimal) result[4]);
 
 			// 判斷這筆是本月還是上月，塞進對應的變數
 			if (reportDate.equals(req.getReportDate())) {
@@ -208,16 +224,16 @@ public class MonthlyFinancialReportsService {
 		// 從 Session 取得目前登入者的資訊
 		Staff loginStaff = (Staff) session.getAttribute("SESSION_KEY");
 		if (loginStaff == null) {
-			throw new RuntimeException("請先登入");
+			return new MonthRangeReportsRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage());
 		}
 
 		List<Object[]> rawData; // 裝報表資料用的
 		// 如果是店長，只能查自己的店，所以分店id一律是自己的店id
-		if (loginStaff.getRole() == StaffRole.REGION_MANAGER) { // ENUM 建議用 ==
+		if (StaffRole.REGION_MANAGER == loginStaff.getRole()) { // ENUM 建議用 ==
 			log.info("店長身分驗證成功，自動鎖定查詢分店 ID: {}", loginStaff.getGlobalAreaId());
 			rawData = monthlyFinancialReportsDao.getReportByDateRangeAndBranchId(req.getStartMonth(), //
 					req.getEndMonth(), loginStaff.getGlobalAreaId());
-		} else if (loginStaff.getRole() == StaffRole.ADMIN) { // 老闆查詢所有分店的月營業額
+		} else if (StaffRole.ADMIN == loginStaff.getRole()) { // 老闆查詢所有分店的月營業額
 			rawData = monthlyFinancialReportsDao //
 					.getReportByDateRange(req.getStartMonth(), req.getEndMonth());
 		} else {
@@ -229,7 +245,7 @@ public class MonthlyFinancialReportsService {
 					ReplyMessage.REPORTS_NOT_FOUND.getMessage());
 		}
 
-		List<MonthlyReportDetailVo> currentMonth = new ArrayList<>();
+		List<MonthlyReportDetailVo> results = new ArrayList<>();
 
 		rawData.forEach(result -> { // 把陣列資料轉換
 			MonthlyReportDetailVo data = new MonthlyReportDetailVo();
@@ -237,10 +253,11 @@ public class MonthlyFinancialReportsService {
 			data.setBranchName((String) result[1]);
 			data.setRegionsName((String) result[2]);
 			data.setTotalAmount((BigDecimal) result[3]);
-			currentMonth.add(data);
+			data.setTotalCost((BigDecimal) result[4]);
+			results.add(data);
 		});
 
 		return new MonthRangeReportsRes(ReplyMessage.SUCCESS.getCode(), //
-				ReplyMessage.SUCCESS.getMessage(), currentMonth);
+				ReplyMessage.SUCCESS.getMessage(), results);
 	}
 }

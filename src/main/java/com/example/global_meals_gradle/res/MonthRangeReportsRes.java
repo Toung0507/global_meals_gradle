@@ -6,7 +6,7 @@ import com.example.global_meals_gradle.vo.MonthlyReportDetailVo;
 
 public class MonthRangeReportsRes extends BasicRes {
 
-	private List<MonthlyReportDetailVo> currentMonth;
+	private List<MonthlyReportDetailVo> reportList;
 
 	public MonthRangeReportsRes() {
 		super();
@@ -16,17 +16,17 @@ public class MonthRangeReportsRes extends BasicRes {
 		super(code, message);
 	}
 
-	public MonthRangeReportsRes(int code, String message, List<MonthlyReportDetailVo> currentMonth) {
+	public MonthRangeReportsRes(int code, String message, List<MonthlyReportDetailVo> reportList) {
 		super(code, message);
-		this.currentMonth = currentMonth;
+		this.reportList = reportList;
 	}
 
-	public List<MonthlyReportDetailVo> getCurrentMonth() {
-		return currentMonth;
+	public List<MonthlyReportDetailVo> getReportList() {
+		return reportList;
 	}
 
-	public void setCurrentMonth(List<MonthlyReportDetailVo> currentMonth) {
-		this.currentMonth = currentMonth;
+	public void setReportList(List<MonthlyReportDetailVo> reportList) {
+		this.reportList = reportList;
 	}
 	
 }
