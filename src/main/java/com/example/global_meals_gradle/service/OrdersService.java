@@ -466,8 +466,6 @@ public class OrdersService {
 				}
 			}
 		}
-		
-		// 計算成本
 
 		String newId = ""; // 先宣告變數
 		try {
