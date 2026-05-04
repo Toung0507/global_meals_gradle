@@ -16,9 +16,16 @@ public class Products {
 	@Column(name = "name")
 	private String name;
 
-	@Column(name = "category")
-	private String category;
+	// 多個商品對應到一個分類
+	@ManyToOne(fetch = FetchType.EAGER) // 這是一個關聯。我現在這個商品物件裡，想塞進去另一個分類物件。
+	@JoinColumn(name = "category_id") // 分類物件是誰，請去 products 表裡面看 category_id 那一欄存的數字，再拿那個數字去 category 表找對應的人。
+	private Category category;
 
+	// 多個商品對應到一個風格
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name = "style_id") // 對應資料庫的 style_id 外鍵
+	private Style style;
+	
 	// 使用 @Lob 告訴 JPA 這是大型物件 (Large Object)
 	@Lob
 	@Basic(fetch = FetchType.LAZY) // 只有在呼叫 getfoodImg() 時才去抓資料庫
@@ -50,12 +57,20 @@ public class Products {
 		this.name = name;
 	}
 
-	public String getCategory() {
+	public Category getCategory() {
 		return category;
 	}
 
-	public void setCategory(String category) {
+	public void setCategory(Category category) {
 		this.category = category;
+	}
+
+	public Style getStyle() {
+		return style;
+	}
+
+	public void setStyle(Style style) {
+		this.style = style;
 	}
 
 	public byte[] getFoodImg() {

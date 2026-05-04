@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference; // 以防爆出黃底線的
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -49,6 +50,9 @@ public class AiService {
 
 	private String validModelName;
 
+	private static final org.slf4j.Logger log = org.slf4j //
+			.LoggerFactory.getLogger(AiService.class);
+	
 	// 啟動時自動檢查模型名稱
 	@PostConstruct
 	@SuppressWarnings("unchecked")
@@ -75,25 +79,51 @@ public class AiService {
 
 	// 1. 生成商品描述
 	@Transactional(rollbackFor = Exception.class)
-	public AiRes generateProductDesc(AiProductDescReq req, HttpSession session) {
-		AiRes authRes = validateAdminAccess(session);
-		if (authRes != null)
-			return new AiRes(authRes.getCode(), authRes.getMessage());
+	public AiRes generateProductDesc(AiProductDescReq req, MultipartFile file, HttpSession session) {
+	    // 1. 權限檢查
+	    AiRes authRes = validateAdminAccess(session);
+	    if (authRes != null)
+	        return new AiRes(authRes.getCode(), authRes.getMessage());
+	    
+	    try {
+			// 2. 處理圖片
+			String mimeType = file.getContentType();
+			if (mimeType == null || !mimeType.startsWith("image/")) {
+				mimeType = "image/jpeg";
+			}
+			
+			byte[] imageBytes = file.getBytes();
+			
+		    // 2. 構造更強大的指令 (加入 Style)
+		    String prompt = String.format(
+		            "你是一位專業的五星級餐廳菜單文案撰寫員。請為以下商品撰寫一段誘人的短文案。\n\n" +
+		            "【商品資訊】\n" +
+		            "● 商品名稱：%s\n" +
+		            "● 商品類別：%s\n" +
+		            "● 烹飪風格：%s\n\n" +
+		            "【撰寫規則】\n" +
+		            "1. 字數限制：嚴格控制在 30 至 50 個中文字之間。\n" +
+		            "2. 文案語調：請根據『%s』的風格，精確描述食材口感、香氣與味覺層次。\n" + 
+		            "3. 禁令：直接輸出文案內容。禁止任何開場白（如：這是一段...）、禁止結尾客套話、禁止使用引號。\n" +
+		            "4. 目標：讓顧客讀完後立刻想點這道菜。",
+		            req.getProductName(), req.getCategory(), req.getStyle(), req.getStyle()
+		    );
+	   
+	    	String content = callAiApiWithImage(prompt, imageBytes, mimeType,productKey);
+	        int productId = req.getProductid();
 
-		String prompt = String.format("請為以下商品撰寫一段適用於『實體菜單』的短文案。請遵守以下規則：\n" //
-				+ "1. 字數：請嚴格控制在 50 個中文字以內。\n" //
-				+ "2. 風格：誘人、簡潔、直接描述口感與風味，不要寫過多的推銷廢話。\n" //
-				+ "3. 輸出：直接給出描述內容，不要包含任何開場白（例如：好的，這是一段...）。\n\n" //
-				+ "商品名稱：%s\n" //
-				+ "商品類別：%s", req.getProductName(), req.getCategory());
+	        // 3. 紀錄 AI 使用日誌
+	        saveAiLog(AiType.PRODUCT_DESC, productId, content);
 
-		String content = callAiApi(prompt);
-		int productId = req.getProductid();
-
-		saveAiLog(AiType.PRODUCT_DESC, productId, content);
-
-		return new AiRes(ReplyMessage.SUCCESS.getCode(), //
-				ReplyMessage.SUCCESS.getMessage(), content);
+	        return new AiRes(ReplyMessage.SUCCESS.getCode(),
+	                ReplyMessage.SUCCESS.getMessage(), content);
+	                
+	    } catch (Exception e) {
+	        // 記得！既然你有全域攔截，這裡可以 throw 或手動回滾
+	        log.error("AI 生成文案失敗：", e);
+	        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+	        return new AiRes(ReplyMessage.SYSTEM_ERROR.getCode(), "AI 服務暫時無法連線，請稍等 3 分鐘再嘗試");
+	    }
 	}
 
 	// 2. 生成活動文案 (含圖片)
@@ -133,7 +163,7 @@ public class AiService {
 					+ "4. 格式：直接輸出文案內容，不要包含任何開場白。", //
 					req.getActivityName(), productDetails.toString());
 
-			String content = callAiApiWithImage(prompt, imageBytes, mimeType);
+			String content = callAiApiWithImage(prompt, imageBytes, mimeType,promoKey);
 
 			// 存檔與回傳
 			saveAiLog(AiType.PROMO_COPY, req.getPromotionsId(), content);
@@ -158,56 +188,56 @@ public class AiService {
 		aiGeneratedDao.save(log);
 	}
 
-	// 呼叫純文字 API
-	private String callAiApi(String prompt) {
-		int maxRetries = 3; // 設定最大重試次數
-		Exception lastException = null;
-
-		for (int i = 0; i < maxRetries; i++) {
-			try {
-				// 1. 組建請求目標 URL，將 API Key 拼接在路徑參數中，告訴 Google 我們是誰 ==> 這個在哪邊可以看到相關文件
-				String url = "https://generativelanguage.googleapis.com/v1beta/" + validModelName //
-						+ ":generateContent?key=" + productKey;
-
-				// 2. 建立一個 Map 來存放 JSON 資料
-				// Gemini API 規定的 JSON 格式是 {"contents": [{"parts": [{"text": "你的問題"}]}]}
-				// Map.of 是 Java 9 之後提供的快速產生不可變 Map 的語法
-				Map<String, Object> requestBody = Map.of("contents", //
-						List.of(Map.of("parts", List.of(Map.of("text", prompt)))));
-
-				// 3. 開始發送 POST 請求
-				// restClient.post()：建立一個 POST 方法的請求物件
-				// .uri(url)：設定發送目的地
-				// .body(requestBody)：將上面的 Map 自動序列化為 JSON 字串並塞入 Request Body
-				// .retrieve()：正式啟動 HTTP 請求
-				// .body(...)：這是關鍵，將回傳的 JSON 反序列化回 Java 物件
-				// ParameterizedTypeReference 的用途是 類型擦除 (Type Erasure)
-				Map<String, Object> response = restClient.post().uri(url).body(requestBody).retrieve()
-						// 關鍵點：ParameterizedTypeReference<Map<String, Object>>() {}
-						// 這是一個匿名類別的實例，用來保存泛型資訊，避免 Java 發生類型擦除
-						.body(new ParameterizedTypeReference<Map<String, Object>>() {
-						});
-
-				// 4. 將取得的 Map 傳入解析方法，取出裡面的文字內容
-				return extractTextFromResponse(response);
-
-			} catch (Exception e) {
-				lastException = e;
-				System.err.println(">>> AI 呼叫失敗，正在進行第 " + (i + 1) + " 次重試... 錯誤: " + e.getMessage());
-				try {
-					Thread.sleep(1000); // 失敗後暫停 1 秒再重試
-				} catch (InterruptedException ie) {
-					Thread.currentThread().interrupt();
-				}
-			}
-		}
-
-		// 如果三次都失敗，拋出最後一次記錄到的錯誤
-		throw new RuntimeException("AI 服務多次呼叫失敗，請稍後再試。最後一次錯誤: " + lastException.getMessage());
-	}
+	// 呼叫純文字 API - 商品應該也得要包含圖片，而非純文字
+	//	private String callAiApi(String prompt) {
+	//		int maxRetries = 3; // 設定最大重試次數
+	//		Exception lastException = null;
+	//
+	//		for (int i = 0; i < maxRetries; i++) {
+	//			try {
+	//				// 1. 組建請求目標 URL，將 API Key 拼接在路徑參數中，告訴 Google 我們是誰 ==> 這個在哪邊可以看到相關文件
+	//				String url = "https://generativelanguage.googleapis.com/v1beta/" + validModelName //
+	//						+ ":generateContent?key=" + productKey;
+	//
+	//				// 2. 建立一個 Map 來存放 JSON 資料
+	//				// Gemini API 規定的 JSON 格式是 {"contents": [{"parts": [{"text": "你的問題"}]}]}
+	//				// Map.of 是 Java 9 之後提供的快速產生不可變 Map 的語法
+	//				Map<String, Object> requestBody = Map.of("contents", //
+	//						List.of(Map.of("parts", List.of(Map.of("text", prompt)))));
+	//
+	//				// 3. 開始發送 POST 請求
+	//				// restClient.post()：建立一個 POST 方法的請求物件
+	//				// .uri(url)：設定發送目的地
+	//				// .body(requestBody)：將上面的 Map 自動序列化為 JSON 字串並塞入 Request Body
+	//				// .retrieve()：正式啟動 HTTP 請求
+	//				// .body(...)：這是關鍵，將回傳的 JSON 反序列化回 Java 物件
+	//				// ParameterizedTypeReference 的用途是 類型擦除 (Type Erasure)
+	//				Map<String, Object> response = restClient.post().uri(url).body(requestBody).retrieve()
+	//						// 關鍵點：ParameterizedTypeReference<Map<String, Object>>() {}
+	//						// 這是一個匿名類別的實例，用來保存泛型資訊，避免 Java 發生類型擦除
+	//						.body(new ParameterizedTypeReference<Map<String, Object>>() {
+	//						});
+	//
+	//				// 4. 將取得的 Map 傳入解析方法，取出裡面的文字內容
+	//				return extractTextFromResponse(response);
+	//
+	//			} catch (Exception e) {
+	//				lastException = e;
+	//				System.err.println(">>> AI 呼叫失敗，正在進行第 " + (i + 1) + " 次重試... 錯誤: " + e.getMessage());
+	//				try {
+	//					Thread.sleep(1000); // 失敗後暫停 1 秒再重試
+	//				} catch (InterruptedException ie) {
+	//					Thread.currentThread().interrupt();
+	//				}
+	//			}
+	//		}
+	//
+	//		// 如果三次都失敗，拋出最後一次記錄到的錯誤
+	//		throw new RuntimeException("AI 服務多次呼叫失敗，請稍後再試。最後一次錯誤: " + lastException.getMessage());
+	//	}
 
 	// 呼叫 AI (用圖片 + 文字)
-	private String callAiApiWithImage(String prompt, byte[] imageBytes, String mimeType) {
+	private String callAiApiWithImage(String prompt, byte[] imageBytes, String mimeType, String apiKey) {
 		int maxRetries = 3; // 設定最大重試次數
 		Exception lastException = null;
 
@@ -215,7 +245,7 @@ public class AiService {
 			try {
 				// 1. 設定 API 端點 (與純文字 API 相同)
 				String url = "https://generativelanguage.googleapis.com/v1beta/" + validModelName //
-						+ ":generateContent?key=" + promoKey;
+						+ ":generateContent?key=" + apiKey;
 
 				// 2. Base64 編碼
 				// JSON 本身是文字格式，無法直接承載「二進位 (Binary)」的圖片原始資料
@@ -242,9 +272,9 @@ public class AiService {
 
 			} catch (Exception e) {
 				lastException = e;
-				System.err.println(">>> AI 圖片呼叫失敗，正在進行第 " + (i + 1) + " 次重試... 錯誤: " + e.getMessage());
+				log.warn(">>> AI 呼叫失敗，重試中... ({}/{})", i + 1, maxRetries);
 				try {
-					Thread.sleep(1000); // 失敗後暫停 1 秒再重試
+					Thread.sleep(3000); // 失敗後暫停 3 秒再重試
 				} catch (InterruptedException ie) {
 					Thread.currentThread().interrupt();
 				}
