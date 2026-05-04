@@ -106,7 +106,7 @@ public class StaffService {
 			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
 		}
 
-		targetStaff.setPassword(encoder.encode(req.getNewPassword()));
+		targetStaff.setPassword(encoder.encode("00000"));
 		staffDao.save(targetStaff); 
 
 		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
