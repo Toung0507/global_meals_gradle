@@ -58,12 +58,6 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ " AND order_date_id = ?2 AND pay_status = 'UNPAID'", nativeQuery = true)
 	public int updatePay(String id, String orderDateId, String paymentMethod, String transactionId, String payStatus);
 
-	/* 查詢這些訂單的狀態 */
-	@Query(value = "SELECT id, order_date_id, orders_status FROM orders  " //
-			+ "WHERE CONCAT(order_date_id, id) IN (?1) " //
-			+ "AND o.orders_status IN ('PREPARING', 'READY')", nativeQuery = true)
-	public List<Object[]> GetOrdersUncomplete(List<String> combinedIds);
-
 	/* 取的該會員的今天訂單 */
 	@Query(value = "SELECT id, order_date_id, orders_status FROM orders  " //
 			+ "WHERE order_date_id = ?1 AND member_id = ?2 ", nativeQuery = true)
@@ -148,7 +142,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "SELECT SUM(total_amount) AS totalAmount, SUM(total_cost) AS totalCost " //
 	        + "FROM orders " //
 	        + "WHERE global_area_id = ?1 " //
-	        + "AND orders_status = 'PICKED UP' " //
+	        + "AND orders_status = 'PICKED_UP' " //
 	        + "AND completed_at BETWEEN ?2 AND ?3", nativeQuery = true)
 	public Object[] findRevenueAndCostByGlobalAreaId(int branchId, LocalDateTime start, LocalDateTime end);
 
@@ -160,7 +154,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	        + "JOIN global_area g ON o.global_area_id = g.id "
 	        + "JOIN regions r ON g.regions_id = r.id "
 	        + "WHERE o.global_area_id = ?1 "
-	        + "AND o.orders_status = 'PICKED UP' " // 狀態過濾
+	        + "AND o.orders_status = 'PICKED_UP' " // 狀態過濾
 	        + "AND o.completed_at BETWEEN ?2 AND ?3 " // 改用完成時間
 	        + "GROUP BY g.id, g.name, r.name", nativeQuery = true)
 	public List<Object[]> findSingleBranchRevenue(Integer branchId, LocalDateTime start, LocalDateTime end);
@@ -173,7 +167,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	        + "JOIN global_area g ON o.global_area_id = g.id "
 	        + "JOIN regions r ON g.regions_id = r.id "
 	        + "WHERE r.id = ?1 "
-	        + "AND o.orders_status = 'PICKED UP' " // 狀態過濾
+	        + "AND o.orders_status = 'PICKED_UP' " // 狀態過濾
 	        + "AND o.completed_at BETWEEN ?2 AND ?3 " // 改用完成時間
 	        + "GROUP BY g.id, g.name, r.name", nativeQuery = true)
 	public List<Object[]> findRevenueByRegionGroupedByBranch(Integer regionsId, //
@@ -186,7 +180,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	        + "FROM orders o "
 	        + "JOIN global_area g ON o.global_area_id = g.id "
 	        + "JOIN regions r ON g.regions_id = r.id "
-	        + "WHERE o.orders_status = 'PICKED UP' " // 狀態過濾
+	        + "WHERE o.orders_status = 'PICKED_UP' " // 狀態過濾
 	        + "AND o.completed_at BETWEEN ?1 AND ?2 " // 改用完成時間
 	        + "GROUP BY g.id, g.name, r.name", nativeQuery = true)
 	public List<Object[]> findRevenue(LocalDateTime start, LocalDateTime end);
@@ -208,7 +202,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "SELECT p.name AS productName, SUM(d.quantity) AS totalQuantity " + "FROM orders o "
 			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
 			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.order_date_id LIKE :yearMonth "
-			+ "AND o.global_area_id = :globalAreaId " + "AND o.status = 'COMPLETED' " + "AND d.is_gift = 0 "
+			+ "AND o.global_area_id = :globalAreaId " + "AND o.status = 'PICKED_UP' " + "AND d.is_gift = 0 "
 			+ "GROUP BY d.product_id, p.name " + "ORDER BY totalQuantity DESC", nativeQuery = true)
 	List<Object[]> getMonthlySalesByBranch(@Param("yearMonth") String yearMonth,
 			@Param("globalAreaId") int globalAreaId);
@@ -220,7 +214,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
 			+ "LEFT JOIN products p ON d.product_id = p.id " + "LEFT JOIN global_area ga ON o.global_area_id = ga.id "
 			+ "LEFT JOIN regions r ON ga.regions_id = r.id " + "WHERE o.order_date_id LIKE :yearMonth "
-			+ "AND r.id = :regionId " + "AND o.status = 'COMPLETED' " + "AND d.is_gift = 0 "
+			+ "AND r.id = :regionId " + "AND o.status = 'PICKED_UP' " + "AND d.is_gift = 0 "
 			+ "GROUP BY d.product_id, p.name " + "ORDER BY totalQuantity DESC " + "LIMIT 5", nativeQuery = true)
 	List<Object[]> getTop5MonthlySalesByRegion(@Param("yearMonth") String yearMonth, @Param("regionId") int regionId);
 
