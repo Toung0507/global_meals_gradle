@@ -6,7 +6,8 @@ public class MenuVo {
 	// 前台菜單顯示
 	private int productId;
 	private String name;
-	private String category;
+	private String category; // 餐點分類（如：主食、甜點）
+	private String style; // 風格（如：台式、西式）
 	private String description;
 	private String foodImgBase64; // 這裡是關鍵！轉成 String
 	private BigDecimal basePrice;
@@ -17,12 +18,13 @@ public class MenuVo {
 		super();
 	}
 
-	public MenuVo(int productId, String name, String category, String description, String foodImgBase64,
+	public MenuVo(int productId, String name, String category, String style, String description, String foodImgBase64,
 			BigDecimal basePrice, int stockQuantity, boolean active) {
 		super();
 		this.productId = productId;
 		this.name = name;
 		this.category = category;
+		this.style = style;
 		this.description = description;
 		this.foodImgBase64 = foodImgBase64;
 		this.basePrice = basePrice;
@@ -52,6 +54,14 @@ public class MenuVo {
 
 	public void setCategory(String category) {
 		this.category = category;
+	}
+
+	public String getStyle() {
+		return style;
+	}
+
+	public void setStyle(String style) {
+		this.style = style;
 	}
 
 	public String getDescription() {
