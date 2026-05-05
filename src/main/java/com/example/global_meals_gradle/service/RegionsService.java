@@ -45,7 +45,7 @@ public class RegionsService {
 		try {
 			regionsDao.insert(req.getCountry(), req.getCurrencyCode().toUpperCase(), //
 					req.getCountryCode().toUpperCase(), req.getTaxRate(), //
-					req.getTaxType().toUpperCase(), req.getUsageCap());
+					req.getTaxType().toUpperCase());
 		} catch (Exception e) {
 			throw e;
 		}
@@ -96,9 +96,8 @@ public class RegionsService {
 			}
 			inputTaxType = req.getTaxType().toUpperCase();
 		}
-		Integer inputUsageCap = (req.getUsageCap() == null) ? regions.getUsageCap() : req.getUsageCap();
 		try {
-			regionsDao.update(req.getId(), inputTaxRate, inputTaxType, inputUsageCap);
+			regionsDao.update(req.getId(), inputTaxRate, inputTaxType);
 		} catch (Exception e) {
 			throw e;
 		}
