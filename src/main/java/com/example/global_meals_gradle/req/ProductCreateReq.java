@@ -12,6 +12,9 @@ public class ProductCreateReq {
 	@NotBlank(message = ValidationMsg.PRODUCT_CATEGORY_EMPTY)
 	private String category;
 
+	@NotBlank(message = ValidationMsg.PRODUCT_STYLE_EMPTY)
+	private String style;
+
 	@NotBlank(message = ValidationMsg.PRODUCT_DESCRIPTION_EMPTY)
 	private String description;
 
@@ -32,6 +35,14 @@ public class ProductCreateReq {
 
 	public void setCategory(String category) {
 		this.category = category;
+	}
+
+	public String getStyle() {
+		return style;
+	}
+
+	public void setStyle(String style) {
+		this.style = style;
 	}
 
 	public String getDescription() {

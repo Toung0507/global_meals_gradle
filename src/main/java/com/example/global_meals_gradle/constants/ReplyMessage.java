@@ -105,7 +105,9 @@ public enum ReplyMessage {
 	PRODUCT_UPDATE_SUCCESS(200, "Product Update successfully!"), //
 	PRODUCT_DELETE_SUCCESS(200, "Product delete successfully!"), //
 	INVENTORY_NOT_FOUND(404, "Inventory not found for this product/branch!"), //
-	INVENTORY_UPDATE_SUCCESS(200, "Inventory Update successfully!");
+	INVENTORY_UPDATE_SUCCESS(200, "Inventory Update successfully!"), //
+	STYLE_EMPTY(400, "Please enter or select a style!"), // 風格不能為空
+	CATEGORY_EMPTY(400, "Please enter or select a category!"); // 分類不能為空
 
 	private int code;
 

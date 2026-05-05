@@ -11,21 +11,37 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+// org.springframework 這代表「地基」。說明這個類別是屬於 Spring Framework 這個組織開發的工具，
+// 而不是 Java 原生（java.util）或你自己寫的。
+
+// .transaction 這代表「部門」。Spring 有很多功能（網頁、安全、資料庫），這是在告訴系統：
+// 我們要找的是跟 「事務（Transaction）」 管理有關的功能區。
+
+//.interceptor 這代表「技術手段」。在 Spring 中，@Transactional 是透過一種叫 「攔截器 (Interceptor)」 
+// 的技術來實現的。它像一個保全，攔截你的方法執行，決定什麼時候開始交易，什麼時候結束。
+
+// TransactionAspectSupport 這才是「主角」。
+// 它是 Spring 內部用來支援（Support）事務切面（Aspect）的一個基礎類別。
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.constants.StaffRole;
 import com.example.global_meals_gradle.dao.BranchInventoryDao;
+import com.example.global_meals_gradle.dao.CategoryDao;
 import com.example.global_meals_gradle.dao.GlobalAreaDao;
 import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.dao.RegionsDao;
+import com.example.global_meals_gradle.dao.StyleDao;
 import com.example.global_meals_gradle.entity.BranchInventory;
+import com.example.global_meals_gradle.entity.Category;
 import com.example.global_meals_gradle.entity.GlobalArea;
 import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.entity.Regions;
 import com.example.global_meals_gradle.entity.Staff;
+import com.example.global_meals_gradle.entity.Style;
 import com.example.global_meals_gradle.req.MonthlyProductsSalesReq;
 import com.example.global_meals_gradle.req.ProductCreateReq;
 import com.example.global_meals_gradle.req.ProductUpdateReq;
@@ -48,166 +64,200 @@ public class ProductService {
 
 	@Autowired
 	private GlobalAreaDao globalAreaDao;
+	
+	@Autowired
+    private StyleDao styleDao;
+	
+    @Autowired
+    private CategoryDao categoryDao;
 
 	private static final String SESSION_KEY = "loginStaff";
 
 	// 新增商品 ( 同時會新增每個分店庫存為 0 )
 	@Transactional(rollbackFor = Exception.class)
-	public AdminProductRes createProduct(ProductCreateReq req, MultipartFile file, HttpSession session) {
-		// 1. 權限檢查
-		AdminProductRes authRes = validateAdminAccess(session);
-		if (authRes != null)
-			return authRes;
-
-		AdminProductRes errorsRes = checkParam(req, file, false, null);
-		if (errorsRes != null) {
-			return errorsRes;
-		}
-
-		try {
-			Products product = new Products();
-			product.setName(req.getName());
-			product.setCategory(req.getCategory());
-			product.setDescription(req.getDescription());
-			product.setFoodImg(file.getBytes());
-			product.setActive(req.isActive());
-			productsDao.save(product);
-
-			// 2. 準備清單存放所有分店的庫存紀錄
-			List<BranchInventory> inventoryList = new ArrayList<>();
-			List<GlobalArea> allBranches = globalAreaDao.getAll();
-
-			// 若沒有分店，不可新增商品
-			if (allBranches.isEmpty()) {
-				// 手動標記回滾，因為要返回失敗的 Res 物件
-				org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus()
-						.setRollbackOnly();
-				return new AdminProductRes(ReplyMessage.BRANCH_NOT_FOUND.getCode(), //
-						ReplyMessage.BRANCH_NOT_FOUND.getMessage());
-			}
-
+	public AdminProductRes createProduct(ProductCreateReq req, MultipartFile file, // 
+			HttpSession session) {
+	    // 1. 權限檢查
+	    AdminProductRes authRes = validateAdminAccess(session);
+	    if (authRes != null) {
+	    	return authRes;
+	    }
+	    
+	    // 參數檢查
+	    AdminProductRes errorsRes = checkParam(req, file, false, null);
+	    if (errorsRes != null) { 
+	    	return errorsRes;
+	    }
+	
+	    try {
+	        Products product = new Products();
+	        product.setName(req.getName());
+	        product.setDescription(req.getDescription());
+	        product.setFoodImg(file.getBytes());
+	        product.setActive(req.isActive());
+	
+	        // --- 重點修正：處理關聯物件 ---
+	        // 呼叫你的 getOrCreate 方法，確保資料庫有這筆分類/風格
+	        product.setCategory(getOrCreateCategory(req.getCategory()));
+	        product.setStyle(getOrCreateStyle(req.getStyle())); 
+	        // ---------------------------
+	
+	        productsDao.save(product);
+	
+	        // 2. 準備清單存放所有分店的庫存紀錄
+	        List<BranchInventory> inventoryList = new ArrayList<>();
+	        List<GlobalArea> allBranches = globalAreaDao.getAll();
+	
+	        if (allBranches.isEmpty()) {
+	        	// 手動標記回滾，因為要返回失敗的 Res 物件
+	        	TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+	            return new AdminProductRes(ReplyMessage.BRANCH_NOT_FOUND.getCode(), // 
+	            		ReplyMessage.BRANCH_NOT_FOUND.getMessage());
+	        }
+	
 			// 3. 迴圈初始化庫存
-			for (GlobalArea area : allBranches) {
-				BranchInventory inventory = new BranchInventory();
-				inventory.setProductId(product.getId());
-				inventory.setGlobalAreaId(area.getId());
-				inventory.setBasePrice(BigDecimal.ZERO);
-				inventory.setCostPrice(BigDecimal.ZERO);
-				inventory.setMaxOrderQuantity(1);
-				inventory.setActive(false);
-				inventory.setUpdatedAt(LocalDateTime.now());
-				inventory.setVersion(1);
-
-				// 將存好的紀錄加入清單，準備回傳給管理員檢查
-				inventoryList.add(inventory);
-			}
-
-			// 使用 saveAll 存入
-			branchInventoryDao.saveAll(inventoryList);
-
-			// 2. 獲取分店 Map
-			Map<Integer, String> branchMap = globalAreaDao.getBranchNameMap();
-
-			// 3. 使用 Stream 將 Entity 轉為 VO
-			List<InventoryDetailVo> inventoryVoList = inventoryList.stream()
-					.map(inv -> convertToInventoryDetailVo(inv, branchMap)).collect(Collectors.toList());
-
-			// 4. 回傳包含完整資訊的 AdminProductRes
-			return new AdminProductRes(ReplyMessage.PRODUCT_CREATE_SUCCESS.getCode(), //
-					ReplyMessage.PRODUCT_CREATE_SUCCESS.getMessage(), convertToAdminVo(product), inventoryVoList);
-
-		} catch (IOException e) {
-			// 圖片讀取失敗，強制回滾
-			org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus()
-					.setRollbackOnly();
-			return new AdminProductRes(ReplyMessage.IMAGE_ERROR.getCode(), //
-					ReplyMessage.IMAGE_ERROR.getMessage());
-		} catch (Exception e) {
-			// 其他任何預期外的錯誤，強制回滾
-			org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus()
-					.setRollbackOnly();
-			return new AdminProductRes(ReplyMessage.SYSTEM_ERROR.getCode(), //
-					ReplyMessage.SYSTEM_ERROR.getMessage() + e.getMessage());
-		}
+	        for (GlobalArea area : allBranches) {
+	            BranchInventory inventory = new BranchInventory();
+	            inventory.setProductId(product.getId());
+	            inventory.setGlobalAreaId(area.getId());
+	            inventory.setBasePrice(BigDecimal.ZERO);
+	            inventory.setCostPrice(BigDecimal.ZERO);
+	            inventory.setMaxOrderQuantity(1);
+	            inventory.setActive(false);
+	            inventory.setUpdatedAt(LocalDateTime.now());
+	            inventory.setVersion(1);
+	            
+	            // 將存好的紀錄加入清單
+	            inventoryList.add(inventory);
+	        }
+	
+	        // 使用 saveAll 存入
+	        branchInventoryDao.saveAll(inventoryList);
+	
+	        // 3. 準備回傳資料
+	        // 3-1. 獲取分店 Map
+	        Map<Integer, String> branchMap = globalAreaDao.getBranchNameMap();
+	        
+	        // 3-2. 使用 Stream 將 Entity 轉為 VO
+	        List<InventoryDetailVo> inventoryVoList = inventoryList.stream()
+	                .map(inv -> convertToInventoryDetailVo(inv, branchMap))
+	                .collect(Collectors.toList());
+	
+	        // 4. 回傳包含完整資訊的 AdminProductRes
+	        return new AdminProductRes(ReplyMessage.PRODUCT_CREATE_SUCCESS.getCode(), 
+	                ReplyMessage.PRODUCT_CREATE_SUCCESS.getMessage(), 
+	                convertToAdminVo(product), 
+	                inventoryVoList);
+	
+	    } catch (IOException e) {
+	    	// 圖片讀取失敗，強制回滾
+	    	// 【手動觸發事務回滾】
+	        // 說明：因為我們使用了 try-catch 攔截異常來回傳自定義的 Res 物件，
+	        // 這會導致 Spring 的 @Transactional 偵測不到報錯而誤以為執行成功。
+	        // 這裡必須手動存取事務攔截器(TransactionAspectSupport)，將目前的交易狀態(currentTransactionStatus)
+	        // 標記為只能回滾(setRollbackOnly)，以確保資料庫操作的原子性（要嘛全成功，要嘛全失敗）。
+	    	TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();	     
+	        return new AdminProductRes(ReplyMessage.IMAGE_ERROR.getCode(), ReplyMessage.IMAGE_ERROR.getMessage());
+	    } catch (Exception e) {
+	    	// 其他任何預期外的錯誤，強制回滾
+	    	TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();	
+	        return new AdminProductRes(ReplyMessage.SYSTEM_ERROR.getCode(), ReplyMessage.SYSTEM_ERROR.getMessage() + e.getMessage());
+	    }
 	}
 
 	// 修改商品
 	@Transactional(rollbackFor = Exception.class)
 	public AdminProductRes updateProduct(ProductUpdateReq req, MultipartFile file, HttpSession session) {
-		// 1. 權限檢查
-		AdminProductRes authRes = validateAdminAccess(session);
-		if (authRes != null)
-			return authRes;
-
-		Products product = productsDao.findById(req.getId());
-		if (product == null) {
-			return new AdminProductRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(),
-					ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
-		}
-
-		try {
-			AdminProductRes errorsRes = checkParam(req, file, true, req.getId());
-			if (errorsRes != null) {
-				return errorsRes;
-			}
-
-			// 更新資訊
-			product.setName(req.getName());
-			product.setCategory(req.getCategory());
-			product.setDescription(req.getDescription());
-			product.setActive(req.isActive());
-
-			// 如果有傳入新圖片，才更新圖片 (沒傳就不變)
-			if (file != null && !file.isEmpty()) {
-				product.setFoodImg(file.getBytes());
-			}
-
-			productsDao.save(product);
-			return new AdminProductRes(ReplyMessage.PRODUCT_UPDATE_SUCCESS.getCode(), //
-					ReplyMessage.PRODUCT_UPDATE_SUCCESS.getMessage(), convertToAdminVo(product), new ArrayList<>());
-
-		} catch (IOException e) {
-			return new AdminProductRes(ReplyMessage.IMAGE_ERROR.getCode(), //
-					ReplyMessage.IMAGE_ERROR.getMessage());
-		}
+	    // 1. 權限檢查
+	    AdminProductRes authRes = validateAdminAccess(session);
+	    if (authRes != null) return authRes;
+	
+	    // 先確認商品是否存在
+	    Products product = productsDao.findById(req.getId());
+	    if (product == null) {
+	        return new AdminProductRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(),
+	                ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
+	    }
+	
+	    try {
+	        // 參數檢查 (現在會檢查 Style 和 Category 是否為空)
+	        AdminProductRes errorsRes = checkParam(req, file, true, req.getId());
+	        if (errorsRes != null) return errorsRes;
+	
+	        // --- 更新核心資訊 ---
+	        product.setName(req.getName());
+	        product.setDescription(req.getDescription());
+	        product.setActive(req.isActive());
+	
+	        // --- 重點修正：處理關聯物件 ---
+	        // 使用與新增商品相同的 getOrCreate 邏輯
+	        product.setCategory(getOrCreateCategory(req.getCategory()));
+	        product.setStyle(getOrCreateStyle(req.getStyle())); 
+	        // ---------------------------
+	
+	        // 如果有傳入新圖片，才更新圖片
+	        if (file != null && !file.isEmpty()) {
+	            product.setFoodImg(file.getBytes());
+	        }
+	
+	        productsDao.save(product);
+	        
+	        return new AdminProductRes(ReplyMessage.PRODUCT_UPDATE_SUCCESS.getCode(), 
+	                ReplyMessage.PRODUCT_UPDATE_SUCCESS.getMessage(), 
+	                convertToAdminVo(product), new ArrayList<>());
+	
+	    } catch (IOException e) {
+	        // 圖片讀取報錯，手動回滾
+	        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+	        return new AdminProductRes(ReplyMessage.IMAGE_ERROR.getCode(), ReplyMessage.IMAGE_ERROR.getMessage());
+	    } catch (Exception e) {
+	        // 【手動觸發事務回滾】
+	        // 說明：避免因為 getOrCreate 產生了新分類，但商品更新卻失敗導致的資料不一致。
+	        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+	        return new AdminProductRes(ReplyMessage.SYSTEM_ERROR.getCode(), 
+	                ReplyMessage.SYSTEM_ERROR.getMessage() + e.getMessage());
+	    }
 	}
 
 	// 軟刪除商品
 	@Transactional(rollbackFor = Exception.class)
 	public AdminProductRes deleteProduct(int id, HttpSession session) {
-		// 1. 權限檢查
-		AdminProductRes authRes = validateAdminAccess(session);
-		if (authRes != null)
-			return authRes;
-
-		// 1. 先檢查商品是否存在
-		Products product = productsDao.findById(id);
-		if (product == null) {
-			return new AdminProductRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(), //
-					ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
-		}
-
-		try {
-			// 2. 執行軟刪除
-			int row = productsDao.softDeleteProduct(id);
-
-			if (row > 0) {
-				product.setActive(false);
-				return new AdminProductRes(ReplyMessage.PRODUCT_DELETE_SUCCESS.getCode(), //
-						ReplyMessage.PRODUCT_DELETE_SUCCESS.getMessage(), //
-						convertToAdminVo(product), new ArrayList<>());
-			} else {
-				// 這邊代表雖然 ID 存在，但刪除動作因為某些原因 (如資料庫鎖定) 影響行數為 0
-				String error = "Delete failed, no rows affected.";
-				return new AdminProductRes(ReplyMessage.SYSTEM_ERROR.getCode(), //
-						ReplyMessage.SYSTEM_ERROR.getMessage() + ": " + error);
-			}
-
-		} catch (Exception e) {
-			// 3. 捕捉資料庫層級的所有異常 (包含連線中斷、SQL 語法錯誤等)
-			return new AdminProductRes(ReplyMessage.SYSTEM_ERROR.getCode(), //
-					ReplyMessage.SYSTEM_ERROR.getMessage() + ": " + e.getMessage());
-		}
+	    // 1. 權限檢查
+	    AdminProductRes authRes = validateAdminAccess(session);
+	    if (authRes != null) return authRes;
+	
+	    // 2. 先檢查商品是否存在
+	    Products product = productsDao.findById(id);
+	    if (product == null) {
+	        return new AdminProductRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(),
+	                ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
+	    }
+	
+	    try {
+	        // 3. 執行軟刪除
+	        int row = productsDao.softDeleteProduct(id);
+	
+	        if (row > 0) {
+	            product.setActive(false);
+	            return new AdminProductRes(ReplyMessage.PRODUCT_DELETE_SUCCESS.getCode(),
+	                    ReplyMessage.PRODUCT_DELETE_SUCCESS.getMessage(),
+	                    convertToAdminVo(product), new ArrayList<>());
+	        } else {
+	            // 如果 row == 0，雖然沒改到資料，但為了安全起見，建議也標記回滾，確保狀態一致
+	            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+	            String error = "Delete failed, no rows affected.";
+	            return new AdminProductRes(ReplyMessage.SYSTEM_ERROR.getCode(),
+	                    ReplyMessage.SYSTEM_ERROR.getMessage() + ": " + error);
+	        }
+	
+	    } catch (Exception e) {
+	        // 【手動觸發事務回滾】
+	        // 捕捉資料庫層級的所有異常時，必須手動回滾，因為 try-catch 阻斷了 @Transactional 的自動偵測。
+	        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+	        
+	        return new AdminProductRes(ReplyMessage.SYSTEM_ERROR.getCode(),
+	                ReplyMessage.SYSTEM_ERROR.getMessage() + ": " + e.getMessage());
+	    }
 	}
 
 	// 快速修正上下架
@@ -310,6 +360,19 @@ public class ProductService {
 						ReplyMessage.IMAGE_TOO_LARGE.getMessage());
 			}
 		}
+
+		// 3. 檢查風格是否存在
+		if (req.getStyle() == null || req.getStyle().trim().isEmpty()) {
+			return new AdminProductRes(ReplyMessage.STYLE_EMPTY.getCode(), //
+					ReplyMessage.STYLE_EMPTY.getMessage());
+		}
+
+		// 4. 檢查餐點分類是否存在
+		if (req.getCategory() == null || req.getCategory().trim().isEmpty()) {
+			return new AdminProductRes(ReplyMessage.CATEGORY_EMPTY.getCode(), //
+					ReplyMessage.CATEGORY_EMPTY.getMessage());
+		}
+
 		return null;
 	}
 
@@ -321,10 +384,10 @@ public class ProductService {
 	    return "data:" + mimeType + ";base64," + base64;
 	}
 	
-	// 工具 - 圖片轉換成前端能夠直接使用
-	private String encodeImage(byte[] imageBytes) {
-		return (imageBytes != null && imageBytes.length > 0) ? Base64.getEncoder().encodeToString(imageBytes) : "";
-	}
+	// 工具 - 圖片轉換成前端能夠直接使用 -- 這個是原本單純回傳 byte ，後面改成回傳完整的資料
+	//	private String encodeImage(byte[] imageBytes) {
+	//		return (imageBytes != null && imageBytes.length > 0) ? Base64.getEncoder().encodeToString(imageBytes) : "";
+	//	}
 
 	// 建議直接回傳一個小物件，或是把兩者串起來
 	private String detectMimeType(byte[] bytes) {
@@ -351,7 +414,20 @@ public class ProductService {
 		ProductAdminVo vo = new ProductAdminVo();
 		vo.setId(p.getId());
 		vo.setName(p.getName());
-		vo.setCategory(p.getCategory());
+		
+		// --- 重點修正：從物件中提取名稱 ---
+	    // 增加 null 檢查比較安全
+	    if (p.getCategory() != null) {
+	        vo.setCategory(p.getCategory().getName());
+	        vo.setCategoryId(p.getCategory().getId());
+	    }
+	    
+	    if (p.getStyle() != null) {
+	        vo.setStyle(p.getStyle().getName());
+	        vo.setStyleId(p.getStyle().getId());
+	    }
+	    // ------------------------------
+	    
 		vo.setDescription(p.getDescription());
 		vo.setActive(p.isActive());
 		vo.setFoodImgBase64(getFullBase64(p.getFoodImg()));
@@ -395,6 +471,27 @@ public class ProductService {
 		return null;
 	}
 
+	// 內部使用的私有方法，保持代碼乾淨
+    private Style getOrCreateStyle(String name) {
+        if (name == null || name.trim().isEmpty()) return null;
+        return styleDao.findByName(name)
+                .orElseGet(() -> {
+                    Style s = new Style();
+                    s.setName(name);
+                    return styleDao.save(s);
+                });
+    }
+
+    private Category getOrCreateCategory(String name) {
+        if (name == null || name.trim().isEmpty()) return null;
+        return categoryDao.findByName(name)
+                .orElseGet(() -> {
+                    Category c = new Category();
+                    c.setName(name);
+                    return categoryDao.save(c);
+                });
+    }
+	
 	// 以下為艷羽寫的
 	private static final int YEAR_MIN = 2020;
 	@Autowired

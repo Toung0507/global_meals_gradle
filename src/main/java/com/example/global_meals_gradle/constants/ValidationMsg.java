@@ -68,6 +68,7 @@ public class ValidationMsg {
 	/* 思云 */
 	// 商品
 	public static final String PRODUCT_NAME_EMPTY = "Product Name cannot be empty";
+	public static final String PRODUCT_STYLE_EMPTY = "Product Style cannot be empty";
 	public static final String PRODUCT_CATEGORY_EMPTY = "Product Category cannot be empty";
 	public static final String PRODUCT_AREA_ID_INVALID = "Global Area Id must be at least 1";
 	public static final String PRODUCT_PRICE_INVALID = "Price must be greater than 0";
