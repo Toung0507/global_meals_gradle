@@ -25,12 +25,14 @@ import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.controller.MembersController;
 import com.example.global_meals_gradle.controller.StaffController;
 import com.example.global_meals_gradle.dao.BranchInventoryDao;
+import com.example.global_meals_gradle.dao.DiscountDao;
 import com.example.global_meals_gradle.dao.MembersDao;
 import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.dao.PromotionsGiftsDao;
 import com.example.global_meals_gradle.dao.RegionsDao;
 import com.example.global_meals_gradle.entity.BranchInventory;
+import com.example.global_meals_gradle.entity.Discount;
 import com.example.global_meals_gradle.entity.Members;
 import com.example.global_meals_gradle.entity.OrderCartDetails;
 import com.example.global_meals_gradle.entity.Orders;
@@ -76,6 +78,9 @@ public class OrdersService {
 
 	@Autowired
 	private BranchInventoryDao branchInventoryDao;
+	
+	@Autowired
+	private DiscountDao discountDao;
 
 	// 這樣在呼叫 self.executeInsert 時，Spring 才會啟動 @Transactional 的代理機制。
 	@Autowired
@@ -392,7 +397,11 @@ public class OrdersService {
 		BigDecimal afterTax = BigDecimal.ZERO; // 含稅
 		BigDecimal totalCost = BigDecimal.ZERO; // 成本價
 		// 取的該分店的所在國家的折扣金額上限
-		BigDecimal highestDiscountAmount = BigDecimal.valueOf(region.getUsageCap());
+		Discount discount = discountDao.findByRegionsId(region.getId());
+		if (discount == null) {
+			throw new RuntimeException("找不到該分店所在國家的折扣額度設定");
+		} 
+		BigDecimal highestDiscountAmount = BigDecimal.valueOf(discount.getCount());
 		BigDecimal discountOff = BigDecimal.ZERO; // 最終實際折掉的金額
 
 		// ====== 金額計算/贈品id儲存 ======
