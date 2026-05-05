@@ -338,7 +338,7 @@ public class OrdersService {
 				throw new RuntimeException("訂單系統發生非預期錯誤: " + e.getMessage());
 			}
 		}
-		return null;
+		throw new RuntimeException("系統繁忙，請重新結帳");
 	}
 
 	/* 成立訂單: 內部執行方法：負責「查詢庫存 + 查詢最大序號 + 寫入資料庫」。 */
@@ -763,8 +763,6 @@ public class OrdersService {
 			return new GetAllOrdersRes(ReplyMessage.PERMISSION_DENIED.getCode(),
 					ReplyMessage.PERMISSION_DENIED.getMessage());
 		}
-		// 取得員工的分店
-		int globalAreaId = staff.getGlobalAreaId();
 		// 取的今天的日期字串，參考成立訂單
 		String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 		// 取的資料根據電話號碼跟今天日期 DAO 取得扁平化的資料
