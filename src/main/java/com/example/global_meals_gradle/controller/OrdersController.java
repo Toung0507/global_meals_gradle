@@ -45,8 +45,8 @@ public class OrdersController {
 	private LinePayService linePayService;
 
 	/* 取的該會員的今天所有訂單 */
-	@GetMapping("get_all_orders_list")
-	@Operation(summary = "取得會員歷史訂單", description = "查詢該會員的所有歷史訂單記錄")
+	@GetMapping("get_all_today_orders_list")
+	@Operation(summary = "取的該會員的今天所有訂單", description = "查詢該會員的所有歷史訂單記錄")
 	public GetAllOrdersUncompleteRes getTodayOrdersListByMember(@Parameter(hidden = true) HttpSession httpSession) {
 		return ordersService.getTodayOrdersListByMember(httpSession);
 	}
@@ -61,7 +61,7 @@ public class OrdersController {
 
 	/* 取的該分店今天所有訂單 */
 	@GetMapping("get_today_all_orders_list")
-	@Operation(summary = "取得今天所有訂單", description = "查詢今天所有訂單記錄")
+	@Operation(summary = "取的該分店今天所有訂單", description = "查詢今天所有訂單記錄")
 	public GetAllOrdersRes getTodayAllOrdersListByBranch(@Parameter(hidden = true) HttpSession httpSession) {
 		return ordersService.getTodayAllOrders(httpSession);
 	}
