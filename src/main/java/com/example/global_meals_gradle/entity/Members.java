@@ -14,6 +14,9 @@ public class Members {
 
 	@Column(name = "name")
 	private String name;
+	
+	@Column(name = "regions_id")
+	private int regionsId;
 
 	@Column(name = "phone", unique = true)
 	private String phone;
@@ -44,6 +47,14 @@ public class Members {
 
 	public void setName(String name) {
 		this.name = name;
+	}
+
+	public int getRegionsId() {
+		return regionsId;
+	}
+
+	public void setRegionsId(int regionsId) {
+		this.regionsId = regionsId;
 	}
 
 	public String getPhone() {
