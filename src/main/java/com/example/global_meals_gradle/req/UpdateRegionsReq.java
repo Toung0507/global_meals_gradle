@@ -20,9 +20,6 @@ public class UpdateRegionsReq {
     @JsonAlias("tax_type")
 	private String taxType;
 	
-    @JsonAlias("usage_cap")
-    private Integer usageCap; // 改用 Integer 以便判斷 null
-
 	public int getId() {
 		return id;
 	}
@@ -45,14 +42,6 @@ public class UpdateRegionsReq {
 
 	public void setTaxType(String taxType) {
 		this.taxType = taxType;
-	}
-
-	public Integer getUsageCap() {
-		return usageCap;
-	}
-
-	public void setUsageCap(Integer usageCap) {
-		this.usageCap = usageCap;
 	}
 
 }

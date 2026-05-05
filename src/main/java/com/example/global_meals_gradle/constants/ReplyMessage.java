@@ -16,6 +16,7 @@ public enum ReplyMessage {
 	PHONE_HAS_EXISTED(400, "Phone Has Existed!!"), // 電話號碼已存在
 	PASSWORD_ERROR(400, "Password Error!!"), //
 	PASSWORD_NOT_ENTERED(400, "Password Not Entered!!"), // 密碼未填寫
+	PASSWORD_AT_LEAST_SIX_YARDS(400, "Password At Least 6 Yards!!"), // 密碼至少6碼
 	OLDPASSWORD_ERROR(400, "OldPassword Error!!"), //
 	PHONE_OR_PASSWORD_ERROR(400, "Phone Or Password Error!!"), //
 	UPDATE_FAILED(400, "Update Failed!!"), //

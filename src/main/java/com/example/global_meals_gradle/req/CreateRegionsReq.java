@@ -32,10 +32,6 @@ public class CreateRegionsReq {
     @NotBlank(message = ValidationMsg.TAX_TYPE_ERROR)
     @JsonAlias("tax_type")
 	private String taxType;
-    
-    @Min(value = 0, message = ValidationMsg.USAGE_CAP_ERROR)
-    @JsonAlias("usage_cap")
-    private int usageCap;
 
 	public String getCountry() {
 		return country;
@@ -77,12 +73,4 @@ public class CreateRegionsReq {
 		this.taxType = taxType;
 	}
 
-	public int getUsageCap() {
-		return usageCap;
-	}
-
-	public void setUsageCap(int usageCap) {
-		this.usageCap = usageCap;
-	}
-	
 }
