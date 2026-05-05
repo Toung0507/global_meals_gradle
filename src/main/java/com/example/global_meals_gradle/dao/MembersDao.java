@@ -19,24 +19,24 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 	@Modifying
 	@Transactional
 	@Query(value = "UPDATE members SET order_count = order_count + 1 WHERE id = ?1 "
-			+ "AND ((order_count < 9) OR (order_count >= 10 AND is_discount = true))", nativeQuery = true)
-	public int addPoint(int id);
+			+ "AND ((order_count < (?2-1)) OR (order_count >= ?2 AND is_discount = true))", nativeQuery = true)
+	public int addPoint(int id, int count);
 
 	/* 加次數並開券：次數剛好是9，加完變10並打開優惠券 */
 	@Modifying
 	@Transactional
 	@Query(value = "UPDATE members SET order_count = order_count + 1, "
 			+ "is_discount = true "
-			+ "WHERE id = ?1 AND order_count = 9 AND is_discount = false", nativeQuery = true)
-	public int reachFullPointsAndGiveCoupon(int id);
+			+ "WHERE id = ?1 AND order_count = (?2-1) AND is_discount = false", nativeQuery = true)
+	public int reachFullPointsAndGiveCoupon(int id, int count);
 	
 	/* 還原優惠券與點數邏輯(該訂單有使用優惠劵)給一張優惠劵跟點數變10 */
 	@Modifying
 	@Transactional
 	@Query(value = "UPDATE members " +
-	               "SET is_discount = true, order_count = 10 " +
+	               "SET is_discount = true, order_count = ?2 " +
 	               "WHERE id = ?1", nativeQuery = true)
-	int restoreCouponAndPoints(int id);
+	int restoreCouponAndPoints(int id, int count);
 
 	/* 撤銷訂單時回扣次數(會自己判斷，類似switch 或 if-else if)(該訂單未使用優惠劵) */
 	/*
@@ -45,10 +45,10 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 	 */
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE members SET is_discount = CASE WHEN order_count = 10 THEN false "
+	@Query(value = "UPDATE members SET is_discount = CASE WHEN order_count = ?2 THEN false "
 			+ "ELSE is_discount END, order_count = order_count - 1 "
 			+ "WHERE id = ?1 AND order_count > 0", nativeQuery = true)
-	public int smartReducePoint(int id);
+	public int smartReducePoint(int id, int count);
 
 	/* 使用優惠劵: 次數歸0，優惠劵關閉 */
 	// is_discount = true: 多一層判斷，需要優惠劵是開啟的狀態，才能關閉
@@ -56,7 +56,7 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 	@Transactional
 	@Query(value = "UPDATE members SET order_count = 0, is_discount = false "
 			+ "WHERE id = ?1 AND is_discount = true", nativeQuery = true)
-	public int useDiscount(int id);
+	public int useDiscount(int id, int count);
 	
 	//=============================================================================================================
 	// 昱文

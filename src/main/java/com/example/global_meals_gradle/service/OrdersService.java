@@ -78,7 +78,7 @@ public class OrdersService {
 
 	@Autowired
 	private BranchInventoryDao branchInventoryDao;
-	
+
 	@Autowired
 	private DiscountDao discountDao;
 
@@ -400,7 +400,7 @@ public class OrdersService {
 		Discount discount = discountDao.findByRegionsId(region.getId());
 		if (discount == null) {
 			throw new RuntimeException("找不到該分店所在國家的折扣額度設定");
-		} 
+		}
 		BigDecimal highestDiscountAmount = BigDecimal.valueOf(discount.getCount());
 		BigDecimal discountOff = BigDecimal.ZERO; // 最終實際折掉的金額
 
@@ -661,18 +661,24 @@ public class OrdersService {
 			// 拋出異常，觸發外層 Transactional 回滾
 			throw new RuntimeException("會員資料異常，ID: " + order.getMemberId());
 		}
+		// 取得該會員國家優惠劵開啟需要的次數門檻
+		Discount discount = discountDao.findByRegionsId(member.getRegionsId());
+		if (discount == null) {
+			throw new RuntimeException("找不到該分店所在國家的折扣額度設定");
+		}
+		int count = discount.getCount();
 		// 如果有使用優惠劵，須把它關閉、次數歸0
 		if (order.isUseDiscount()) {
-			int updated = membersDao.useDiscount(member.getId());
+			int updated = membersDao.useDiscount(member.getId(), count);
 			if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
 				throw new RuntimeException("優惠券核銷失敗");
 			}
 		} else {
 			// 加次數(如果次數 < 9 或 > 9 會成功，否則回傳 0)
-			int addResult = membersDao.addPoint(member.getId());
+			int addResult = membersDao.addPoint(member.getId(), count);
 			if (addResult == 0) {
 				// 代表會員次數加上這筆訂單會剛好來到10次，那就要把優惠劵打開
-				int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId());
+				int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId(), count);
 				if (couponResult == 0) {
 					throw new RuntimeException("會員點數更新失敗");
 				}
@@ -691,7 +697,7 @@ public class OrdersService {
 		}
 		try {
 			CreateOrdersRes createOrdersRes = createOrders(req, httpSession);
-			if(createOrdersRes == null || createOrdersRes.getCode() != 200) {
+			if (createOrdersRes == null || createOrdersRes.getCode() != 200) {
 				return new BasicRes(createOrdersRes.getCode(), createOrdersRes.getMessage());
 			}
 			PayReq payReq = new PayReq();
@@ -722,12 +728,14 @@ public class OrdersService {
 			return new BasicRes(ReplyMessage.ORDER_NUMBER_NOT_FOUND.getCode(), //
 					ReplyMessage.ORDER_NUMBER_NOT_FOUND.getMessage());
 		}
-		if (member == null || member.getId() < 1) {
-			throw new RuntimeException("請先登入或請找員工處理");
+		if (member == null) { // 找不到會員
+			return new BasicRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(), //
+					ReplyMessage.MEMBER_NOT_FOUND.getMessage());
 		}
 		if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
 			return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
 		}
+		
 		try {
 
 			// 取得該訂單的付款狀態(如果取得是null，後面判斷會出錯，所以轉成"")
@@ -749,16 +757,25 @@ public class OrdersService {
 
 			// 執行訂單狀態更新
 			int result = ordersDao.updateOrderStatus(targetStatus, req.getId(), req.getOrderDateId());
-			// 判斷是否成功
-			if (result > 0) {
-				// 如果是會員且有使用優惠劵
-				if (order.getMemberId() > 1 && order.isUseDiscount()) {
-					// 這裡可以共用 restoreCouponAndPoints，把券設回 true 並點數設回 10
-					membersDao.restoreCouponAndPoints(order.getMemberId());
-				}
+			if(result == 0) { // 判斷是否成功
+				throw new RuntimeException("取消訂定單失敗");
+			}
+			if(order.getMemberId() == 1) { // 遊客不用繼續走下去
 				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			}
-			throw new RuntimeException("取消訂定單失敗");
+			// 取得該會員國家優惠劵開啟需要的次數門檻
+			Discount discount = discountDao.findByRegionsId(member.getRegionsId());
+			if (discount == null) {
+				throw new RuntimeException("找不到該分店所在國家的折扣額度設定");
+			}
+			int count = discount.getCount();
+			if(order.isUseDiscount()) {
+				membersDao.restoreCouponAndPoints(order.getMemberId(), count);
+			}else {
+				membersDao.smartReducePoint(order.getMemberId(), count);
+			}
+			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
+			
 		} catch (Exception e) {
 			throw new RuntimeException("取消流程發生錯誤: " + e.getMessage());
 		}
