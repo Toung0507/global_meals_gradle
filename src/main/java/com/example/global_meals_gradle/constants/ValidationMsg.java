@@ -71,6 +71,7 @@ public class ValidationMsg {
 	public static final String PRODUCT_CATEGORY_EMPTY = "Product Category cannot be empty";
 	public static final String PRODUCT_AREA_ID_INVALID = "Global Area Id must be at least 1";
 	public static final String PRODUCT_PRICE_INVALID = "Price must be greater than 0";
+	public static final String PRODUCT_COST_PRICE_INVALID = "Cost Price must be greater than 0";
 	public static final String PRODUCT_DESCRIPTION_EMPTY = "Description cannot be empty";
 	public static final String PRODUCT_ID_EMPTY = "Product ID cannot be empty";
 

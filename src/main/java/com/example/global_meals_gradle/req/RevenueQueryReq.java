@@ -10,10 +10,6 @@ public class RevenueQueryReq {
 	@JsonFormat(pattern = "yyyy-MM-dd")
 	private String endDate;
 
-	// Integer，這樣沒傳時就會是 null，你可以輕鬆用 if (req.getBranchId() == null)
-	
-	private Integer branchId;
-
 	private Integer regionsId;
 
 	public String getStartDate() {
@@ -30,14 +26,6 @@ public class RevenueQueryReq {
 
 	public void setEndDate(String endDate) {
 		this.endDate = endDate;
-	}
-
-	public Integer getBranchId() {
-		return branchId;
-	}
-
-	public void setBranchId(Integer branchId) {
-		this.branchId = branchId;
 	}
 
 	public Integer getRegionsId() {

@@ -16,10 +16,11 @@ public class RegisterStaffReq {
 	private String name;
 	
 //	@NotBlank(message = ValidationMsg.ACCOUNT_ERROR)//因為帳號是自動產生的
-    private String account;
+//    private String account;
     
-	@NotBlank(message = ValidationMsg.PASSWORD_ERROR)
-    private String password;
+	//密碼也自動產生給預設00000
+//	@NotBlank(message = ValidationMsg.PASSWORD_ERROR)
+//    private String password;
     
 	@NotBlank(message = ValidationMsg.ROLE_ERROR)
     private String role;
@@ -33,18 +34,18 @@ public class RegisterStaffReq {
 	public void setName(String name) {
 		this.name = name;
 	}
-	public String getAccount() {
-		return account;
-	}
-	public void setAccount(String account) {
-		this.account = account;
-	}
-	public String getPassword() {
-		return password;
-	}
-	public void setPassword(String password) {
-		this.password = password;
-	}
+//	public String getAccount() {
+//		return account;
+//	}
+//	public void setAccount(String account) {
+//		this.account = account;
+//	}
+//	public String getPassword() {
+//		return password;
+//	}
+//	public void setPassword(String password) {
+//		this.password = password;
+//	}
 	public String getRole() {
 		return role;
 	}

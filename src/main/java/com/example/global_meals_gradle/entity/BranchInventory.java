@@ -38,12 +38,18 @@ public class BranchInventory {
 	@Column(name = "base_price", precision = 12, scale = 2) // DECIMAL(12,2)
 	private BigDecimal basePrice;
 
+	@Column(name = "cost_price", precision = 12, scale = 2) // DECIMAL(12,2)
+	private BigDecimal costPrice;
+
 	@Min(value = 1, message = ValidationMsg.MAX_ORDER_QUANTITY) // 單次最大購買量至少為１
 	@Column(name = "max_order_quantity", columnDefinition = "INT UNSIGNED")
 	private int maxOrderQuantity;
 
 	@Column(name = "version")
 	private int version;
+
+	@Column(name = "is_active")
+	private boolean active;
 
 	@UpdateTimestamp // 每次更新資料時，Hibernate 會自動幫你填入當前時間
 	@Column(name = "updated_at")
@@ -89,6 +95,14 @@ public class BranchInventory {
 		this.basePrice = basePrice;
 	}
 
+	public BigDecimal getCostPrice() {
+		return costPrice;
+	}
+
+	public void setCostPrice(BigDecimal costPrice) {
+		this.costPrice = costPrice;
+	}
+
 	public int getMaxOrderQuantity() {
 		return maxOrderQuantity;
 	}
@@ -103,6 +117,14 @@ public class BranchInventory {
 
 	public void setVersion(int version) {
 		this.version = version;
+	}
+
+	public boolean isActive() {
+		return active;
+	}
+
+	public void setActive(boolean active) {
+		this.active = active;
 	}
 
 	public LocalDateTime getUpdatedAt() {

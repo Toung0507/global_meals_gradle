@@ -19,7 +19,6 @@ import com.example.global_meals_gradle.vo.*;
 
 @Service
 public class CartService {
-
 	@Autowired
 	private OrderCartDao orderCartDao;
 	@Autowired
@@ -40,14 +39,11 @@ public class CartService {
 	private PromotionsDao promotionsDao;
 	@Autowired
 	private BranchInventoryDao branchInventoryDao;
-
 //	核心 API 1:同步購物車，包括刪除單品
 //	 前端呼叫時機：使用者改了數量且「停手 1 秒後」（Debounce 防抖邏輯）
 	@Transactional
 	public CartViewRes syncItem(CartSyncReq req) {
-
 		int currentCartId;
-
 //		 步驟 1：判斷這是第一件商品（要建新車），還是後面加的商品（沿用舊車）
 		if (req.getCartId() == null) {
 
@@ -79,6 +75,15 @@ public class CartService {
 			// 原本：OperationType.valueOf(req.getOperationType()) 若傳 "abc" →
 			// IllegalArgumentException（500）
 			// 改法：try-catch 包住 valueOf，抓到就回傳友善的 400，不讓 500 暴露給前端
+			/*
+			 * 1.String 是無底洞：如果變數型別是 String，它就可以裝載任何東西。前端可以傳
+			 * "CUSTOMER"，也可以傳 "Apple"、"12345" 或是一堆亂碼。你的程式碼必須到處去檢查
+			 * 這個字串到底合不合法。
+			 * 2.Enum 是嚴格的選擇題：一旦成功轉成 OperationType，這個變數就只能是 Enum 裡定義好
+			 * 的那幾個值（例如 CUSTOMER, ORDER, PRODUCT）。這等於在系統入口處就做了一次嚴格的
+			 * 安檢，後續接手的程式碼完全不用再擔心「收到奇怪的操作類型怎麼辦」，因為不合法的字串
+			 * 在轉換這一關（valueOf）就已經被擋下來並拋出錯誤了。
+			 */
 			OperationType opType; // 先宣告，等安全轉換完再賦值
 			try {
 				// toUpperCase()：前端傳 "customer" 也能正確轉成 CUSTOMER，增加大小寫容錯
@@ -110,7 +115,7 @@ public class CartService {
 			// 🛡️ 防禦：確認這台車尚未被結帳
 			// 如果前端帶來的 cartId 已在訂單表裡，不允許再修改
 			if (ordersDao.existsByOrderCartId(currentCartId)) {
-				// 修改十三：從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
+				//從 throw 改成 return buildError，所有公開方法統一用 buildError 風格
 				return buildError(ReplyMessage.CART_ALREADY_CHECKED_OUT); // code=400
 			}
 		}
@@ -314,7 +319,15 @@ public class CartService {
 			if (giftProduct == null) {
 				return buildError(ReplyMessage.GIFT_NOT_AVAILABLE);
 			}
-
+//			步驟2-7.5：確保5：確認該贈品在目前分店的實體庫存是否大於 0
+			BranchInventory giftInv = branchInventoryDao
+					.findByProductIdAndGlobalAreaId(giftProductId, cart.getGlobalAreaId())
+					.orElse(null);
+			
+			if (giftInv == null || giftInv.getStockQuantity() <= 0) {
+				// 如果沒有庫存設定，或是實體庫存 <= 0，就回傳贈品送完的錯誤
+				return buildError(ReplyMessage.GIFT_SEND_LIGHT);
+			}
 //			步驟2-8：全部驗證通過！把贈品寫進購物車明細
 			OrderCartDetails giftDetail = new OrderCartDetails();
 			giftDetail.setOrderCartId(req.getCartId()); // 關聯購物車
@@ -576,7 +589,7 @@ public class CartService {
 //					 這一行取代了原本的 if (minFullAmount == null) { minFullAmount = ZERO; }
 					.orElse(BigDecimal.ZERO);
 
-//			 判斷使用者消費小計有沒有達到這個活動的最低門檻
+//			 判斷使用者消費小計有沒有達到這個活動的最低門檻，在這裡擋掉活動列表裡不符合的活動了
 			if (subtotal.compareTo(minFullAmount) < 0) {
 //				 subtotal < minFullAmount → 消費不達標 → 跳過整個活動
 //				 前端：這個活動不出現在下拉選單（沒有「選擇活動」按鈕）
@@ -589,7 +602,7 @@ public class CartService {
 
 //			 逐一審查這個活動底下的每條贈品規則
 			for (PromotionsGifts rule : giftsInThisPromotion) {
-
+//				在這裡擋掉贈品列表裡不符合的贈品：
 //				 確認使用者消費有沒有達到「這條贈品規則」自己的門檻
 //				 同一個活動可能有不同門檻：滿300送可樂、滿500才能選大盤雞
 //				 使用者消費400 → 能選可樂，但不能選大盤雞

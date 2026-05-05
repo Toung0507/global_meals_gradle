@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.req.CartClearReq;
-import com.example.global_meals_gradle.req.CartRemoveReq;
 import com.example.global_meals_gradle.req.CartSelectGiftReq;
 import com.example.global_meals_gradle.req.CartSwitchBranchReq;
 import com.example.global_meals_gradle.req.CartSyncReq;

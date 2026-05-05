@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 
 //修改密碼的請求體
 //targetId 同樣來自 URL 的 {id} 路徑變數，body 只放「新密碼」
-public class ChangePasswordReq {
+public class ResetStaffPasswordReq {
 
 //	@NotBlank(message = ValidationMsg.OLD_PASSWORD_ERROR)
 //	private String oldPassword;
