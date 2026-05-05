@@ -6,16 +6,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.constants.StaffRole;
+import com.example.global_meals_gradle.controller.StaffController;
 import com.example.global_meals_gradle.dao.GlobalAreaDao;
 import com.example.global_meals_gradle.dao.RegionsDao;
 import com.example.global_meals_gradle.entity.GlobalArea;
 import com.example.global_meals_gradle.entity.Regions;
+import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.CreateGlobalAreaReq;
 import com.example.global_meals_gradle.req.DeleteGlobalAreaReq;
 import com.example.global_meals_gradle.req.UpdateGlobalAreaReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.GlobalAreaRes;
+import com.example.global_meals_gradle.res.RegionsRes;
 import com.example.global_meals_gradle.utils.PhoneValidatorUtils;
+
+import jakarta.servlet.http.HttpSession;
 
 @Service
 public class GlobalAreaService {
@@ -32,8 +38,12 @@ public class GlobalAreaService {
 
 	// 新增分店
 	@Transactional(rollbackFor = Exception.class)
-	public BasicRes create(CreateGlobalAreaReq req) {
+	public BasicRes create(CreateGlobalAreaReq req, HttpSession session) {
 		/* 參數檢查:使用@Valid */
+		BasicRes check = checkAdmin(session);
+		if (check != null) {
+			return check;
+		}
 		// 根據 regionsId 撈取區域資訊
 		Regions regions = regionsDao.getById(req.getRegionsId());
 		if (regions == null) {
@@ -62,25 +72,42 @@ public class GlobalAreaService {
 
 	// 更新分店
 	@Transactional(rollbackFor = Exception.class)
-	public BasicRes update(UpdateGlobalAreaReq req) {
-		// GlobalArea globalArea = globalAreaDao.findById(req.getId());
-		Regions regions = regionsDao.getById(req.getRegionsId());
-		if (globalAreaDao.findById(req.getId()) == null) {
+	public BasicRes update(UpdateGlobalAreaReq req, HttpSession session) {
+		BasicRes check = checkAdmin(session);
+		if (check != null) {
+			return check;
+		}
+		GlobalArea globalArea = globalAreaDao.findById(req.getId());
+		if (globalArea == null) {
 			return new BasicRes(ReplyMessage.GLOBAL_AREA_NOT_FOUND.getCode(), //
 					ReplyMessage.GLOBAL_AREA_NOT_FOUND.getMessage());
 		}
+		Regions regions = regionsDao.getById(globalArea.getRegionsId());
 		if (regions == null) {
 			return new BasicRes(ReplyMessage.REGIONS_ID_NOT_FOUND.getCode(), //
 					ReplyMessage.REGIONS_ID_NOT_FOUND.getMessage());
 		}
+		// 處理 只修改了部分資料，其餘照舊
+		String inputBranch = (req.getBranch() == null || req.getBranch().isBlank()) ? globalArea.getBranch() : req.getBranch();
+		String inputAddress = (req.getAddress() == null || req.getAddress().isBlank()) ? globalArea.getAddress() : req.getAddress();
+		String inputPhone = globalArea.getPhone(); // 預設照舊
 		try {
 			String countryCode = regions.getCountryCode();
-			if (!PhoneValidatorUtils.isValid(req.getPhone(), countryCode)) {
-				return new BasicRes(ReplyMessage.PHONE_ERROR.getCode(), //
-						ReplyMessage.PHONE_ERROR.getMessage());
+			// 電話有傳入新值才驗證與轉換
+			if (req.getPhone() != null && !req.getPhone().isBlank()) {
+				// 如果前端有輸入值進來，再來判斷他的最小長度
+				if (req.getPhone().length() <= 7) {
+					return new BasicRes(ReplyMessage.PHONE_ERROR.getCode(), //
+							ReplyMessage.PHONE_ERROR.getMessage());
+				}
+				if (!PhoneValidatorUtils.isValid(req.getPhone(), countryCode)) {
+					return new BasicRes(ReplyMessage.PHONE_ERROR.getCode(), //
+							ReplyMessage.PHONE_ERROR.getMessage());
+				}
+				// 如果值有變動，將舊值更改為新值，並將輸入的值"正規化"存入
+				inputPhone = PhoneValidatorUtils.toE164Format(req.getPhone(), countryCode);
 			}
-			String normalizedPhone = PhoneValidatorUtils.toE164Format(req.getPhone(), countryCode);
-			globalAreaDao.update(req.getId(), req.getBranch(), req.getAddress(), normalizedPhone);
+			globalAreaDao.update(req.getId(), inputBranch, inputAddress, inputPhone);
 		} catch (Exception e) {
 			throw e;
 		}
@@ -89,14 +116,24 @@ public class GlobalAreaService {
 	}
 
 	// 取得分店清單
-	public GlobalAreaRes getAllBranch() {
+	public GlobalAreaRes getAllBranch(HttpSession session) {
+		// 權限(所有Staff)
+		Staff staff = (Staff) session.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) {
+			return new GlobalAreaRes(ReplyMessage.NOT_LOGIN.getCode(), //
+					ReplyMessage.NOT_LOGIN.getMessage());
+		}
 		return new GlobalAreaRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage(), globalAreaDao.getAll());
 	}
 
 	// 刪除多個分店
 	@Transactional(rollbackFor = Exception.class)
-	public BasicRes delete(DeleteGlobalAreaReq req) {
+	public BasicRes delete(DeleteGlobalAreaReq req, HttpSession session) {
+		BasicRes check = checkAdmin(session);
+		if (check != null) {
+			return check;
+		}
 		for (int id : req.getGlobalAreaIdList()) {
 			if (id <= 0) {
 				return new BasicRes(ReplyMessage.GLOBAL_AREA_ID_ERROR.getCode(), //
@@ -110,6 +147,23 @@ public class GlobalAreaService {
 		}
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), //
 				ReplyMessage.SUCCESS.getMessage());
+	}
+	
+	/* 統一權限檢查(僅ADMIN)
+	 * return null 表示通過；非 null 表示有錯誤 */
+	private BasicRes checkAdmin(HttpSession session) {
+		// 驗證是否登入
+		Staff staff = (Staff) session.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) {
+			return new BasicRes(ReplyMessage.NOT_LOGIN.getCode(), //
+					ReplyMessage.NOT_LOGIN.getMessage());
+		}
+		// 權限驗證(ADMIN)
+		if (staff.getRole() != StaffRole.ADMIN) {
+			return new BasicRes(ReplyMessage.ROLE_ERROR.getCode(), //
+					ReplyMessage.ROLE_ERROR.getMessage());
+		}
+		return null;
 	}
 
 }

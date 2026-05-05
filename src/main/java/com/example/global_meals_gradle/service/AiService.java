@@ -16,7 +16,9 @@ import com.example.global_meals_gradle.constants.AiType;
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.constants.StaffRole;
 import com.example.global_meals_gradle.dao.AiGeneratedDao;
+import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.entity.AiGenerated;
+import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.AiProductDescReq;
 import com.example.global_meals_gradle.req.AiPromotionsReq;
@@ -30,6 +32,9 @@ public class AiService {
 
 	@Autowired
 	private RestClient restClient;
+
+	@Autowired
+	private ProductsDao productsDao;
 
 	@Value("${ai.product.key}")
 	private String productKey;
@@ -48,43 +53,39 @@ public class AiService {
 	@PostConstruct
 	@SuppressWarnings("unchecked")
 	public void initModelName() {
-	    String url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + productKey;
-	    try {
-	        Map<String, Object> response = restClient.get().uri(url).retrieve()
-	                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+		String url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + productKey;
+		try {
+			Map<String, Object> response = restClient.get().uri(url).retrieve()
+					.body(new ParameterizedTypeReference<Map<String, Object>>() {
+					});
 
-	        List<Map<String, Object>> models = (List<Map<String, Object>>) response.get("models");
-	        
-	        // 修正邏輯：優先尋找 gemini-2.5-flash (你清單中的第一個)
-	        this.validModelName = models.stream()
-	                .map(m -> (String) m.get("name"))
-	                .filter(name -> name.contains("gemini-2.5-flash")) // 改為搜尋 2.5
-	                .findFirst()
-	                .orElse("models/gemini-2.5-flash"); // 預設改為 2.5
+			List<Map<String, Object>> models = (List<Map<String, Object>>) response.get("models");
 
-	        System.out.println(">>> 成功選定模型: " + this.validModelName);
-	    } catch (Exception e) {
-	        System.err.println(">>> 初始化失敗: " + e.getMessage());
-	        this.validModelName = "models/gemini-2.5-flash"; // 預設改為 2.5
-	    }
+			// 修正邏輯：優先尋找 gemini-2.5-flash (你清單中的第一個)
+			this.validModelName = models.stream().map(m -> (String) m.get("name"))
+					.filter(name -> name.contains("gemini-2.5-flash")) // 改為搜尋 2.5
+					.findFirst().orElse("models/gemini-2.5-flash"); // 預設改為 2.5
+
+			System.out.println(">>> 成功選定模型: " + this.validModelName);
+		} catch (Exception e) {
+			System.err.println(">>> 初始化失敗: " + e.getMessage());
+			this.validModelName = "models/gemini-2.5-flash"; // 預設改為 2.5
+		}
 	}
 
 	// 1. 生成商品描述
 	@Transactional(rollbackFor = Exception.class)
 	public AiRes generateProductDesc(AiProductDescReq req, HttpSession session) {
-//		AiRes authRes = validateAdminAccess(session);
-//		if (authRes != null)
-//			return new AiRes(authRes.getCode(), authRes.getMessage());
+		AiRes authRes = validateAdminAccess(session);
+		if (authRes != null)
+			return new AiRes(authRes.getCode(), authRes.getMessage());
 
-		String prompt = String.format(
-			    "請為以下商品撰寫一段適用於『實體菜單』的短文案。請遵守以下規則：\n" +
-			    "1. 字數：請嚴格控制在 50 個中文字以內。\n" +
-			    "2. 風格：誘人、簡潔、直接描述口感與風味，不要寫過多的推銷廢話。\n" +
-			    "3. 輸出：直接給出描述內容，不要包含任何開場白（例如：好的，這是一段...）。\n\n" +
-			    "商品名稱：%s\n" +
-			    "商品類別：%s", 
-			    req.getProductName(), req.getCategory()
-			);
+		String prompt = String.format("請為以下商品撰寫一段適用於『實體菜單』的短文案。請遵守以下規則：\n" //
+				+ "1. 字數：請嚴格控制在 50 個中文字以內。\n" //
+				+ "2. 風格：誘人、簡潔、直接描述口感與風味，不要寫過多的推銷廢話。\n" //
+				+ "3. 輸出：直接給出描述內容，不要包含任何開場白（例如：好的，這是一段...）。\n\n" //
+				+ "商品名稱：%s\n" //
+				+ "商品類別：%s", req.getProductName(), req.getCategory());
 
 		String content = callAiApi(prompt);
 		int productId = req.getProductid();
@@ -103,33 +104,47 @@ public class AiService {
 			return new AiRes(authRes.getCode(), authRes.getMessage());
 
 		try {
+			// 1. 整理商品資訊 (這是最關鍵的一步)
+			StringBuilder productDetails = new StringBuilder();
+			if (req.getPromotionItems() != null) {
+				for (AiPromotionsReq.PromotionItem item : req.getPromotionItems()) {
+					Products p = productsDao.findById(item.getProductId());
+					if (p != null) {
+						productDetails.append("- 商品：").append(p.getName()).append("\n").append("  描述：")
+								.append(p.getDescription()).append("\n").append("  門檻：滿額 ").append(item.getFullAmount())
+								.append(" 元即可獲得\n");
+					}
+				}
+			}
+
+			// 2. 處理圖片
 			String mimeType = file.getContentType();
 			if (mimeType == null || !mimeType.startsWith("image/")) {
 				mimeType = "image/jpeg";
 			}
-
 			byte[] imageBytes = file.getBytes();
-			String prompt = String.format(
-				    "請根據圖片內容與活動名稱『%s』，撰寫一篇吸睛的社群活動宣傳文案。\n" +
-				    "要求：\n" +
-				    "1. 風格：活潑、有吸引力，能引發互動。\n" +
-				    "2. 字數：嚴格控制在 80 個中文字以內 (約 3-4 句短句)。\n" +
-				    "3. 內容：突顯活動亮點與吸引人處，不要寫冗長的廢話。\n" +
-				    "4. 格式：直接輸出文案內容，不要包含任何開場白 (如：這是一篇文案...)。",
-				    req.getActivityName()
-				);
+
+			// 3. 更新 Prompt，注入商品細節
+			String prompt = String.format("請根據圖片內容、活動名稱『%s』以及以下商品活動細節，撰寫一篇吸睛的社群活動宣傳文案。\n\n" //
+					+ "【活動商品細節】:\n%s\n\n" + "要求：\n" //
+					+ "1. 風格：活潑、有吸引力，能引發互動。\n" //
+					+ "2. 字數：嚴格控制在 80 個中文字以內 (約 3-4 句短句)。\n" //
+					+ "3. 內容：突顯活動亮點與吸引人處，結合商品特色與門檻優惠。\n" //
+					+ "4. 格式：直接輸出文案內容，不要包含任何開場白。", //
+					req.getActivityName(), productDetails.toString());
 
 			String content = callAiApiWithImage(prompt, imageBytes, mimeType);
-			int promotionsId = req.getPromotionsId();
 
-			saveAiLog(AiType.PROMO_COPY, promotionsId, content);
+			// 存檔與回傳
+			saveAiLog(AiType.PROMO_COPY, req.getPromotionsId(), content);
 
-			return new AiRes(ReplyMessage.SUCCESS.getCode(), //
-					ReplyMessage.SUCCESS.getMessage(), content);
+			return new AiRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), content);
 
 		} catch (IOException e) {
-			return new AiRes(ReplyMessage.SYSTEM_ERROR.getCode(), //
+			return new AiRes(ReplyMessage.SYSTEM_ERROR.getCode(),
 					ReplyMessage.SYSTEM_ERROR.getMessage() + e.getMessage());
+		} catch (Exception e) {
+			return new AiRes(ReplyMessage.SYSTEM_ERROR.getCode(), "處理失敗: " + e.getMessage());
 		}
 	}
 
@@ -145,60 +160,99 @@ public class AiService {
 
 	// 呼叫純文字 API
 	private String callAiApi(String prompt) {
-		// 1. 組建請求目標 URL，將 API Key 拼接在路徑參數中，告訴 Google 我們是誰 ==> 這個在哪邊可以看到相關文件
-		String url = "https://generativelanguage.googleapis.com/v1beta/" + validModelName //
-				+ ":generateContent?key=" + productKey;
+		int maxRetries = 3; // 設定最大重試次數
+		Exception lastException = null;
 
-		// 2. 建立一個 Map 來存放 JSON 資料
-		// Gemini API 規定的 JSON 格式是 {"contents": [{"parts": [{"text": "你的問題"}]}]}
-		// Map.of 是 Java 9 之後提供的快速產生不可變 Map 的語法
-		Map<String, Object> requestBody = Map.of("contents", //
-				List.of(Map.of("parts", List.of(Map.of("text", prompt)))));
+		for (int i = 0; i < maxRetries; i++) {
+			try {
+				// 1. 組建請求目標 URL，將 API Key 拼接在路徑參數中，告訴 Google 我們是誰 ==> 這個在哪邊可以看到相關文件
+				String url = "https://generativelanguage.googleapis.com/v1beta/" + validModelName //
+						+ ":generateContent?key=" + productKey;
 
-		// 3. 開始發送 POST 請求
-		// restClient.post()：建立一個 POST 方法的請求物件
-		// .uri(url)：設定發送目的地
-		// .body(requestBody)：將上面的 Map 自動序列化為 JSON 字串並塞入 Request Body
-		// .retrieve()：正式啟動 HTTP 請求
-		// .body(...)：這是關鍵，將回傳的 JSON 反序列化回 Java 物件
-		// ParameterizedTypeReference 的用途是 類型擦除 (Type Erasure)
-		Map<String, Object> response = restClient.post().uri(url).body(requestBody).retrieve()
-				// 關鍵點：ParameterizedTypeReference<Map<String, Object>>() {}
-				// 這是一個匿名類別的實例，用來保存泛型資訊，避免 Java 發生類型擦除
-				.body(new ParameterizedTypeReference<Map<String, Object>>() {
-				});
+				// 2. 建立一個 Map 來存放 JSON 資料
+				// Gemini API 規定的 JSON 格式是 {"contents": [{"parts": [{"text": "你的問題"}]}]}
+				// Map.of 是 Java 9 之後提供的快速產生不可變 Map 的語法
+				Map<String, Object> requestBody = Map.of("contents", //
+						List.of(Map.of("parts", List.of(Map.of("text", prompt)))));
 
-		// 4. 將取得的 Map 傳入解析方法，取出裡面的文字內容
-		return extractTextFromResponse(response);
+				// 3. 開始發送 POST 請求
+				// restClient.post()：建立一個 POST 方法的請求物件
+				// .uri(url)：設定發送目的地
+				// .body(requestBody)：將上面的 Map 自動序列化為 JSON 字串並塞入 Request Body
+				// .retrieve()：正式啟動 HTTP 請求
+				// .body(...)：這是關鍵，將回傳的 JSON 反序列化回 Java 物件
+				// ParameterizedTypeReference 的用途是 類型擦除 (Type Erasure)
+				Map<String, Object> response = restClient.post().uri(url).body(requestBody).retrieve()
+						// 關鍵點：ParameterizedTypeReference<Map<String, Object>>() {}
+						// 這是一個匿名類別的實例，用來保存泛型資訊，避免 Java 發生類型擦除
+						.body(new ParameterizedTypeReference<Map<String, Object>>() {
+						});
+
+				// 4. 將取得的 Map 傳入解析方法，取出裡面的文字內容
+				return extractTextFromResponse(response);
+
+			} catch (Exception e) {
+				lastException = e;
+				System.err.println(">>> AI 呼叫失敗，正在進行第 " + (i + 1) + " 次重試... 錯誤: " + e.getMessage());
+				try {
+					Thread.sleep(1000); // 失敗後暫停 1 秒再重試
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		}
+
+		// 如果三次都失敗，拋出最後一次記錄到的錯誤
+		throw new RuntimeException("AI 服務多次呼叫失敗，請稍後再試。最後一次錯誤: " + lastException.getMessage());
 	}
 
 	// 呼叫 AI (用圖片 + 文字)
 	private String callAiApiWithImage(String prompt, byte[] imageBytes, String mimeType) {
-		// 1. 設定 API 端點 (與純文字 API 相同)
-		String url = "https://generativelanguage.googleapis.com/v1beta/" + validModelName //
-				+ ":generateContent?key=" + promoKey;
-		// 2. Base64 編碼
-		// JSON 本身是文字格式，無法直接承載「二進位 (Binary)」的圖片原始資料
-		// 因此必須將圖片轉成 Base64 字串，才能安全地放入 JSON 中傳輸
-		String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+		int maxRetries = 3; // 設定最大重試次數
+		Exception lastException = null;
 
-		// 3. 組裝多模態 (Multimodal) JSON Payload
-		// Gemini API 的格式規定：在 parts 陣列中，可以同時存在 text 物件與 inline_data 物件
-		// 這就是為什麼我們把 prompt 和 圖片數據放在同一個 List 裡面
-		Map<String, Object> requestBody = Map.of("contents", //
-				List.of(Map.of("parts", List.of(Map.of("text", prompt), // 文字部分
-						Map.of("inline_data", Map.of("mime_type", //
-								mimeType, // 動態設定圖片格式 (例如 image/jpeg)
-								"data", base64Image // 剛才轉好的 Base64 字串
-						))))));
+		for (int i = 0; i < maxRetries; i++) {
+			try {
+				// 1. 設定 API 端點 (與純文字 API 相同)
+				String url = "https://generativelanguage.googleapis.com/v1beta/" + validModelName //
+						+ ":generateContent?key=" + promoKey;
 
-		// 4. 發送請求並接收回應 (同樣使用 ParameterizedTypeReference 確保型別安全)
-		Map<String, Object> response = restClient.post().uri(url).body(requestBody).retrieve()
-				.body(new ParameterizedTypeReference<Map<String, Object>>() {
-				});
+				// 2. Base64 編碼
+				// JSON 本身是文字格式，無法直接承載「二進位 (Binary)」的圖片原始資料
+				// 因此必須將圖片轉成 Base64 字串，才能安全地放入 JSON 中傳輸
+				String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
 
-		// 5. 解析回應
-		return extractTextFromResponse(response);
+				// 3. 組裝多模態 (Multimodal) JSON Payload
+				// Gemini API 的格式規定：在 parts 陣列中，可以同時存在 text 物件與 inline_data 物件
+				// 這就是為什麼我們把 prompt 和 圖片數據放在同一個 List 裡面
+				Map<String, Object> requestBody = Map.of("contents", //
+						List.of(Map.of("parts", List.of(Map.of("text", prompt), // 文字部分
+								Map.of("inline_data", Map.of("mime_type", //
+										mimeType, // 動態設定圖片格式 (例如 image/jpeg)
+										"data", base64Image // 剛才轉好的 Base64 字串
+								))))));
+
+				// 4. 發送請求並接收回應 (同樣使用 ParameterizedTypeReference 確保型別安全)
+				Map<String, Object> response = restClient.post().uri(url).body(requestBody).retrieve()
+						.body(new ParameterizedTypeReference<Map<String, Object>>() {
+						});
+
+				// 5. 解析回應
+				return extractTextFromResponse(response);
+
+			} catch (Exception e) {
+				lastException = e;
+				System.err.println(">>> AI 圖片呼叫失敗，正在進行第 " + (i + 1) + " 次重試... 錯誤: " + e.getMessage());
+				try {
+					Thread.sleep(1000); // 失敗後暫停 1 秒再重試
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		}
+
+		// 如果三次都失敗，拋出最後一次記錄到的錯誤
+		throw new RuntimeException("AI 圖片服務多次呼叫失敗，請稍後再試。最後一次錯誤: " + lastException.getMessage());
 	}
 
 	// 確認解析狀況

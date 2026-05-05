@@ -5,8 +5,7 @@ import com.example.global_meals_gradle.constants.ValidationMsg;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-/* 刪除或取消訂單 */
-public class RefundedReq {
+public class UpdateOrdersStatusReq {
 
 	/*
 	 * @NotBlank: 限制屬性值不能是 1.空子串 2.全空白字串 3.null message
@@ -20,8 +19,6 @@ public class RefundedReq {
 
 	@NotNull(message = ValidationMsg.STATUS_ERROR)
 	private String ordersStatus;
-	
-	private String payStatus;
 
 	public String getOrderDateId() {
 		return orderDateId;
@@ -45,14 +42,6 @@ public class RefundedReq {
 
 	public void setOrdersStatus(String ordersStatus) {
 		this.ordersStatus = ordersStatus;
-	}
-
-	public String getPayStatus() {
-		return payStatus;
-	}
-
-	public void setPayStatus(String payStatus) {
-		this.payStatus = payStatus;
 	}
 	
 }

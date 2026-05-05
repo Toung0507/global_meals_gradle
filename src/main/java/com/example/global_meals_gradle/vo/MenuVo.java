@@ -11,13 +11,14 @@ public class MenuVo {
 	private String foodImgBase64; // 這裡是關鍵！轉成 String
 	private BigDecimal basePrice;
 	private int stockQuantity;
+	private boolean active;
 
 	public MenuVo() {
 		super();
 	}
 
 	public MenuVo(int productId, String name, String category, String description, String foodImgBase64,
-			BigDecimal basePrice, int stockQuantity) {
+			BigDecimal basePrice, int stockQuantity, boolean active) {
 		super();
 		this.productId = productId;
 		this.name = name;
@@ -26,6 +27,7 @@ public class MenuVo {
 		this.foodImgBase64 = foodImgBase64;
 		this.basePrice = basePrice;
 		this.stockQuantity = stockQuantity;
+		this.active = active;
 	}
 
 	public int getProductId() {
@@ -82,6 +84,14 @@ public class MenuVo {
 
 	public void setStockQuantity(int stockQuantity) {
 		this.stockQuantity = stockQuantity;
+	}
+
+	public boolean isActive() {
+		return active;
+	}
+
+	public void setActive(boolean active) {
+		this.active = active;
 	}
 
 }

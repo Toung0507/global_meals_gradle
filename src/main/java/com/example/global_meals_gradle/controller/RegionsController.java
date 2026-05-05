@@ -7,14 +7,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.global_meals_gradle.req.UpdateRegionsUsageCapReq;
-import com.example.global_meals_gradle.req.UpsertRegionsTaxReq;
+import com.example.global_meals_gradle.req.UpdateRegionsReq;
+import com.example.global_meals_gradle.req.CreateRegionsReq;
 import com.example.global_meals_gradle.res.BasicRes;
 import com.example.global_meals_gradle.res.RegionsRes;
 import com.example.global_meals_gradle.service.RegionsService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 @RestController
@@ -25,25 +27,25 @@ public class RegionsController {
 	@Autowired
 	private RegionsService regionsService;
 	
-	// 新增/修改國家稅值
-	@PostMapping("upsert")
-	@Operation(summary = "新增或修改國家稅值", description = "若該國家稅務設定不存在則新增，存在則更新")
-	public BasicRes upsert(@Valid @RequestBody UpsertRegionsTaxReq req) {
-		return regionsService.upsert(req);
+	// 新增
+	@PostMapping("insert")
+	@Operation(summary = "新增國家稅值與折扣上限", description = "新增國家稅務設定與國家折扣上限")
+	public BasicRes insert(@Valid @RequestBody CreateRegionsReq req, @Parameter(hidden = true) HttpSession session) {
+		return regionsService.insert(req, session);
 	}
 	
-	// 更改國家稅值
-	@PostMapping("update_usage_cap")
-	@Operation(summary = "更新使用上限", description = "修改指定國家的使用上限設定")
-	public BasicRes updateUsageCap(@Valid @RequestBody UpdateRegionsUsageCapReq req) {
-		return regionsService.updateUsageCap(req);
+	// 更改
+	@PostMapping("update")
+	@Operation(summary = "更新國家基本設定", description = "修改指定國家的基本設定")
+	public BasicRes updateUsageCap(@Valid @RequestBody UpdateRegionsReq req, @Parameter(hidden = true) HttpSession session) {
+		return regionsService.update(req, session);
 	}
 	
 	// 取得各國稅率清單
-	@GetMapping("get_all_tax")
-	@Operation(summary = "取得各國稅率清單", description = "查詢系統內所有國家的稅率與配置清單")
-	public RegionsRes getAllTax() {
-		return regionsService.getAllTax();
+	@GetMapping("get_all")
+	@Operation(summary = "取得各國基本設定清單", description = "查詢系統內所有國家的稅率與配置清單")
+	public RegionsRes getAll(@Parameter(hidden = true) HttpSession session) {
+		return regionsService.getAll(session);
 	}
 
 }

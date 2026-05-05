@@ -10,7 +10,9 @@ public class GetOrdersByPhoneRes extends BasicRes {
 	
 	private BigDecimal totalAmount;
 	
-	private String status;
+	private String ordersStatus;
+	
+	private String payStatus;
 
 	public GetOrdersByPhoneRes() {
 		super();
@@ -19,14 +21,15 @@ public class GetOrdersByPhoneRes extends BasicRes {
 	public GetOrdersByPhoneRes(int code, String message) {
 		super(code, message);
 	}
-
+	
 	public GetOrdersByPhoneRes(int code, String message, String id, String orderDateId, BigDecimal totalAmount,
-			String status) {
+			String ordersStatus, String payStatus) {
 		super(code, message);
 		this.id = id;
 		this.orderDateId = orderDateId;
 		this.totalAmount = totalAmount;
-		this.status = status;
+		this.ordersStatus = ordersStatus;
+		this.payStatus = payStatus;
 	}
 
 	public String getId() {
@@ -53,11 +56,20 @@ public class GetOrdersByPhoneRes extends BasicRes {
 		this.totalAmount = totalAmount;
 	}
 
-	public String getStatus() {
-		return status;
+	public String getOrdersStatus() {
+		return ordersStatus;
 	}
 
-	public void setStatus(String status) {
-		this.status = status;
+	public void setOrdersStatus(String ordersStatus) {
+		this.ordersStatus = ordersStatus;
 	}
+
+	public String getPayStatus() {
+		return payStatus;
+	}
+
+	public void setPayStatus(String payStatus) {
+		this.payStatus = payStatus;
+	}
+
 }

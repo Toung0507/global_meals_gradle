@@ -3,7 +3,6 @@ package com.example.global_meals_gradle.req;
 import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 
 /** 同步購物車商品（加入商品 / 更改數量（包括刪除單一商品） */
 public class CartSyncReq {

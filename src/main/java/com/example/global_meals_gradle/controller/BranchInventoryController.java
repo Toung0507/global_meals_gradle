@@ -5,10 +5,12 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.req.BranchInventoryUpdateReq;
@@ -24,14 +26,14 @@ import jakarta.servlet.http.HttpSession;
 @RestController
 //全局設定此模組的開頭都是 inventory
 @RequestMapping("/inventory")
-@Tag(name = "分店庫存管理模組",description = "處理分店庫存的更新、查詢及菜單相關業務")
+@Tag(name = "分店庫存管理模組", description = "處理分店庫存的更新、查詢及菜單相關業務")
 public class BranchInventoryController {
 	@Autowired
 	private BranchInventoryService branchInventoryService;
 
 	// 1. 處理庫存批次更新
 	@PostMapping("/update")
-	@Operation(summary = "批次更新庫存", description = "接收一組庫存更新請求，批次調整商品在庫存中的數量")
+	@Operation(summary = "批次更新分店相關資料", description = "接收一組分店更新商品請求，批次調整商品在分店中的數量、價格、最大購買量")
 	public BranchInventoryRes updateInventory( //
 			@Validated @RequestBody List<BranchInventoryUpdateReq> reqList) {
 		return branchInventoryService.updateInventory(reqList);
@@ -64,5 +66,17 @@ public class BranchInventoryController {
 	public MenuListRes getMenuByArea( //
 			@Parameter(description = "分店 ID", example = "5") @PathVariable("globalAreaId") int globalAreaId) {
 		return branchInventoryService.getMenuByArea(globalAreaId);
+	}
+	
+	// 5. 快速修正分店內商品的上下架狀態
+	// URL: /inventory/active-status
+	@PatchMapping("/active-status")
+	@Operation(summary = "快速切換分店商品上下架狀態", description = "供分店管理人員快速開啟或關閉特定商品在該分店的販售狀態")
+	public BranchInventoryRes updateBranchActiveStatus(
+	        @Parameter(description = "商品 ID", example = "101") @RequestParam int productId,
+	        @Parameter(description = "分店 ID", example = "5") @RequestParam int globalAreaId,
+	        @Parameter(description = "上架狀態", example = "true") @RequestParam boolean active,
+	        @Parameter(hidden = true) HttpSession session) {
+	    return branchInventoryService.updateBranchActiveStatus(productId, globalAreaId, active, session);
 	}
 }

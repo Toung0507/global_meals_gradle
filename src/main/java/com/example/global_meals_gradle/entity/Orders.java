@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
+import com.example.global_meals_gradle.constants.PayStatus;
 
 import jakarta.persistence.*;
 
@@ -40,6 +41,9 @@ public class Orders {
 	@Column(name = "total_amount", precision = 12, scale = 2) // DECIMAL(12,2)
 	private BigDecimal totalAmount;
 
+	@Column(name = "total_cost", precision = 12, scale = 2) // DECIMAL(12,2)
+	private BigDecimal totalCost;
+
 	@Column(name = "payment_method")
 	private String paymentMethod;
 
@@ -47,15 +51,19 @@ public class Orders {
 	private String transactionId;
 
 	@Enumerated(EnumType.STRING) // 關鍵：存儲字串
-	@Column(name = "status")
-	private OrdersStatus status;
+	@Column(name = "orders_status")
+	private OrdersStatus ordersStatus;
+
+	@Enumerated(EnumType.STRING) // 關鍵：存儲字串
+	@Column(name = "pay_status")
+	private PayStatus payStatus;
 
 	@Column(name = "completed_at")
 	private LocalDateTime completedAt;
-	
+
 	@Column(name = "is_use_discount")
 	private boolean useDiscount;
-	
+
 	public String getId() {
 		return id;
 	}
@@ -128,6 +136,14 @@ public class Orders {
 		this.totalAmount = totalAmount;
 	}
 
+	public BigDecimal getTotalCost() {
+		return totalCost;
+	}
+
+	public void setTotalCost(BigDecimal totalCost) {
+		this.totalCost = totalCost;
+	}
+
 	public String getPaymentMethod() {
 		return paymentMethod;
 	}
@@ -144,12 +160,20 @@ public class Orders {
 		this.transactionId = transactionId;
 	}
 
-	public OrdersStatus getStatus() {
-		return status;
+	public OrdersStatus getOrdersStatus() {
+		return ordersStatus;
 	}
 
-	public void setStatus(OrdersStatus status) {
-		this.status = status;
+	public void setOrdersStatus(OrdersStatus ordersStatus) {
+		this.ordersStatus = ordersStatus;
+	}
+
+	public PayStatus getPayStatus() {
+		return payStatus;
+	}
+
+	public void setPayStatus(PayStatus payStatus) {
+		this.payStatus = payStatus;
 	}
 
 	public LocalDateTime getCompletedAt() {

@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public class UpsertRegionsTaxReq {
+public class CreateRegionsReq {
 	
 	/* @NotBlank: 限制屬性值不能是 1. 空字串 2. 全空白字串 3. null */
 	
@@ -32,6 +32,10 @@ public class UpsertRegionsTaxReq {
     @NotBlank(message = ValidationMsg.TAX_TYPE_ERROR)
     @JsonAlias("tax_type")
 	private String taxType;
+    
+    @Min(value = 0, message = ValidationMsg.USAGE_CAP_ERROR)
+    @JsonAlias("usage_cap")
+    private int usageCap;
 
 	public String getCountry() {
 		return country;
@@ -73,5 +77,12 @@ public class UpsertRegionsTaxReq {
 		this.taxType = taxType;
 	}
 
+	public int getUsageCap() {
+		return usageCap;
+	}
+
+	public void setUsageCap(int usageCap) {
+		this.usageCap = usageCap;
+	}
 	
 }

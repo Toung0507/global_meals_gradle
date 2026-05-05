@@ -50,11 +50,11 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 			+ "WHERE id = ?1 AND order_count > 0", nativeQuery = true)
 	public int smartReducePoint(int id);
 
-	/* 使用8折劵: 次數歸1，優惠劵關閉 */
+	/* 使用優惠劵: 次數歸0，優惠劵關閉 */
 	// is_discount = true: 多一層判斷，需要優惠劵是開啟的狀態，才能關閉
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE members SET order_count = 1, is_discount = false "
+	@Query(value = "UPDATE members SET order_count = 0, is_discount = false "
 			+ "WHERE id = ?1 AND is_discount = true", nativeQuery = true)
 	public int useDiscount(int id);
 	
