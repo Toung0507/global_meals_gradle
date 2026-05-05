@@ -13,11 +13,10 @@ import jakarta.validation.constraints.NotEmpty;
 /* 成立訂單(還沒付款) */
 public class CreateOrdersReq {
 
-
 	@Min(value = 1, message = ValidationMsg.ORDER_CART_ID_ERROR)
 	private int orderCartId;
 
-
+	@Min(value = 1, message = ValidationMsg.GLOBAL_AREA_ID_ERROR)
 	private int globalAreaId;
 
 	private int memberId;

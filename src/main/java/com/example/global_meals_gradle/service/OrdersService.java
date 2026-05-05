@@ -39,6 +39,7 @@ import com.example.global_meals_gradle.entity.Regions;
 import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.req.CashPayOnSiteReq;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
+import com.example.global_meals_gradle.req.PayForPOSReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.UpdateOrdersStatusReq;
 import com.example.global_meals_gradle.res.BasicRes;
@@ -51,7 +52,6 @@ import com.example.global_meals_gradle.vo.GetOrdersDetailVo;
 import com.example.global_meals_gradle.vo.GetOrdersVo;
 
 import jakarta.servlet.http.HttpSession;
-
 
 @Service
 public class OrdersService {
@@ -251,7 +251,7 @@ public class OrdersService {
 		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		if (staff != null) { // 代表是員工操作
-			if (req.getMemberId() == 0 || membersDao.findById(req.getMemberId()) == null) {
+			if (req.getMemberId() <= 0 || membersDao.findById(req.getMemberId()) == null) {
 				return new CreateOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
 						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
 			}
@@ -591,7 +591,8 @@ public class OrdersService {
 			// 抓員工資訊
 			Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
 			if (staff == null) { // 只有管理者才能查詢
-				return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(), ReplyMessage.PERMISSION_DENIED.getMessage());
+				return new BasicRes(ReplyMessage.PERMISSION_DENIED.getCode(),
+						ReplyMessage.PERMISSION_DENIED.getMessage());
 			}
 			Orders order = ordersDao.getOrderByOrderDateIdAndId(req.getOrderDateId(), req.getId());
 			if (order == null) {
@@ -604,7 +605,8 @@ public class OrdersService {
 			}
 			// 如果該筆訂單不是未付款，則會報錯
 			if (!PayStatus.UNPAID.name().equalsIgnoreCase(order.getPayStatus().name())) {
-				return new BasicRes(ReplyMessage.PAY_STATUS_ERROR.getCode(), ReplyMessage.PAY_STATUS_ERROR.getMessage());
+				return new BasicRes(ReplyMessage.PAY_STATUS_ERROR.getCode(),
+						ReplyMessage.PAY_STATUS_ERROR.getMessage());
 			}
 			// 檢查金額
 			if (order.getTotalAmount().compareTo(req.getTotalAmount()) != 0) {
@@ -627,46 +629,75 @@ public class OrdersService {
 
 			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 		} catch (RuntimeException e) {
-			//			// 關鍵】因為我們想 return 包裝好的 JSON，所以必須手動標記回滾
-			//	        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-			//	        // 回傳友善訊息給前端
-			//	        return new BasicRes(500, "操作失敗：" + e.getMessage());
-	        
+			// // 關鍵】因為我們想 return 包裝好的 JSON，所以必須手動標記回滾
+			// TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+			// // 回傳友善訊息給前端
+			// return new BasicRes(500, "操作失敗：" + e.getMessage());
+
 			throw new RuntimeException("現場付款失敗：" + e.getMessage());
-		}catch (Exception e) {
-	        log.error("非預期錯誤: ", e);
-	        throw new RuntimeException("系統錯誤，請洽工程人員" + e.getMessage());
-	    }
-		
+		} catch (Exception e) {
+			log.error("非預期錯誤: ", e);
+			throw new RuntimeException("系統錯誤，請洽工程人員" + e.getMessage());
+		}
 	}
-	
+
 	/* 會員次數邏輯 */
 	private void processMemberLoyalty(Orders order) {
 		// 不是會員
-	    if (order.getMemberId() <= 1) return;
-	    // 取得會員資料
-	    Members member = membersDao.findById(order.getMemberId());
-	    if (member == null) {
-	        // 拋出異常，觸發外層 Transactional 回滾
-	        throw new RuntimeException("會員資料異常，ID: " + order.getMemberId());
-	    }
-	    // 如果有使用優惠劵，須把它關閉、次數歸0
-	    if (order.isUseDiscount()) {
-	        int updated = membersDao.useDiscount(member.getId());
-	        if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
-	            throw new RuntimeException("優惠券核銷失敗");
-	        }
-	    } else {
-	    	 // 加次數(如果次數 < 9 或 > 9 會成功，否則回傳 0)
-	        int addResult = membersDao.addPoint(member.getId());
-	        if (addResult == 0) {
-	        	// 代表會員次數加上這筆訂單會剛好來到10次，那就要把優惠劵打開
-	            int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId());
-	            if (couponResult == 0) {
-	                throw new RuntimeException("會員點數更新失敗");
-	            }
-	        }
-	    }
+		if (order.getMemberId() <= 1)
+			return;
+		// 取得會員資料
+		Members member = membersDao.findById(order.getMemberId());
+		if (member == null) {
+			// 拋出異常，觸發外層 Transactional 回滾
+			throw new RuntimeException("會員資料異常，ID: " + order.getMemberId());
+		}
+		// 如果有使用優惠劵，須把它關閉、次數歸0
+		if (order.isUseDiscount()) {
+			int updated = membersDao.useDiscount(member.getId());
+			if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
+				throw new RuntimeException("優惠券核銷失敗");
+			}
+		} else {
+			// 加次數(如果次數 < 9 或 > 9 會成功，否則回傳 0)
+			int addResult = membersDao.addPoint(member.getId());
+			if (addResult == 0) {
+				// 代表會員次數加上這筆訂單會剛好來到10次，那就要把優惠劵打開
+				int couponResult = membersDao.reachFullPointsAndGiveCoupon(member.getId());
+				if (couponResult == 0) {
+					throw new RuntimeException("會員點數更新失敗");
+				}
+			}
+		}
+	}
+
+	/* POS機用結帳 */
+	@Transactional(rollbackFor = Exception.class)
+	public BasicRes payForPOS(PayForPOSReq req, HttpSession httpSession) {
+		// 抓員工資訊
+		Staff staff = (Staff) httpSession.getAttribute(StaffController.SESSION_KEY);
+		if (staff == null) { // 只有管理者才能查詢
+			return new GetAllOrdersRes(ReplyMessage.PERMISSION_DENIED.getCode(),
+					ReplyMessage.PERMISSION_DENIED.getMessage());
+		}
+		try {
+			CreateOrdersRes createOrdersRes = createOrders(req, httpSession);
+			if(createOrdersRes == null || createOrdersRes.getCode() != 200) {
+				return new BasicRes(createOrdersRes.getCode(), createOrdersRes.getMessage());
+			}
+			PayReq payReq = new PayReq();
+			payReq.setId(createOrdersRes.getId());
+			payReq.setOrderDateId(createOrdersRes.getOrderDateId());
+			payReq.setPaymentMethod(req.getPaymentMethod());
+			payReq.setTransactionId(req.getTransactionId());
+			payReq.setTotalAmount(createOrdersRes.getTotalAmount());
+			return pay(payReq, httpSession);
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			log.error("非預期錯誤: ", e);
+			throw new RuntimeException("系統錯誤，請洽工程人員" + e.getMessage());
+		}
 	}
 
 	/* 取消訂單 */

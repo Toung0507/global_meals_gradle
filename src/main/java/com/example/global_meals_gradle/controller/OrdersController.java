@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.req.CashPayOnSiteReq;
 import com.example.global_meals_gradle.req.CreateOrdersReq;
+import com.example.global_meals_gradle.req.PayForPOSReq;
 import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.req.UpdateOrdersStatusReq;
 import com.example.global_meals_gradle.res.BasicRes;
@@ -106,19 +107,27 @@ public class OrdersController {
 		return ordersService.createOrders(req, httpSession);
 	}
 
-	/* 現金付款成功 */
+	/* 線上付款 */
 	@PostMapping("pay")
 	@Operation(summary = "現金付款確認", description = "紀錄訂單已使用現金完成付款")
 	public BasicRes pay(@Valid @RequestBody PayReq req, HttpSession httpSession) {
 		return ordersService.pay(req, httpSession);
 	}
 	
-	/* 現金現場付款成功 */
+	/* 現金現場付款成功(線上點餐，臨櫃付款) */
 	@PostMapping("cash_confirm")
 	@Operation(summary = "現金付款確認", description = "紀錄訂單已使用現金完成付款")
 	public BasicRes cashPayOnSite(@Valid @RequestBody CashPayOnSiteReq req, //
 			@Parameter(hidden = true) HttpSession httpSession) {
 		return ordersService.cashPayOnSite(req, httpSession);
+	}
+	
+	/* POS成立訂單並結帳成功 */
+	@PostMapping("pay_POS")
+	@Operation(summary = "POS機結帳", description = "POS成立訂單並結帳成功")
+	public BasicRes payForPOS(@Valid @RequestBody PayForPOSReq req, //
+			@Parameter(hidden = true) HttpSession httpSession) {
+		return ordersService.payForPOS(req, httpSession);
 	}
 
 	/* 報電話號碼取餐(今天) */

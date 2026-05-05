@@ -131,13 +131,6 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			@Param("payStatus") String payStatus, //
 			@Param("id") String id, @Param("orderDateId") String orderDateId);
 
-	/* 更改總金額 */
-	/* 付款完成新增(更新)的資料(付款方式、交易號碼、狀態) */
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE total_amount = ?3 WHERE id = ?1 AND order_date_id = ?2", nativeQuery = true)
-	public void upDateTotalAmount(String id, String orderDateId, BigDecimal totalAmount);
-
 	// 一次取得該分店、該月份、已取餐訂單的總營業額與總成本
 	@Query(value = "SELECT SUM(total_amount) AS totalAmount, SUM(total_cost) AS totalCost " //
 	        + "FROM orders " //
@@ -202,7 +195,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 	@Query(value = "SELECT p.name AS productName, SUM(d.quantity) AS totalQuantity " + "FROM orders o "
 			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
 			+ "LEFT JOIN products p ON d.product_id = p.id " + "WHERE o.order_date_id LIKE :yearMonth "
-			+ "AND o.global_area_id = :globalAreaId " + "AND o.status = 'PICKED_UP' " + "AND d.is_gift = 0 "
+			+ "AND o.global_area_id = :globalAreaId " + "AND o.orders_status = 'PICKED_UP' " + "AND d.is_gift = 0 "
 			+ "GROUP BY d.product_id, p.name " + "ORDER BY totalQuantity DESC", nativeQuery = true)
 	List<Object[]> getMonthlySalesByBranch(@Param("yearMonth") String yearMonth,
 			@Param("globalAreaId") int globalAreaId);
@@ -214,7 +207,7 @@ public interface OrdersDao extends JpaRepository<Orders, OrdersId> {
 			+ "LEFT JOIN order_cart_details d ON o.order_cart_id = d.order_cart_id "
 			+ "LEFT JOIN products p ON d.product_id = p.id " + "LEFT JOIN global_area ga ON o.global_area_id = ga.id "
 			+ "LEFT JOIN regions r ON ga.regions_id = r.id " + "WHERE o.order_date_id LIKE :yearMonth "
-			+ "AND r.id = :regionId " + "AND o.status = 'PICKED_UP' " + "AND d.is_gift = 0 "
+			+ "AND r.id = :regionId " + "AND o.orders_status = 'PICKED_UP' " + "AND d.is_gift = 0 "
 			+ "GROUP BY d.product_id, p.name " + "ORDER BY totalQuantity DESC " + "LIMIT 5", nativeQuery = true)
 	List<Object[]> getTop5MonthlySalesByRegion(@Param("yearMonth") String yearMonth, @Param("regionId") int regionId);
 
