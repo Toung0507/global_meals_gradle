@@ -42,6 +42,7 @@ public class ValidationMsg {
 	public static final String ORDER_CART_ID_ERROR = "OrderCartId Error";
 	public static final String PHONE_ERROR = "Phone Error";
 	public static final String ORDER_CART_DETAILS_NOT_EMPTY = "Order Cart Details Not Empty";
+	public static final String ORDER_TOTAL_AMOUNT_NOT_NULL = "Order Total Amount Not Null";
 
 	/* 艷羽 */
 	// 購物車
