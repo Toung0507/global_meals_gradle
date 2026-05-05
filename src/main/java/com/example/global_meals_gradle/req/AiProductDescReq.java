@@ -13,6 +13,9 @@ public class AiProductDescReq {
 	@NotBlank(message = ValidationMsg.PRODUCT_CATEGORY_EMPTY)
 	private String category;
 
+	@NotBlank(message = ValidationMsg.PRODUCT_STYLE_EMPTY)
+	private String style;
+
 	public int getProductid() {
 		return productid;
 	}
@@ -35,6 +38,14 @@ public class AiProductDescReq {
 
 	public void setCategory(String category) {
 		this.category = category;
+	}
+
+	public String getStyle() {
+		return style;
+	}
+
+	public void setStyle(String style) {
+		this.style = style;
 	}
 
 }

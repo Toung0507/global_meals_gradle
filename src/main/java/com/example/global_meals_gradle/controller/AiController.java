@@ -30,12 +30,17 @@ public class AiController {
 	private AiService aiService;
 
 	// 1. 商品描述 (單純文字，可視需求用 RequestBody 或 RequestParam)
-	@PostMapping("/product-desc")
-	@Operation(summary = "生成商品描述", description = "根據商品名稱與類別，自動生成適用於菜單的簡短誘人描述")
+	@PostMapping(value="/product-desc", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
+	@Operation(summary = "生成商品描述", description = "根據商品名稱、圖片、風格、分類，自動生成適用於菜單的簡短誘人描述")
 	public AiRes generateProductDesc(
-            @Valid @RequestBody AiProductDescReq req,  //
-            @Parameter(hidden = true) HttpSession session) { // hidden=true 表示不需要在 UI 上輸入 Session
-        return aiService.generateProductDesc(req, session);
+            @Parameter(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)) 
+            @Valid @RequestPart("data") AiProductDescReq req,
+            
+            @Parameter(description = "商品圖片") 
+            @RequestPart("file") MultipartFile file, 
+            
+            @Parameter(hidden = true) HttpSession session) {
+        return aiService.generateProductDesc(req,file, session);
     }
 
 	// 2. 活動文案 (含圖片，使用 consumes = MULTIPART_FORM_DATA_VALUE)

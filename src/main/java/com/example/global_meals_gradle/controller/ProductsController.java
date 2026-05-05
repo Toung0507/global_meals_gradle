@@ -1,5 +1,7 @@
 package com.example.global_meals_gradle.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,7 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
+import com.example.global_meals_gradle.dao.CategoryDao;
+import com.example.global_meals_gradle.dao.StyleDao;
+import com.example.global_meals_gradle.entity.Category;
 import com.example.global_meals_gradle.entity.Staff;
+import com.example.global_meals_gradle.entity.Style;
 import com.example.global_meals_gradle.req.MonthlyProductsSalesReq;
 import com.example.global_meals_gradle.req.ProductCreateReq;
 import com.example.global_meals_gradle.req.ProductUpdateReq;
@@ -36,6 +42,12 @@ public class ProductsController {
 
 	@Autowired
 	private ProductService productService;
+	
+	@Autowired
+    private StyleDao styleDao;
+	
+    @Autowired
+    private CategoryDao categoryDao;
 
 	@PostMapping(value = "/create", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
 	@Operation(summary = "新增商品", description = "上傳商品圖片並新增商品基本資料")
@@ -95,6 +107,19 @@ public class ProductsController {
 	        @Parameter(hidden = true) HttpSession session) {
 	    return productService.deleteProduct(id, session);
 	}
+	
+	// 讓前端可以拿清單去渲染下拉選單
+    @GetMapping("/styles")
+    @Operation(summary = "取得風格", description = "取得全部的商品風格")
+    public List<Style> getAllStyles() {
+        return styleDao.findAll(); // 這裡可以從 Service 呼叫，或者簡單點直接在 Controller 呼叫 Dao
+    }
+
+    @GetMapping("/categories")
+    @Operation(summary = "取得餐點分類", description = "取得全部的餐點分類")
+    public List<Category> getAllCategories() {
+        return categoryDao.findAll();
+    }
 
 	// 以下是艷羽寫的
 	// Session 的 key 名稱，與 StaffController 保持一致
