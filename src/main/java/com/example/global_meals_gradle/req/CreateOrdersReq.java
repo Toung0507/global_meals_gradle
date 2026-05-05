@@ -13,8 +13,10 @@ import jakarta.validation.constraints.NotEmpty;
 /* 成立訂單(還沒付款) */
 public class CreateOrdersReq {
 
+
 	@Min(value = 1, message = ValidationMsg.ORDER_CART_ID_ERROR)
 	private int orderCartId;
+
 
 	private int globalAreaId;
 
@@ -31,6 +33,7 @@ public class CreateOrdersReq {
 	@NotEmpty(message = ValidationMsg.ORDER_CART_DETAILS_NOT_EMPTY)
 	@Valid // 這樣才會去檢查 OrderCartDetails 類別裡面的標註
 	private List<OrderCartDetails> orderCartDetailsList;
+
 
 	private boolean useDiscount; // 判斷有無使用優惠劵
 

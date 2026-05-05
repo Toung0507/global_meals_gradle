@@ -20,6 +20,8 @@ import com.example.global_meals_gradle.req.PayReq;
 import com.example.global_meals_gradle.utils.LinePayUtils;
 import com.google.gson.Gson;
 
+import jakarta.servlet.http.HttpSession;
+
 @Service
 public class LinePayService {
 
@@ -103,7 +105,7 @@ public class LinePayService {
     /**
      * 第二步：確認扣款 (Confirm API)
      */
-    public void confirmPayment(String transactionId, int amount, String orderDateId, String id) {
+    public void confirmPayment(String transactionId, int amount, String orderDateId, String id, HttpSession httpSession) {
         // 1. 準備請求 Body (只需金額與幣別)
         Map<String, Object> body = new HashMap<>();
         body.put("amount", amount);
@@ -144,7 +146,7 @@ public class LinePayService {
                 req.setTransactionId(transactionId);
                 req.setTotalAmount(new BigDecimal(amount));
                 
-                ordersService.pay(req); // 執行訂單完成後的業務邏輯
+                ordersService.pay(req, httpSession); // 執行訂單完成後的業務邏輯
             } else {
                 throw new RuntimeException("LINE Pay 扣款失敗，代碼：" + response.getBody().get("returnCode"));
             }
