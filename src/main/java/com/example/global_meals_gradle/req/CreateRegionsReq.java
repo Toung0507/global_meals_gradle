@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 public class CreateRegionsReq {
 	
@@ -17,10 +18,12 @@ public class CreateRegionsReq {
 	private String country;
 	
 	@NotBlank(message = ValidationMsg.CURRENCY_CODE_ERROR)
+	@Pattern(regexp = "^[A-Z]{3}$", message = ValidationMsg.CURRENCY_CODE_ERROR)
 	@JsonAlias("currency_code")
     private String currencyCode;
 	
-	@NotBlank(message = ValidationMsg.COUNTRY_CODE_ERROR)
+	@NotBlank(message = ValidationMsg.COUNTRY_CODE_CANT_BE_EMPTY)
+	@Pattern(regexp = "^[A-Z]{2}$", message = ValidationMsg.COUNTRY_CODE_ERROR)
 	@JsonAlias("country_code")
     private String countryCode;
     
