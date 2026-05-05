@@ -11,6 +11,7 @@ import com.example.global_meals_gradle.dao.OrdersDao;
 import com.example.global_meals_gradle.entity.Orders;
 import com.example.global_meals_gradle.utils.EcpayUtils;
 
+//暫時不會用到
 @Service
 public class EcpayService {
 
