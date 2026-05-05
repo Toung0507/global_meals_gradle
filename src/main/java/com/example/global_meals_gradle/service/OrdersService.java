@@ -735,7 +735,7 @@ public class OrdersService {
 		if (member.getId() != order.getMemberId()) { // 如果與該訂單的會員ID不相符
 			return new BasicRes(ReplyMessage.MEMBER_ERROR.getCode(), ReplyMessage.MEMBER_ERROR.getMessage());
 		}
-		
+
 		try {
 
 			// 取得該訂單的付款狀態(如果取得是null，後面判斷會出錯，所以轉成"")
@@ -757,10 +757,10 @@ public class OrdersService {
 
 			// 執行訂單狀態更新
 			int result = ordersDao.updateOrderStatus(targetStatus, req.getId(), req.getOrderDateId());
-			if(result == 0) { // 判斷是否成功
+			if (result == 0) { // 判斷是否成功
 				throw new RuntimeException("取消訂定單失敗");
 			}
-			if(order.getMemberId() == 1) { // 遊客不用繼續走下去
+			if (order.getMemberId() == 1) { // 遊客不用繼續走下去
 				return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
 			}
 			// 取得該會員國家優惠劵開啟需要的次數門檻
@@ -769,13 +769,13 @@ public class OrdersService {
 				throw new RuntimeException("找不到該分店所在國家的折扣額度設定");
 			}
 			int count = discount.getCount();
-			if(order.isUseDiscount()) {
+			if (order.isUseDiscount()) {
 				membersDao.restoreCouponAndPoints(order.getMemberId(), count);
-			}else {
+			} else {
 				membersDao.smartReducePoint(order.getMemberId(), count);
 			}
 			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-			
+
 		} catch (Exception e) {
 			throw new RuntimeException("取消流程發生錯誤: " + e.getMessage());
 		}
