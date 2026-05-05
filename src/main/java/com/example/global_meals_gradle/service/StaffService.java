@@ -173,12 +173,17 @@ public class StaffService {
 		StaffRole role = operator.getRole();
 
 		if (role == StaffRole.ADMIN) {
-			return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), staffDao.getAllRM());
+			return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), //
+									  ReplyMessage.SUCCESS.getMessage(), //
+									  staffDao.getAllRole());
 		}
 		if (role == StaffRole.REGION_MANAGER) {
-			return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), staffDao.getSTListById(operator.getGlobalAreaId()));
+			return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), //
+									  ReplyMessage.SUCCESS.getMessage(), //
+									  staffDao.getSTListById(operator.getGlobalAreaId()));
 		}
-		return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), //
+								  ReplyMessage.OPERATE_ERROR.getMessage());
 	}
 
 	/* =====================================================
@@ -349,6 +354,97 @@ public class StaffService {
 	    return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), List.of(targetStaff));
 	}
 	
+	/* =====================================================
+	 * 主功能：【老闆專用 - 職務絕對調度 (晉升/降級)】
+	 * 邏輯：ADMIN 可以任意將 ST, MA, RM 互相轉換
+	 * ===================================================== */
+	@Transactional(rollbackFor = Exception.class)
+	public StaffSearchRes adminChangeRole(int targetId, String targetRoleStr, Staff operator) {
+		
+		// 1. 權限防呆：只有老闆 (ADMIN) 可以隨意調度！
+		if (operator.getRole() != StaffRole.ADMIN) {
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		}
+
+		// 2. 找出目標員工
+		Staff targetStaff = staffDao.findById(targetId).orElse(null);
+		if (targetStaff == null) {
+			return new StaffSearchRes(ReplyMessage.STAFF_ID_NOT_FOUND.getCode(), ReplyMessage.STAFF_ID_NOT_FOUND.getMessage());
+		}
+
+		// 3. 保護機制：老闆不能更改另一個老闆 (ADMIN) 的權限
+		if (targetStaff.getRole() == StaffRole.ADMIN) {
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		}
+
+		// 4. 解析前端傳來的「目標身分」
+		StaffRole targetRole;
+		try {
+			targetRole = StaffRole.valueOf(targetRoleStr.toUpperCase());
+		} catch (Exception e) {
+			return new StaffSearchRes(ReplyMessage.ROLE_ERROR.getCode(), ReplyMessage.ROLE_ERROR.getMessage());
+		}
+		
+		// 防呆二：目標身分不能是 ADMIN (老闆不能創造老闆)
+		if (targetRole == StaffRole.ADMIN) {
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		}
+
+		// 防呆三：如果他已經是這個身分了，就不做事
+		if (targetStaff.getRole() == targetRole) {
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		}
+
+		// 5. 執行大換血：換身分 + 重新配發帳號
+		// 🌟 你的自動發號器真的很萬用，這裡直接傳入目標角色即可！
+		String newAccount = generateAccount(targetRole);
+		targetStaff.setAccount(newAccount);
+		targetStaff.setRole(targetRole);
+
+		// 6. 存檔
+		staffDao.save(targetStaff);
+
+		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage() + newAccount, List.of(targetStaff));
+	}
+	
+	/* =====================================================
+	 * 主功能 6：【老闆專用 - 員工調店 (Transfer)】
+	 * 邏輯：ADMIN 可以將任何人 (RM, MA, ST) 調動到指定的分店
+	 * ===================================================== */
+	@Transactional(rollbackFor = Exception.class)
+	public StaffSearchRes changeBranch(int targetId, int newAreaId, Staff operator) {
+
+		// 1. 權限防呆：只有老闆 (ADMIN) 可以隨意調動人事！
+		if (operator.getRole() != StaffRole.ADMIN) {
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		}
+
+		// 2. 找出目標員工
+		Staff targetStaff = staffDao.findById(targetId).orElse(null);
+		if (targetStaff == null) {
+			return new StaffSearchRes(ReplyMessage.STAFF_ID_NOT_FOUND.getCode(), ReplyMessage.STAFF_ID_NOT_FOUND.getMessage());
+		}
+
+		// 3. 防呆機制：老闆不能調動老闆 (ADMIN)
+		if (targetStaff.getRole() == StaffRole.ADMIN) {
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		}
+
+		// 4. 防呆機制：原地調動檢查
+		if (targetStaff.getGlobalAreaId() == newAreaId) {
+			// 可以考慮在 ReplyMessage 裡新增一個對應的錯誤碼，這裡先用字串代替
+			return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
+		}
+
+		// 5. 執行調動：把新店鋪的 ID 蓋過去
+		targetStaff.setGlobalAreaId(newAreaId);
+
+		// 6. 存檔
+		staffDao.save(targetStaff);
+
+		return new StaffSearchRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage()+ newAreaId, List.of(targetStaff));
+	}
+	
 	/*
 	 * =============================================================================
 	 * ============ ⬇️⬇️⬇️ 以下是私有輔助方法 (工具箱) ⬇️⬇️⬇️
@@ -390,9 +486,11 @@ public class StaffService {
 	// 工具 2：判斷「新增帳號」的權限
 	private boolean hasRegisterPermission(Staff operator, StaffRole targetRole, int targetAreaId) {
 		StaffRole operatorRole = operator.getRole();
-		// 規則 1：老闆 (ADMIN) 只能建 店長 (RM)
+		// 規則 1：老闆 (ADMIN) 改成建全部
 		if (operatorRole == StaffRole.ADMIN) {
-			return targetRole == StaffRole.REGION_MANAGER;
+			return targetRole == StaffRole.REGION_MANAGER || 
+				   targetRole == StaffRole.MANAGER_AGENT || 
+				   targetRole == StaffRole.STAFF;
 		}
 		// 規則 2：店長 (RM) 可以建 員工 (STAFF) 以及 副店長 (MANAGER_AGENT)！
 		if (operatorRole == StaffRole.REGION_MANAGER) {
