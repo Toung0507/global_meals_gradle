@@ -132,6 +132,38 @@ public class DiscountService {
 		return new BasicRes(ReplyMessage.SUCCESS.getCode(), // 回傳 200
 				ReplyMessage.SUCCESS.getMessage()); // "Success!!"
 	}
+	
+	// =============================================
+	// 合併修改 discount 的折抵上限與累積次數
+	// =============================================
+	@Transactional
+	public BasicRes updateDiscount(DiscountReq req) {
+
+	    // 1. 驗證此 discount 記錄是否存在
+		if (discountDao.findDiscountById(req.getId()) == null) { // 驗證此 discount 記錄是否存在
+			return new BasicRes(ReplyMessage.COUNT_NOT_FOUND.getCode(), // 找不到時回傳 404
+					ReplyMessage.COUNT_NOT_FOUND.getMessage()); // "Count Not Found!!"
+		}
+
+	    // 2. 驗證新的折抵上限 (usageCap) 必須大於 0
+		if (req.getUsageCap() <= 0) { // 驗證新的折抵上限必須大於 0
+			return new BasicRes(ReplyMessage.USAGE_CAP_NOT_FOUND.getCode(), // 數值不合法時回傳 404
+					ReplyMessage.USAGE_CAP_NOT_FOUND.getMessage()); // "Usage Cap Not Found!!"
+		}
+
+	    // 3. 驗證累積次數 (count) 不能為負數
+		if (req.getCount() < 0) { // 驗證累積次數不能為負數
+			return new BasicRes(ReplyMessage.COUNT_NOT_FOUND.getCode(), // 數值不合法時回傳 404
+					ReplyMessage.COUNT_NOT_FOUND.getMessage()); // "Count Not Found!!"
+		}
+
+	    // 4. 執行更新 (可以呼叫現有的 DAO 方法，或合併為一個更新方法)
+	    discountDao.updateUsageCap(req.getId(), req.getUsageCap());
+	    discountDao.updateCount(req.getId(), req.getCount());
+
+	    return new BasicRes(ReplyMessage.SUCCESS.getCode(), 
+	                       ReplyMessage.SUCCESS.getMessage());
+	}
 
 	// =============================================
 	// 刪除 discount 記錄（真刪除）

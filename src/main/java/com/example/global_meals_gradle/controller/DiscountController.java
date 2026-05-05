@@ -53,6 +53,13 @@ public class DiscountController {
 	public BasicRes updateUsageCap(@RequestBody DiscountReq req) { // 從 Request Body 取得 id 與新的 usageCap
 		return discountService.updateUsageCap(req); // 呼叫 Service 執行更新並回傳結果
 	}
+	
+	/* ===================== 修改 discount 的折抵上限與累積次數 ===================== */
+	@PostMapping("/update-discount") // 對應 POST /discount/update-discount
+	@Operation(summary = "修改優惠券設定", description = "同時修改指定 discount 的 usage_cap 與 count（需帶入 id, usageCap 與 count）") // Swagger 說明
+	public BasicRes updateDiscount(@RequestBody DiscountReq req) { // 從 Request Body 取得修改資料
+		return discountService.updateDiscount(req); // 呼叫 Service 執行合併更新並回傳結果
+	}
 
 	/* ===================== 修改 discount 的消費累積次數（count） ===================== */
 	@PostMapping("/update-count") // 對應 POST /discount/update-count
