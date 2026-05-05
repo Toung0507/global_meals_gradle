@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
@@ -191,6 +192,32 @@ public class StaffController {
 		return staffService.toggleManagerAgentRole(id, operator);
 	}
 	
+	/* =================================================================
+	 *  PATCH /api/admin/staff/{id}/change-role — 老闆專用：職務調度
+	 * ================================================================= */
+	@PatchMapping("/admin/staff/{id}/change-role")
+	@Operation(summary = "老闆交換角色", description = "老闆可任意升降 ST, MA, RM。必須傳入目標角色 (例如: MANAGER_AGENT)")
+	public StaffSearchRes adminChangeRole(
+			@PathVariable("id") int id, 
+			@RequestParam("targetRole") String targetRole, // 🌟 前端必須告訴你要升/降成什麼
+			HttpSession session) {
+		
+		Staff operator = getLoginStaff(session);
+		return staffService.adminChangeRole(id, targetRole, operator);
+	}
 	
+	/* =================================================================
+	 *  PATCH /api/admin/staff/{id}/transfer — 老闆專用：員工調店
+	 * ================================================================= */
+	@PatchMapping("/admin/staff/{id}/transfer")
+	@Operation(summary = "老闆交換職員分店", description = "老闆可將 RM, MA, ST 調動至任何分店。必須傳入目標分店 ID (newAreaId)")
+	public StaffSearchRes changeBranch(
+			@PathVariable("id") int id, 
+			@RequestParam("newAreaId") int newAreaId, // 前端必須告訴你要調去哪家店
+			HttpSession session) {
+		
+		Staff operator = getLoginStaff(session);
+		return staffService.changeBranch(id, newAreaId, operator);
+	}
 
 }

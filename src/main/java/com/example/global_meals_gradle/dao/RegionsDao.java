@@ -44,24 +44,23 @@ public interface RegionsDao extends JpaRepository<Regions, Integer> {
 	@Modifying
 	@Transactional
 	@Query(value = "INSERT INTO regions (country, currency_code, country_code, tax_rate, " //
-			+ " tax_type, usage_cap, created_at, updated_at) "
+			+ " tax_type, created_at, updated_at) "
 			+ " values (:inputCountry, :inputCurrencyCode, :inputCountryCode, " //
-			+ " :inputTaxRate, :inputTaxType, :inputUsageCap, curdate(), curdate())", nativeQuery = true)
+			+ " :inputTaxRate, :inputTaxType, curdate(), curdate())", nativeQuery = true)
 	public void insert(//
 			@Param("inputCountry") String country, //
 			@Param("inputCurrencyCode") String currencyCode, //
 			@Param("inputCountryCode") String countryCode, //
 			@Param("inputTaxRate") BigDecimal taxRate, //
-			@Param("inputTaxType") String taxType, //
-			@Param("inputUsageCap") int usageCap);
+			@Param("inputTaxType") String taxType);
 
 	 // 修改
 	 // 修改時通常需要手動觸發 updated_at = CURDATE()，否則該欄位會維持在舊的新增日期。
 	 @Modifying
 	 @Transactional
 	 @Query(value = "UPDATE regions SET tax_rate = ?2, tax_type = ?3, " //
-	 		+ " usage_cap = ?4, updated_at = curdate() WHERE id = ?1", nativeQuery = true)
-	 public void update(int id, BigDecimal taxRate, String taxType, int usageCap);
+	 		+ " updated_at = curdate() WHERE id = ?1", nativeQuery = true)
+	 public void update(int id, BigDecimal taxRate, String taxType);
 
 	// 查詢各國基本設定
 	@Query(value = "SELECT * FROM regions", nativeQuery = true)
