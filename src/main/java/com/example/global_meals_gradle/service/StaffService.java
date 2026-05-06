@@ -94,7 +94,7 @@ public class StaffService {
 	 * 主功能 2：【修改密碼】
 	 * ===================================================== */
 	@Transactional(rollbackFor = Exception.class)
-	public StaffSearchRes changePassword(int targetId, ResetStaffPasswordReq req, Staff operator) {
+	public StaffSearchRes changePassword(int targetId, Staff operator) {
 
 		Staff targetStaff = staffDao.findById(targetId).orElse(null);
 		if (targetStaff == null) {
@@ -312,7 +312,7 @@ public class StaffService {
 	public StaffSearchRes toggleManagerAgentRole(int targetId, Staff operator) {
 
 	    // 1. 權限檢查 (共用)
-	    if (operator.getRole() != StaffRole.REGION_MANAGER && operator.getRole() != StaffRole.ADMIN) {
+	    if (operator.getRole() != StaffRole.REGION_MANAGER) {
 	        return new StaffSearchRes(ReplyMessage.OPERATE_ERROR.getCode(), ReplyMessage.OPERATE_ERROR.getMessage());
 	    }
 
@@ -517,7 +517,9 @@ public class StaffService {
 
 		// 規則 2：ADMIN 只能動 RM
 		if (operatorRole == StaffRole.ADMIN) {
-			return targetRole == StaffRole.REGION_MANAGER;
+			return targetRole == StaffRole.REGION_MANAGER || 
+					   targetRole == StaffRole.MANAGER_AGENT || 
+					   targetRole == StaffRole.STAFF;
 		}
 
 		// 規則 3：RM 可以動自己區域的 ST「以及」MA (副店長)
