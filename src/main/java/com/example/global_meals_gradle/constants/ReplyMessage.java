@@ -55,6 +55,8 @@ public enum ReplyMessage {
 	PROMOTION_NAME_ERROR(400, "Promotion Name Error!!"), // 活動名稱為空或空白
 	PROMOTION_IMG_REQUIRED(400, "Promotion Image Required!!"), // 建立活動時圖片為必填
 	COUNTRY_ERROR(400, "Country Error!!"), // 使用折扣券時國家欄位為空
+	USAGE_CAP_NOT_FOUND(404, "Usage Cap Not Found!!"), // 找不到指定的 discount 記錄（操作 usage_cap 時使用）
+	COUNT_NOT_FOUND(404, "Count Not Found!!"), // 找不到指定的 discount 記錄（操作 count 時使用）
 
 	/* 艷羽 */
 	// 贈品已下架（也是滿XX送XX這個規則下架了）或不存在
@@ -109,7 +111,9 @@ public enum ReplyMessage {
 	PRODUCT_UPDATE_SUCCESS(200, "Product Update successfully!"), //
 	PRODUCT_DELETE_SUCCESS(200, "Product delete successfully!"), //
 	INVENTORY_NOT_FOUND(404, "Inventory not found for this product/branch!"), //
-	INVENTORY_UPDATE_SUCCESS(200, "Inventory Update successfully!");
+	INVENTORY_UPDATE_SUCCESS(200, "Inventory Update successfully!"), //
+	STYLE_EMPTY(400, "Please enter or select a style!"), // 風格不能為空
+	CATEGORY_EMPTY(400, "Please enter or select a category!"); // 分類不能為空
 
 	private int code;
 

@@ -42,6 +42,7 @@ public class ValidationMsg {
 	public static final String ORDER_CART_ID_ERROR = "OrderCartId Error";
 	public static final String PHONE_ERROR = "Phone Error";
 	public static final String ORDER_CART_DETAILS_NOT_EMPTY = "Order Cart Details Not Empty";
+	public static final String ORDER_TOTAL_AMOUNT_NOT_NULL = "Order Total Amount Not Null";
 
 	/* 艷羽 */
 	// 購物車
@@ -68,6 +69,7 @@ public class ValidationMsg {
 	/* 思云 */
 	// 商品
 	public static final String PRODUCT_NAME_EMPTY = "Product Name cannot be empty";
+	public static final String PRODUCT_STYLE_EMPTY = "Product Style cannot be empty";
 	public static final String PRODUCT_CATEGORY_EMPTY = "Product Category cannot be empty";
 	public static final String PRODUCT_AREA_ID_INVALID = "Global Area Id must be at least 1";
 	public static final String PRODUCT_PRICE_INVALID = "Price must be greater than 0";

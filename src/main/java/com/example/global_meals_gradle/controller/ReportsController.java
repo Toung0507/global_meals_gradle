@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/reports")
@@ -30,7 +31,7 @@ public class ReportsController {
 	// 預設查詢一個月份時，會傳該月與上個月的營業額
 	@PostMapping("find_monthly_reports")
 	@Operation(summary = "查詢月度報表", description = "查詢指定月份的營業額，通常包含該月與上個月的對比數據")
-	public MonthlyReportRes findMonthlyReports(@RequestBody MonthlyReportReq req, //
+	public MonthlyReportRes findMonthlyReports(@Valid @RequestBody MonthlyReportReq req, //
 			@Parameter(hidden = true) HttpSession session) {
 		return monthlyFinancialReportsService.getMonthlyReport(req, session);
 	}
@@ -38,7 +39,7 @@ public class ReportsController {
 	// 查詢特定區間的營業額(以月份為單位)
 	@PostMapping("find_monthly_reports_by_date_range")
 	@Operation(summary = "查詢月份區間報表", description = "查詢特定月份區間的營業額分析")
-	public MonthRangeReportsRes findMonthlyReportByDateRange(@RequestBody MonthRangeReportsReq req, //
+	public MonthRangeReportsRes findMonthlyReportByDateRange(@Valid @RequestBody MonthRangeReportsReq req, //
 			@Parameter(hidden = true) HttpSession session) {
 		return monthlyFinancialReportsService.getMonthlyReportsByDateRange(req, session);
 	}
@@ -46,7 +47,7 @@ public class ReportsController {
 	// 取的特定期間的營業額(以日為單位)
 	@PostMapping("get_revenue_reports")
 	@Operation(summary = "查詢每日營業額", description = "取得特定期間內，以「天」為單位的營業額明細")
-	public RevenueQueryRes getRevenueReports(@RequestBody RevenueQueryReq req, //
+	public RevenueQueryRes getRevenueReports(@Valid @RequestBody RevenueQueryReq req, //
 			@Parameter(hidden = true) HttpSession session) {
 		return monthlyFinancialReportsService.getRevenueReports(req, session);
 	}
