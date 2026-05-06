@@ -11,6 +11,9 @@ public enum ReplyMessage {
 	// Service GlobalAreaService
 	GLOBAL_AREA_ID_ERROR(400, "Global Area Id Error!!"), //
 	GLOBAL_AREA_ID_NOT_FOUND(404, "Global Area Id Not Found!!"), //
+	DELETED_ENTRIES_ERROR(400, "Deleted Entries Error!!"), // 刪除筆數錯誤
+	PARTIAL_DELETED_ID_ERROR(400, "Partial Deleted Id Error!!"), // 部分刪除 ID 錯誤
+	
 	// Service MembersService
 	PHONE_ERROR(400, "Phone Error!!"), //
 	PHONE_HAS_EXISTED(400, "Phone Has Existed!!"), // 電話號碼已存在
