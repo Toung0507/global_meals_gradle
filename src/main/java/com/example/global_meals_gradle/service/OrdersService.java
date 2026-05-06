@@ -669,7 +669,7 @@ public class OrdersService {
 		int count = discount.getCount();
 		// 如果有使用優惠劵，須把它關閉、次數歸0
 		if (order.isUseDiscount()) {
-			int updated = membersDao.useDiscount(member.getId(), count);
+			int updated = membersDao.useDiscount(member.getId());
 			if (updated == 0) { // 避免客人有兩筆以上同時請求，可能原因: 狂點按鈕，網路延遲
 				throw new RuntimeException("優惠券核銷失敗");
 			}
@@ -697,7 +697,10 @@ public class OrdersService {
 		}
 		try {
 			CreateOrdersRes createOrdersRes = createOrders(req, httpSession);
-			if (createOrdersRes == null || createOrdersRes.getCode() != 200) {
+			if(createOrdersRes == null ) {
+				return new BasicRes(500, "建立訂單失敗");
+			}
+			if (createOrdersRes.getCode() != 200) {
 				return new BasicRes(createOrdersRes.getCode(), createOrdersRes.getMessage());
 			}
 			PayReq payReq = new PayReq();
