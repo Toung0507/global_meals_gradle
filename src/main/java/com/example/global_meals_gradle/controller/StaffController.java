@@ -159,7 +159,6 @@ public class StaffController {
 	@Operation(summary = "管理員修改員工密碼", description = "由管理員強制重置員工密碼")
 	public StaffSearchRes changePassword(//
 			@PathVariable("id") int id, //
-			@Valid @RequestBody ResetStaffPasswordReq req, //
 			@Parameter(hidden = true) HttpSession session) {
 
 		Staff operator = getLoginStaff(session);
