@@ -22,7 +22,6 @@ public class EcpayService {
 		Orders order = ordersDao.getOrderByOrderDateIdAndId(orderDateId, id);
 		if (order == null)
 			throw new RuntimeException("訂單不存在");
-
 		// 建立一個 Map 存放所有綠界要求的 API 參數
 		Map<String, String> params = new HashMap<>();
 		params.put("MerchantID", "2000132"); // 商店編號 (測試用)
