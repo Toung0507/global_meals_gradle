@@ -588,8 +588,16 @@ public class OrdersService {
 			}
 			processMemberLoyalty(order);
 			return new BasicRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage());
-		} catch (Exception e) {
+		} catch (RuntimeException e) {
+			// // 關鍵】因為我們想 return 包裝好的 JSON，所以必須手動標記回滾
+			// TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+			// // 回傳友善訊息給前端
+			// return new BasicRes(500, "操作失敗：" + e.getMessage());
+
 			throw new RuntimeException("付款失敗：" + e.getMessage());
+		} catch (Exception e) {
+			log.error("非預期錯誤: ", e);
+			throw new RuntimeException("系統錯誤，請洽工程人員" + e.getMessage());
 		}
 	}
 
@@ -697,7 +705,7 @@ public class OrdersService {
 		}
 		try {
 			CreateOrdersRes createOrdersRes = createOrders(req, httpSession);
-			if(createOrdersRes == null ) {
+			if (createOrdersRes == null) {
 				return new BasicRes(500, "建立訂單失敗");
 			}
 			if (createOrdersRes.getCode() != 200) {
