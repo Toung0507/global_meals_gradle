@@ -27,7 +27,7 @@ public class RegionsService {
 	@Autowired
 	private RegionsDao regionsDao;
 	
-	// 新增/修改
+	// 新增
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes insert(CreateRegionsReq req, HttpSession session) {
 		/* 參數檢查:使用@Valid */
@@ -53,7 +53,7 @@ public class RegionsService {
 				ReplyMessage.SUCCESS.getMessage());
 	}
 	
-	// 修改折扣上限
+	// 修改
 	@Transactional(rollbackFor = Exception.class)
 	public BasicRes update(UpdateRegionsReq req, HttpSession session) {
 		
@@ -79,8 +79,9 @@ public class RegionsService {
 		if (req.getTaxRate() == null) {
 			inputTaxRate = regions.getTaxRate();
 		} else {
-			// 檢查：如果傳入值小於 0 (compareTo 回傳 -1)
-			if (req.getTaxRate().compareTo(BigDecimal.ZERO) < 0) {
+			// 同時檢查負數與超過 100% 的稅率
+			if (req.getTaxRate().compareTo(BigDecimal.ZERO) < 0
+					|| req.getTaxRate().compareTo(BigDecimal.ONE) > 0) {
 				return new BasicRes(ReplyMessage.TAX_RATE_ERROR.getCode(), //
 						ReplyMessage.TAX_RATE_ERROR.getMessage());
 			}
