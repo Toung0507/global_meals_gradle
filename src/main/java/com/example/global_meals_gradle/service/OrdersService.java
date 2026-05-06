@@ -274,7 +274,13 @@ public class OrdersService {
 		log.debug("【訂單請求】收到購物車 ID: {}, 會員 ID: {}", req.getOrderCartId(), req.getMemberId());
 
 		if (req.isUseDiscount()) {
-			if (!membersDao.findById(req.getMemberId()).isDiscount()) {
+			if(req.getMemberId() == 1) {
+				// [WARN] 記錄異常的折扣請求（可能是前端繞過或邏輯錯誤）
+				log.warn("【訂單攔截】購物車id {} 嘗試使用折扣但資格不符", req.getOrderCartId());
+				throw new RuntimeException("無優惠可使用");
+			}
+			Members memberForDiscount  = membersDao.findById(req.getMemberId());
+			if (memberForDiscount == null || !memberForDiscount.isDiscount()) {
 				// [WARN] 記錄異常的折扣請求（可能是前端繞過或邏輯錯誤）
 				log.warn("【訂單攔截】會員 {} 嘗試使用折扣但資格不符", req.getMemberId());
 				throw new RuntimeException("無優惠可使用");
