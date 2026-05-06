@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 /* 付款完成: 會傳訂單編號、付款方法、序號、總金額 */
 public class PayReq {
@@ -18,9 +19,9 @@ public class PayReq {
 	@NotBlank(message = ValidationMsg.PAYMENT_METHID_ERROR)
 	private String paymentMethod;
 
-	@NotBlank(message = ValidationMsg.TRANSACTION_ID_ERROR)
 	private String transactionId;
 	
+	@NotNull(message = ValidationMsg.ORDER_TOTAL_AMOUNT_NOT_NULL)
 	private BigDecimal totalAmount;
 
 	public String getId() {

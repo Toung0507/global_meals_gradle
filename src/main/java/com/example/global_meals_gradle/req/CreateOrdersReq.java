@@ -8,20 +8,25 @@ import com.example.global_meals_gradle.entity.OrderCartDetails;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 
 /* 成立訂單(還沒付款) */
 public class CreateOrdersReq {
 
-
 	@Min(value = 1, message = ValidationMsg.ORDER_CART_ID_ERROR)
 	private int orderCartId;
 
-
+	@Min(value = 1, message = ValidationMsg.GLOBAL_AREA_ID_ERROR)
 	private int globalAreaId;
 
+	@Min(value = 1, message = ValidationMsg.MEMBERS_ID_ERROR)
 	private int memberId;
 
+	// 合理的國際電話長度範圍 (通常 7~15 碼)
+	@NotBlank(message = ValidationMsg.PHONE_ERROR)
+	@Size(min = 7, max = 16, message = ValidationMsg.PHONE_ERROR)
 	private String phone;
 
 	private BigDecimal subtotalBeforeTax;
@@ -33,7 +38,6 @@ public class CreateOrdersReq {
 	@NotEmpty(message = ValidationMsg.ORDER_CART_DETAILS_NOT_EMPTY)
 	@Valid // 這樣才會去檢查 OrderCartDetails 類別裡面的標註
 	private List<OrderCartDetails> orderCartDetailsList;
-
 
 	private boolean useDiscount; // 判斷有無使用優惠劵
 

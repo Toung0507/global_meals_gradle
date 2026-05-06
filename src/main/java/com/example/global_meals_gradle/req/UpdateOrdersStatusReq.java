@@ -3,7 +3,6 @@ package com.example.global_meals_gradle.req;
 import com.example.global_meals_gradle.constants.ValidationMsg;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 public class UpdateOrdersStatusReq {
 
@@ -17,7 +16,7 @@ public class UpdateOrdersStatusReq {
 	@NotBlank(message = ValidationMsg.ID_ERROR)
 	private String id;
 
-	@NotNull(message = ValidationMsg.STATUS_ERROR)
+	@NotBlank(message = ValidationMsg.STATUS_ERROR)
 	private String ordersStatus;
 
 	public String getOrderDateId() {

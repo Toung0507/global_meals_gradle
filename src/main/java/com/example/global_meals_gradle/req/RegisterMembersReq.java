@@ -2,6 +2,7 @@ package com.example.global_meals_gradle.req;
 
 import com.example.global_meals_gradle.constants.ValidationMsg;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -20,9 +21,13 @@ public class RegisterMembersReq {
     // 用途：傳給 PhoneValidatorUtil.isValid(phone, countryCode) 做各國格式驗證
     // 預設值為 "TW"（台灣），若前端沒傳，預設以台灣驗證（維持向後相容）
 	// 驗證國家代碼：必須為 2 碼大寫英文字母
-	@NotBlank(message = ValidationMsg.COUNTRY_CODE_CANT_BE_EMPTY)
-	@Pattern(regexp = "^[A-Z]{2}$", message = ValidationMsg.COUNTRY_CODE_ERROR)
-    private String countryCode = "TW";
+//	@NotBlank(message = ValidationMsg.COUNTRY_CODE_CANT_BE_EMPTY)
+//	@Pattern(regexp = "^[A-Z]{2}$", message = ValidationMsg.COUNTRY_CODE_ERROR)
+//    private String countryCode = "TW";
+	
+	// 改由 regions_id 撈取 country_code
+	@Min(value = 1, message = ValidationMsg.REGIONS_ID_ERROR)
+	private int regionsId;
 	
 	private String password;
 
@@ -42,12 +47,12 @@ public class RegisterMembersReq {
 		this.phone = phone;
 	}
 
-	public String getCountryCode() {
-		return countryCode;
+	public int getRegionsId() {
+		return regionsId;
 	}
 
-	public void setCountryCode(String countryCode) {
-		this.countryCode = countryCode;
+	public void setRegionsId(int regionsId) {
+		this.regionsId = regionsId;
 	}
 
 	public String getPassword() {

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.constants.StaffRole;
+import com.example.global_meals_gradle.controller.StaffController;
 import com.example.global_meals_gradle.dao.GlobalAreaDao;
 import com.example.global_meals_gradle.dao.MonthlyFinancialReportsDao;
 import com.example.global_meals_gradle.dao.OrdersDao;
@@ -113,7 +114,7 @@ public class MonthlyFinancialReportsService {
 	// 取的特定期間的營業額(以日為單位)
 	public RevenueQueryRes getRevenueReports(RevenueQueryReq req, HttpSession session) {
 		// 從 Session 取得目前登入者的資訊
-		Staff loginStaff = (Staff) session.getAttribute("SESSION_KEY");
+		Staff loginStaff = (Staff) session.getAttribute(StaffController.SESSION_KEY);
 		if (loginStaff == null) {
 			return new RevenueQueryRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage());
 		}
@@ -167,7 +168,7 @@ public class MonthlyFinancialReportsService {
 	// 預設查詢一個月份時，會傳該月與上個月的營業額
 	public MonthlyReportRes getMonthlyReport(MonthlyReportReq req, HttpSession session) {
 		// 從 Session 取得目前登入者的資訊
-		Staff loginStaff = (Staff) session.getAttribute("SESSION_KEY");
+		Staff loginStaff = (Staff) session.getAttribute(StaffController.SESSION_KEY);
 		if (loginStaff == null) {
 			return new MonthlyReportRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage());
 		}
@@ -222,7 +223,7 @@ public class MonthlyFinancialReportsService {
 	// 查詢特定區間的營業額(以月份為單位)
 	public MonthRangeReportsRes getMonthlyReportsByDateRange(MonthRangeReportsReq req, HttpSession session) {
 		// 從 Session 取得目前登入者的資訊
-		Staff loginStaff = (Staff) session.getAttribute("SESSION_KEY");
+		Staff loginStaff = (Staff) session.getAttribute(StaffController.SESSION_KEY);
 		if (loginStaff == null) {
 			return new MonthRangeReportsRes(ReplyMessage.NOT_LOGIN.getCode(), ReplyMessage.NOT_LOGIN.getMessage());
 		}
