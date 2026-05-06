@@ -88,8 +88,6 @@ public class ExchangeRatesService {
 							BigDecimal rate = new BigDecimal(entry.getValue().toString());
 							// 6. 呼叫 DAO 執行 Upsert (新增或更新匯率)
 							exchangeRatesDao.upsertRate(currencyCode, rate);
-							;
-
 							System.out.println("已更新目標匯率: " + currencyCode + " = " + rate);
 						}
 					}
@@ -111,7 +109,7 @@ public class ExchangeRatesService {
 //            // Map.class 代表我們預期回傳的是一個鍵值對結構
 //            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
 //            
-//            // 3. 從回應主體 (Body) 中取出 conversion_rates 這個層級的資料
+//            // 3. 從回應主體 (Body) 中取出 conversion_rates 這個層級	的資料
 //            Map<String, Object> body = response.getBody();
 //            if (body != null && "success".equals(body.get("result"))) {
 //                Map<String, Object> rates = (Map<String, Object>) body.get("conversion_rates");
