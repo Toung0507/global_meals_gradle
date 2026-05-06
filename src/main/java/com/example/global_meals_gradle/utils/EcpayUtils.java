@@ -43,7 +43,7 @@ public class EcpayUtils {
                     .replace("%2a", "*").replace("%28", "(").replace("%29", ")")
                     .replace("%20", "+");
         } catch (Exception e) {
-            return "";
+        	 throw new RuntimeException("綠界 URL Encode 失敗", e);
         }
     }
 

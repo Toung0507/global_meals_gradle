@@ -35,6 +35,8 @@ import jakarta.validation.Valid;
 @RequestMapping("/orders")
 @Tag(name = "訂單管理模組", description = "處理訂單查詢、建立、狀態更新及第三方金流串接")
 public class OrdersController {
+	
+	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OrdersController.class);
 
 	@Autowired
 	private OrdersService ordersService;
@@ -194,15 +196,16 @@ public class OrdersController {
 	@Operation(summary = "LinePay 付款確認", description = "接收 LinePay 支付完成後的確認導回")
 	public String linePayConfirm(@RequestParam("transactionId") String transactionId, // LINE Pay 給的交易序號
 			@RequestParam("orderDateId") String orderDateId, // 我們自己傳過去的參數 (透傳)
-			@RequestParam("id") String id, @RequestParam("amount") int amount, //
+			@RequestParam("id") String id, //
 			@Parameter(hidden = true) HttpSession httpSession) {
 		try {
 			// 執行確認扣款
-			linePayService.confirmPayment(transactionId, amount, orderDateId, id, httpSession);
+			linePayService.confirmPayment(transactionId, orderDateId, id, httpSession);
 
 			// 扣款成功後，將客人導向前端的成功頁面
 			return "redirect:https://your-frontend.com/payment-success";
 		} catch (Exception e) {
+			log.error("LINE Pay確認付款失敗", e);
 			// 失敗則導向錯誤頁面
 			return "redirect:https://your-frontend.com/payment-fail";
 		}
