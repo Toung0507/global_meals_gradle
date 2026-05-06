@@ -140,7 +140,7 @@ public class ProductService {
 	        
 	        // 3-2. 使用 Stream 將 Entity 轉為 VO
 	        List<InventoryDetailVo> inventoryVoList = inventoryList.stream()
-	                .map(inv -> convertToInventoryDetailVo(inv, branchMap))
+	                .map(inv -> convertToInventoryDetailVo(inv, branchMap,product.isActive()))
 	                .collect(Collectors.toList());
 	
 	        // 4. 回傳包含完整資訊的 AdminProductRes
@@ -177,6 +177,11 @@ public class ProductService {
 	    if (product == null) {
 	        return new AdminProductRes(ReplyMessage.PRODUCT_NOT_FOUND.getCode(),
 	                ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
+	    }
+	    
+	    if(product.getDeletedAt() != null) {
+	    	return new AdminProductRes(ReplyMessage.OPERATE_ERROR.getCode(), 
+		            "操作失敗：該商品已刪除");
 	    }
 	
 	    try {
@@ -236,8 +241,10 @@ public class ProductService {
 	    try {
 	        // 3. 執行軟刪除
 	        int row = productsDao.softDeleteProduct(id);
-	
+
 	        if (row > 0) {
+	            // 2. 【新增】連動強制下架所有分店的該商品
+	            branchInventoryDao.updateActiveByProductId(id, false);
 	            product.setActive(false);
 	            return new AdminProductRes(ReplyMessage.PRODUCT_DELETE_SUCCESS.getCode(),
 	                    ReplyMessage.PRODUCT_DELETE_SUCCESS.getMessage(),
@@ -274,7 +281,7 @@ public class ProductService {
 					ReplyMessage.PRODUCT_NOT_FOUND.getMessage());
 		}
 		
-		// ✨ 新增防護邏輯：如果商品已被軟刪除，禁止執行上架動作
+		// 新增防護邏輯：如果商品已被軟刪除，禁止執行上架動作
 	    if (active && product.getDeletedAt() != null) {
 	        return new AdminProductRes(ReplyMessage.OPERATE_ERROR.getCode(), 
 	            "操作失敗：該商品已刪除");
@@ -376,7 +383,7 @@ public class ProductService {
 		return null;
 	}
 
-	// 統一的工具方法
+	// 工具 - 將取出的格式跟 byte 合併傳給前端的 src 直接使用
 	private String getFullBase64(byte[] imgBytes) {
 	    if (imgBytes == null || imgBytes.length == 0) return "";
 	    String mimeType = detectMimeType(imgBytes);
@@ -389,7 +396,7 @@ public class ProductService {
 	//		return (imageBytes != null && imageBytes.length > 0) ? Base64.getEncoder().encodeToString(imageBytes) : "";
 	//	}
 
-	// 建議直接回傳一個小物件，或是把兩者串起來
+	// 取出圖片格式
 	private String detectMimeType(byte[] bytes) {
 		if (bytes == null || bytes.length < 4)
 			return "image/jpeg"; // 預設值
@@ -435,8 +442,7 @@ public class ProductService {
 	}
 
 	// 工具 - 轉換為 InventoryDetailVo VO (給管理者看完整資訊，且前端適用)
-	private InventoryDetailVo convertToInventoryDetailVo(BranchInventory inv, Map<Integer, String> branchMap) {
-		InventoryDetailVo vo = new InventoryDetailVo();
+	private InventoryDetailVo convertToInventoryDetailVo(BranchInventory inv, Map<Integer, String> branchMap, boolean isMasterActive) {		InventoryDetailVo vo = new InventoryDetailVo();
 		vo.setProductId(inv.getProductId());
 		vo.setGlobalAreaId(inv.getGlobalAreaId());
 		vo.setBasePrice(inv.getBasePrice());
@@ -447,7 +453,7 @@ public class ProductService {
 
 		// 從傳入的 Map 獲取分店名稱，如果找不到則預設為 "未知分店"
 		vo.setBranchName(branchMap.getOrDefault(inv.getGlobalAreaId(), "未知分店"));
-
+		vo.setMasterActive(isMasterActive);
 		return vo;
 	}
 
