@@ -76,4 +76,8 @@ public interface BranchInventoryDao extends JpaRepository<BranchInventory, Integ
 
 	// 8. 透過商品 ID 找出全部相對應的分店庫存
 	public List<BranchInventory> findByProductId(int productId);
+	
+	@Modifying(clearAutomatically = true)
+	@Query(value="UPDATE branch_inventory SET is_active = :active WHERE product_id = :productId", nativeQuery = true)
+	void updateActiveByProductId(@Param("productId") int productId, @Param("active") boolean active);
 }
