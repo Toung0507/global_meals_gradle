@@ -164,7 +164,7 @@ public class StaffController {
 
 		Staff operator = getLoginStaff(session);
 	
-		return staffService.changePassword(id, req, operator);
+		return staffService.changePassword(id, operator);
 	}
 	// 在 StaffController.java 中新增
 	/* =================================================================
