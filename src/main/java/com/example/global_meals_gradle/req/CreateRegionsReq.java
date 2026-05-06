@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import com.example.global_meals_gradle.constants.ValidationMsg;
 import com.fasterxml.jackson.annotation.JsonAlias;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,17 +19,18 @@ public class CreateRegionsReq {
 	private String country;
 	
 	@NotBlank(message = ValidationMsg.CURRENCY_CODE_ERROR)
-	@Pattern(regexp = "^[A-Z]{3}$", message = ValidationMsg.CURRENCY_CODE_ERROR)
+	@Pattern(regexp = "^[A-Za-z]{3}$", message = ValidationMsg.CURRENCY_CODE_ERROR)
 	@JsonAlias("currency_code")
     private String currencyCode;
 	
 	@NotBlank(message = ValidationMsg.COUNTRY_CODE_CANT_BE_EMPTY)
-	@Pattern(regexp = "^[A-Z]{2}$", message = ValidationMsg.COUNTRY_CODE_ERROR)
+	@Pattern(regexp = "^[A-Za-z]{2}$", message = ValidationMsg.COUNTRY_CODE_ERROR)
 	@JsonAlias("country_code")
     private String countryCode;
     
 	@NotNull(message = ValidationMsg.TAX_RATE_ERROR) // BigDecimal 建議用 NotNull
 	@Min(value = 0, message = ValidationMsg.TAX_RATE_ERROR) // 至少 >=0
+	@Max(value = 1, message = ValidationMsg.TAX_RATE_ERROR) // 最大 <=1
 	@JsonAlias("tax_rate")
 	private BigDecimal taxRate;
     
