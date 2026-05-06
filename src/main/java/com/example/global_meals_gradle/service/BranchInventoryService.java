@@ -52,8 +52,22 @@ public class BranchInventoryService {
 				// 使用組員的一行式寫法 (強勢邏輯版)
 				BranchInventory inv = branchInventoryDao
 						.findByProductIdAndGlobalAreaId(req.getProductId(), req.getGlobalAreaId())
-						.orElseThrow(() -> new RuntimeException("更新失敗：找不到商品 ID " + req.getProductId() + " 的庫存"));
+						.orElseThrow(() -> new RuntimeException("更新失敗：此分店找不到商品 ID " + req.getProductId() + " 的庫存"));
 
+				// 2. ✨ 新增：檢查主表狀態 (直接用 ID 查，不透過 Map)
+	            // 假設你的 productsDao.findById 回傳的是實體，或者你有一個 getDeletedAt 的方法
+	            Products masterProduct = productsDao.findById(req.getProductId());
+	            
+	            if (masterProduct == null || masterProduct.getDeletedAt() != null) {
+	                throw new RuntimeException("更新失敗：商品 [" + masterProduct.getName() + "] 已被總部刪除，無法修改資料。");
+	            }
+
+	            // 3. ✨ 新增：檢查總部是否下架 (主表 is_active = false)
+	            // 如果總部下架，但前端嘗試把分店改為 active=true，則攔截
+	            if (req.isActive() && !masterProduct.isActive()) {
+	                throw new RuntimeException("更新失敗：商品 [" + masterProduct.getName() + "] 總部目前處於下架狀態，分店無法開啟供應。");
+	            }
+				
 				// 更新欄位
 				inv.setStockQuantity(req.getStockQuantity());
 				inv.setBasePrice(req.getBasePrice());
@@ -144,7 +158,7 @@ public class BranchInventoryService {
 		if (active && !productsDao.isProductAvailable(productId)) {
 		    return new BranchInventoryRes(ReplyMessage.OPERATE_ERROR.getCode(), //
 		        "操作失敗：總部已將此商品下架或刪除，分店無法上架。");
-		}
+		}	
 
 		// 3. 更新狀態
 		inv.setActive(active);

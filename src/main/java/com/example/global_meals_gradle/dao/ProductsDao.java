@@ -30,7 +30,7 @@ public interface ProductsDao extends JpaRepository<Products, Integer> {
 	// 3. 軟刪除商品
 	@Modifying
 	@Transactional
-	@Query(value = "UPDATE products SET deleted_at = NOW(), is_active = 0 WHERE id = ?1", //
+	@Query(value = "UPDATE products SET deleted_at = SYSDATE(), is_active = 0 WHERE id = ?1", //
 			nativeQuery = true)
 	public int softDeleteProduct(int id);
 

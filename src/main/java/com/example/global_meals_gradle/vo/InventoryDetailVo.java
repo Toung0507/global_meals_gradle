@@ -13,6 +13,7 @@ public class InventoryDetailVo {
 	private int stockQuantity;
 	private int maxOrderQuantity;
 	private boolean active;
+	private boolean isMasterActive; // 總部主表的狀態 (新增)
 
 	public int getProductId() {
 		return productId;
@@ -84,6 +85,14 @@ public class InventoryDetailVo {
 
 	public void setActive(boolean active) {
 		this.active = active;
+	}
+
+	public boolean isMasterActive() {
+		return isMasterActive;
+	}
+
+	public void setMasterActive(boolean isMasterActive) {
+		this.isMasterActive = isMasterActive;
 	}
 
 }
