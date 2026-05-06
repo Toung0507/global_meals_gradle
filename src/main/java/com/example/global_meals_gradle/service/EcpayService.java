@@ -62,8 +62,7 @@ public class EcpayService {
 			// type='hidden' 就是讓這個框框在網頁上隱形
 			html.append("<input type='hidden' name='").append(key).append("' value='").append(value).append("'>");
 		});
-		// 所有的參數都生出來後，寫上表單的結尾標籤
-		html.append("</form>");
+		
 		// 加入 JavaScript 腳本，讓頁面載入後自動觸發表單送出 (submit)
 		html.append("</form><script>document.getElementById('payForm').submit();</script>");
 		html.append("</body></html>");
