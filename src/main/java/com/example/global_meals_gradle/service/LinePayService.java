@@ -22,7 +22,6 @@ import com.google.gson.Gson;
 
 import jakarta.servlet.http.HttpSession;
 
-// 暫時不會用到
 @Service
 public class LinePayService {
 
