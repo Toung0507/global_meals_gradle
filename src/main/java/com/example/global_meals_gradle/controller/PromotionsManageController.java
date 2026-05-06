@@ -133,9 +133,6 @@ public class PromotionsManageController {
 	/**
 	 * GET /promotions/image/{id}
 	 * 取得促銷活動圖片，供前端 <img> 標籤直接顯示
-	 *
-	 * 回傳原始圖片位元組，Content-Type 為 image/jpeg
-	 * 若該活動沒有圖片，回傳 404
 	 */
 	@GetMapping("/image/{id}")
 	@Operation(summary = "取得活動圖片", description = "獲取指定活動的圖片檔案")
@@ -144,8 +141,27 @@ public class PromotionsManageController {
 		if (imageBytes == null) {
 			return ResponseEntity.notFound().build();
 		}
+
+		// 預設格式
+		String mimeType = "image/jpeg";
+
+		// 檢查檔案頭 (需至少 4 bytes 才能辨識)
+		if (imageBytes.length >= 4) {
+			String hex = String.format("%02X%02X%02X%02X", imageBytes[0], imageBytes[1], imageBytes[2], imageBytes[3]);
+
+			if (hex.startsWith("89504E47")) {
+				mimeType = "image/png";
+			} else if (hex.startsWith("FFD8FF")) {
+				mimeType = "image/jpeg";
+			} else if (hex.startsWith("47494638")) {
+				mimeType = "image/gif";
+			} else if (hex.startsWith("52494646") && imageBytes.length >= 12 && new String(imageBytes, 8, 4).equals("WEBP")) {
+				mimeType = "image/webp";
+			}
+		}
+
 		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.IMAGE_JPEG);
+		headers.setContentType(MediaType.parseMediaType(mimeType));
 		return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
 	}
 
