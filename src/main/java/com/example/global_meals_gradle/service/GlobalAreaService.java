@@ -1,5 +1,7 @@
 package com.example.global_meals_gradle.service;
 
+import java.util.List;
+
 import org.hibernate.validator.internal.util.stereotypes.Lazy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -134,14 +136,27 @@ public class GlobalAreaService {
 		if (check != null) {
 			return check;
 		}
-		for (int id : req.getGlobalAreaIdList()) {
+		// 參數格式檢查
+		List<Integer> idList = req.getGlobalAreaIdList();
+		for (int id : idList) {
 			if (id <= 0) {
 				return new BasicRes(ReplyMessage.GLOBAL_AREA_ID_ERROR.getCode(), //
 						ReplyMessage.GLOBAL_AREA_ID_ERROR.getMessage());
 			}
 		}
 		try {
-			globalAreaDao.delete(req.getGlobalAreaIdList());
+			// 執行刪除，並取得實際刪除筆數
+			int deletedRows = globalAreaDao.delete(idList);
+			// 比對筆數：實際刪除筆數 / 請求刪除筆數(req)
+			if (deletedRows != idList.size()) {
+				// 這裡選擇拋出 RuntimeException 以觸發 @Transactional 的 Rollback
+                // 這樣就算前面刪除了 10 筆，只要其中 1 筆不存在，全部都會復原（不刪除）
+				throw new RuntimeException(ReplyMessage.DELETED_ENTRIES_ERROR.getMessage());
+			}
+		} catch (RuntimeException re) {
+			// 如果是因為 ID 不存在導致的錯誤，回傳錯誤代碼
+			return new BasicRes(ReplyMessage.PARTIAL_DELETED_ID_ERROR.getCode(), //
+					ReplyMessage.PARTIAL_DELETED_ID_ERROR.getMessage());
 		} catch (Exception e) {
 			throw e;
 		}

@@ -36,7 +36,7 @@ public interface GlobalAreaDao extends JpaRepository<GlobalArea, Integer> {
 	@Modifying
 	@Transactional
 	@Query(value = "DELETE FROM global_area WHERE id in (?1)", nativeQuery = true)
-	public void delete(List<Integer> idList);
+	public int delete(List<Integer> idList);
 
 	// 根據分店 ID 查詢分店資訊,用途：從 order_cart.global_area_id → 找到分店所在國家 → 查稅務
 	// 建新車，驗證GlobalArea的時候不用這個方法用內建的，因為用舊車的時候，這個GlobalAreaId傳進來就是Null
