@@ -178,48 +178,63 @@ public class BranchInventoryService {
 
 	// 分店取得菜單
 	public MenuListRes getMenuByArea(int globalAreaId) {
-		try {
-			List<Object[]> rawList = branchInventoryDao.getMenuByArea(globalAreaId);
-
-			// 將 Object[] 轉為 MenuVo
-			List<MenuVo> menuList = rawList.stream().map(obj -> {
-				MenuVo vo = new MenuVo();
-
-				// 2. 處理 Boolean 的安全轉型邏輯：
-				Object activeValue = obj[obj.length - 1]; // 取得最後一個欄位 bi.is_active
-
-				if (activeValue instanceof Number) {
-					// 如果是 Byte, Integer, Short 等數字型態 (TINYINT 常見情況)
-					vo.setActive(((Number) activeValue).intValue() == 1);
-				} else if (activeValue instanceof Boolean) {
-					// 如果驅動程式已經幫你轉好 Boolean 了
-					vo.setActive((Boolean) activeValue);
-				} else {
-					// 預設處理
-					vo.setActive(false);
-				}
-
-				byte[] imgBytes = (byte[]) obj[4]; // 假設第5個是 image
-				vo.setFoodImgBase64(getFullBase64(imgBytes));
-
-				vo.setProductId((Integer) obj[0]);
-				vo.setName((String) obj[1]);
-				vo.setCategory((String) obj[2]);
-				vo.setDescription((String) obj[3]);
-				vo.setBasePrice((BigDecimal) obj[obj.length - 3]);
-				vo.setStockQuantity((Integer) obj[obj.length - 2]);
-
-				return vo;
-			}).collect(Collectors.toList());
-
-			return new MenuListRes( //
-					ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(), menuList);
-
-		} catch (Exception e) {
-			return new MenuListRes( //
-					ReplyMessage.SYSTEM_ERROR.getCode(), //
-					ReplyMessage.SYSTEM_ERROR.getMessage() + e.getMessage());
-		}
+	    try {
+	        // 1. 檢查分店 ID 是否存在 (使用你現有的 globalAreaDao)
+	        boolean branchExists = globalAreaDao.existsById(globalAreaId);
+	        if (!branchExists) {
+	            return new MenuListRes(
+	                ReplyMessage.BRANCH_NOT_FOUND.getCode(), 
+	                ReplyMessage.BRANCH_NOT_FOUND.getMessage(), 
+	                null
+	            );
+	        }
+	
+	        // 2. 取得組合資料 (Products 實體 + 價格 + 庫存 + 分店狀態)
+	        List<Object[]> rawResults = branchInventoryDao.getMenuEntitiesByArea(globalAreaId);
+	
+	        // 3. 轉換為 MenuVo 清單
+	        List<MenuVo> menuList = rawResults.stream().map(row -> {
+	            Products p = (Products) row[0];            // 商品實體
+	            BigDecimal price = (BigDecimal) row[1];     // 該店價格
+	            Integer stock = (Integer) row[2];          // 該店庫存
+	            Boolean biActive = (Boolean) row[3];       // 分店自己的上下架狀態
+	
+	            MenuVo vo = new MenuVo();
+	            vo.setProductId(p.getId());
+	            vo.setName(p.getName());
+	            
+	            // 利用 @ManyToOne 取得關聯名稱
+	            vo.setCategory(p.getCategory() != null ? p.getCategory().getName() : "未分類");
+	            vo.setStyle(p.getStyle() != null ? p.getStyle().getName() : "無風格");
+	            
+	            vo.setDescription(p.getDescription());
+	            
+	            // 處理圖片轉碼 (Lazy Loading 會在此時被觸發)
+	            vo.setFoodImgBase64(getFullBase64(p.getFoodImg()));
+	
+	            // 設定分店專屬數值
+	            vo.setBasePrice(price);
+	            vo.setStockQuantity(stock);
+	            vo.setActive(biActive);
+	
+	            return vo;
+	        }).collect(Collectors.toList());
+	
+	        // 4. 回傳成功結果
+	        return new MenuListRes(
+	            ReplyMessage.SUCCESS.getCode(), 
+	            ReplyMessage.SUCCESS.getMessage(), 
+	            menuList
+	        );
+	
+	    } catch (Exception e) {
+	        // 捕捉系統錯誤
+	        return new MenuListRes(
+	            ReplyMessage.SYSTEM_ERROR.getCode(), 
+	            ReplyMessage.SYSTEM_ERROR.getMessage() + ": " + e.getMessage(), 
+	            null
+	        );
+	    }
 	}
 
 	// 用分店 ID 查該店所有商品庫存
