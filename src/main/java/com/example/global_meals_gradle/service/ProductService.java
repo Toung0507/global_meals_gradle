@@ -437,8 +437,13 @@ public class ProductService {
 	    
 		vo.setDescription(p.getDescription());
 		vo.setActive(p.isActive());
-		vo.setFoodImgBase64(getFullBase64(p.getFoodImg()));
-		return vo;
+		//vo.setFoodImgBase64(getFullBase64(p.getFoodImg()));
+		// 取得圖片內容的 HashCode 作為版本號
+	    int contentHash = (p.getFoodImg() != null) ? java.util.Arrays.hashCode(p.getFoodImg()) : 0;
+	    
+	    // 拼接 URL，這會變成像是 /image/6?v=12345678
+	    vo.setFoodImgBase64("/lazybaobao/product/image/" + p.getId() + "?v=" + contentHash);
+	    return vo;
 	}
 
 	// 工具 - 轉換為 InventoryDetailVo VO (給管理者看完整資訊，且前端適用)
