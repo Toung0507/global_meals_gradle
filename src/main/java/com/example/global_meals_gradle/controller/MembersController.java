@@ -4,6 +4,7 @@ import java.time.LocalTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,6 +15,7 @@ import com.example.global_meals_gradle.req.LoginMembersReq;
 import com.example.global_meals_gradle.req.RegisterMembersReq;
 import com.example.global_meals_gradle.req.UpdatePasswordReq;
 import com.example.global_meals_gradle.res.BasicRes;
+import com.example.global_meals_gradle.res.MemberOrderCountRes;
 import com.example.global_meals_gradle.res.MembersRes;
 import com.example.global_meals_gradle.service.MembersService;
 
@@ -81,4 +83,10 @@ public class MembersController {
 		return membersService.updatePassword(req);
 	}
 	
+	// 取得會員消費累計次數
+	@GetMapping("/order-stats/{phone}")
+	@Operation(summary = "查詢消費統計", description = "根據手機號碼獲取會員 ID、手機號及累計消費次數")
+	public MemberOrderCountRes getMemberOrderStats(@PathVariable("phone") String phone) {
+	    return membersService.getMemberOrderStats(phone);
+	}
 }
