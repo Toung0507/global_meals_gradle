@@ -80,5 +80,4 @@ public class MembersController {
 	public BasicRes updatePassword(@Valid @RequestBody UpdatePasswordReq req) {
 		return membersService.updatePassword(req);
 	}
-	
 }
