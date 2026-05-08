@@ -15,173 +15,133 @@ public interface PromotionsGiftsDao extends JpaRepository<PromotionsGifts, Integ
 	/**
 	 * 根據原始總金額，找出所有達標的贈品活動（讓使用者從中選一個）
 	 *
-	 * 條件說明：
-	 *   :total >= gifts.full_amount          → 消費金額有達到這個贈品的門檻
-	 *   gifts.is_active = 1                  → 這筆贈品活動本身是啟用的（未手動下架）
-	 *   prom.is_active = 1                   → 對應的促銷活動是啟用的
-	 *   prom.start_time <= CURRENT_DATE      → 促銷活動已經開始
-	 *   prom.end_time >= CURRENT_DATE        → 促銷活動還沒結束
-	 *   (gifts.quantity = -1 OR gifts.quantity > 0)
-	 *                                        → quantity = -1 表示無限供應
-	 *                                          quantity > 0 表示還有庫存
-	 *                                          quantity = 0 表示已送完，不能選
+	 * 條件說明： :total >= gifts.full_amount → 消費金額有達到這個贈品的門檻 gifts.is_active = 1 →
+	 * 這筆贈品活動本身是啟用的（未手動下架） prom.is_active = 1 → 對應的促銷活動是啟用的 prom.start_time <=
+	 * CURRENT_DATE → 促銷活動已經開始 prom.end_time >= CURRENT_DATE → 促銷活動還沒結束
+	 * (gifts.quantity = -1 OR gifts.quantity > 0) → quantity = -1 表示無限供應 quantity >
+	 * 0 表示還有庫存 quantity = 0 表示已送完，不能選
 	 *
-	 * ORDER BY gifts.full_amount DESC：
-	 *   金額高的排前面，讓使用者看到最高等級的贈品優先顯示
+	 * ORDER BY gifts.full_amount DESC： 金額高的排前面，讓使用者看到最高等級的贈品優先顯示
 	 *
 	 * 回傳 List<PromotionsGifts>（名稱另外由 ProductsTempDao 查）
 	 */
-	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts " +
-				   "JOIN promotions AS prom ON gifts.promotions_id = prom.id " +
-				   "WHERE :total >= gifts.full_amount " +
-				   "AND gifts.is_active = 1 " +
-				   "AND prom.is_active = 1 " +
-				   "AND prom.start_time <= CURRENT_DATE " +
-				   "AND prom.end_time >= CURRENT_DATE " +
-				   "AND (gifts.quantity = -1 OR gifts.quantity > 0) " +
-				   "ORDER BY gifts.full_amount DESC",
-		   nativeQuery = true)
+	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
+			+ "JOIN promotions AS prom ON gifts.promotions_id = prom.id " + "WHERE :total >= gifts.full_amount "
+			+ "AND gifts.is_active = 1 " + "AND prom.is_active = 1 " + "AND prom.start_time <= CURRENT_DATE "
+			+ "AND prom.end_time >= CURRENT_DATE " + "AND (gifts.quantity = -1 OR gifts.quantity > 0) "
+			+ "ORDER BY gifts.full_amount DESC", nativeQuery = true)
 	List<PromotionsGifts> findAllQualifiedGifts(@Param("total") BigDecimal total);
 
 	/**
 	 * 驗證使用者選擇的贈品是否合法
 	 *
-	 * 條件說明：
-	 *   gifts.id = :selectedGiftId           → 就是使用者選的那一筆
-	 *   :total >= gifts.full_amount          → 消費金額還是要達到這筆贈品的門檻
-	 *                                          防止使用者查完清單後金額被改動再來結帳
-	 *   gifts.is_active = 1                  → 這筆贈品活動還是啟用的
-	 *   prom.is_active = 1                   → 對應的促銷活動還是啟用的
-	 *   prom.start_time <= CURRENT_DATE      → 促銷活動還在期間內
-	 *   prom.end_time >= CURRENT_DATE        → 促銷活動還沒結束
-	 *   (gifts.quantity = -1 OR gifts.quantity > 0)
-	 *                                        → 還有庫存
+	 * 條件說明： gifts.id = :selectedGiftId → 就是使用者選的那一筆 :total >= gifts.full_amount →
+	 * 消費金額還是要達到這筆贈品的門檻 防止使用者查完清單後金額被改動再來結帳 gifts.is_active = 1 → 這筆贈品活動還是啟用的
+	 * prom.is_active = 1 → 對應的促銷活動還是啟用的 prom.start_time <= CURRENT_DATE → 促銷活動還在期間內
+	 * prom.end_time >= CURRENT_DATE → 促銷活動還沒結束 (gifts.quantity = -1 OR
+	 * gifts.quantity > 0) → 還有庫存
 	 *
 	 * 回傳 null 表示不合法，不為 null 表示合法可以扣減
 	 */
-	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts " +
-				   "JOIN promotions AS prom ON gifts.promotions_id = prom.id " +
-				   "WHERE gifts.id = :selectedGiftId " +
-				   "AND :total >= gifts.full_amount " +
-				   "AND gifts.is_active = 1 " +
-				   "AND prom.is_active = 1 " +
-				   "AND prom.start_time <= CURRENT_DATE " +
-				   "AND prom.end_time >= CURRENT_DATE " +
-				   "AND (gifts.quantity = -1 OR gifts.quantity > 0)",
-		   nativeQuery = true)
-	PromotionsGifts validateSelectedGift(@Param("selectedGiftId") int selectedGiftId,
-										 @Param("total") BigDecimal total);
+	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
+			+ "JOIN promotions AS prom ON gifts.promotions_id = prom.id " + "WHERE gifts.id = :selectedGiftId "
+			+ "AND :total >= gifts.full_amount " + "AND gifts.is_active = 1 " + "AND prom.is_active = 1 "
+			+ "AND prom.start_time <= CURRENT_DATE " + "AND prom.end_time >= CURRENT_DATE "
+			+ "AND (gifts.quantity = -1 OR gifts.quantity > 0)", nativeQuery = true)
+	PromotionsGifts validateSelectedGift(@Param("selectedGiftId") int selectedGiftId, @Param("total") BigDecimal total);
 
 	/**
 	 * 扣減贈品配額，若扣完（quantity = 0）則自動把 is_active 設為 0
 	 *
-	 * 條件說明：
-	 *   quantity > 0            → 確保還有庫存才扣，防止扣成負數
-	 *   quantity = quantity - 1 → 扣 1
-	 *   is_active = CASE ...    → 扣完後若剩 0，同時把這筆贈品活動下架
+	 * 條件說明： quantity > 0 → 確保還有庫存才扣，防止扣成負數 quantity = quantity - 1 → 扣 1 is_active
+	 * = CASE ... → 扣完後若剩 0，同時把這筆贈品活動下架
 	 *
 	 * 用一條 SQL 完成，避免先扣再判斷中間有其他請求插入的競爭問題
 	 */
 	@Modifying
 	@jakarta.transaction.Transactional
-	@Query(value = "UPDATE promotions_gifts " +
-				   "SET quantity = quantity - 1, " +
-				   "    is_active = CASE WHEN quantity - 1 = 0 THEN 0 ELSE 1 END " +
-				   "WHERE id = :id AND quantity > 0",
-		   nativeQuery = true)
+	@Query(value = "UPDATE promotions_gifts " + "SET quantity = quantity - 1, "
+			+ "    is_active = CASE WHEN quantity - 1 = 0 THEN 0 ELSE 1 END "
+			+ "WHERE id = :id AND quantity > 0", nativeQuery = true)
 	void decreaseQuantityAndDeactivateIfEmpty(@Param("id") int id);
 
 	/**
 	 * 關閉活動時，批次把底下所有贈品的 is_active 設為 0
 	 *
-	 * 只在關閉活動（is_active = 0）時使用
-	 * 開啟活動時不同步贈品，讓前端自己決定要開哪些贈品
+	 * 只在關閉活動（is_active = 0）時使用 開啟活動時不同步贈品，讓前端自己決定要開哪些贈品
 	 */
 	@Modifying
 	@jakarta.transaction.Transactional
-	@Query(value = "UPDATE promotions_gifts SET is_active = 0 " +
-				   "WHERE promotions_id = :promotionsId",
-		   nativeQuery = true)
+	@Query(value = "UPDATE promotions_gifts SET is_active = 0 "
+			+ "WHERE promotions_id = :promotionsId", nativeQuery = true)
 	void deactivateAllByPromotionsId(@Param("promotionsId") int promotionsId);
 
 	/**
-	 * 依 promotions_id 刪除所有對應的贈品資料
-	 * 用於刪除促銷活動時，先把底下的贈品全部真刪除
+	 * 依 promotions_id 刪除所有對應的贈品資料 用於刪除促銷活動時，先把底下的贈品全部真刪除
 	 */
 	@Modifying
 	@jakarta.transaction.Transactional
-	@Query(value = "DELETE FROM promotions_gifts WHERE promotions_id = :promotionsId",
-		   nativeQuery = true)
+	@Query(value = "DELETE FROM promotions_gifts WHERE promotions_id = :promotionsId", nativeQuery = true)
 	void deleteByPromotionsId(@Param("promotionsId") int promotionsId);
 
 	/**
 	 * 依促銷活動 ID 查出該活動底下的所有贈品（不論啟用/停用）
 	 *
-	 * 條件說明：
-	 *   promotions_id = :promotionsId → 只撈這個活動底下的贈品
-	 *   不篩 is_active                → 包含停用的，讓管理端看到完整狀態
+	 * 條件說明： promotions_id = :promotionsId → 只撈這個活動底下的贈品 不篩 is_active →
+	 * 包含停用的，讓管理端看到完整狀態
 	 *
 	 * 使用場景：GET /promotions/list，管理端顯示每個活動底下的所有贈品
 	 */
-	@Query(value = "SELECT * FROM promotions_gifts WHERE promotions_id = :promotionsId",
-		   nativeQuery = true)
+	@Query(value = "SELECT * FROM promotions_gifts WHERE promotions_id = :promotionsId", nativeQuery = true)
 	List<PromotionsGifts> findByPromotionsId(@Param("promotionsId") int promotionsId);
 
-	/* 核心邏輯：取得所有目前上架的有效期內的活動的上架中的贈品門檻 /規則*/
+	/* 核心邏輯：取得所有目前上架的有效期內的活動的上架中的贈品門檻 /規則 */
 	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
-		    + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
-		    + "WHERE gifts.is_active = 1 "
-		    + "AND prom.is_active = 1 "
-		    + "AND prom.start_time <= CURRENT_DATE "
-		    + "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
+			+ "JOIN promotions AS prom ON gifts.promotions_id = prom.id " + "WHERE gifts.is_active = 1 "
+			+ "AND prom.is_active = 1 " + "AND prom.start_time <= CURRENT_DATE "
+			+ "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
 	public List<PromotionsGifts> findAllActiveGifts();
 
 	/*
-    
-	根據「贈品商品 ID」找到對應的目前上架的規則。用途：在 getCartView() 步驟3 驗證已選贈品是否還有效。
-	例如：使用者選了大盤雞（giftProductId = 101），後端確認這條規則是否仍在有效期間內且啟用。*
-	⚠️ 加上 ORDER BY full_amount ASC LIMIT 1 的原因：
-	若同一個贈品商品（例如大盤雞）被設定在「夏日祭典」和「週年慶」兩個活動裡，
-	SQL 會回傳兩筆資料，JPA 把多筆資料塞進單一物件時會拋出
-	IncorrectResultSizeDataAccessException（預期 1 筆，實際 N 筆），導致程式崩潰。
-	加上 LIMIT 1 後只取一筆；ORDER BY full_amount ASC 優先取門檻最低的那條，
-	確保消費者只要達到最低門檻的活動就算有效，不會因為取到高門檻的規則而被誤判失效。*/
+	 * 
+	 * 根據「贈品商品 ID」找到對應的目前上架的規則。用途：在 getCartView() 步驟3 驗證已選贈品是否還有效。
+	 * 例如：使用者選了大盤雞（giftProductId = 101），後端確認這條規則是否仍在有效期間內且啟用。* ⚠️ 加上 ORDER BY
+	 * full_amount ASC LIMIT 1 的原因： 若同一個贈品商品（例如大盤雞）被設定在「夏日祭典」和「週年慶」兩個活動裡， SQL
+	 * 會回傳兩筆資料，JPA 把多筆資料塞進單一物件時會拋出 IncorrectResultSizeDataAccessException（預期 1 筆，實際
+	 * N 筆），導致程式崩潰。 加上 LIMIT 1 後只取一筆；ORDER BY full_amount ASC 優先取門檻最低的那條，
+	 * 確保消費者只要達到最低門檻的活動就算有效，不會因為取到高門檻的規則而被誤判失效。
+	 */
 	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
-	+ "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
-	+ "WHERE gifts.gift_product_id = ?1 "
-	+ "AND gifts.is_active = 1 "
-	+ "AND prom.is_active = 1 "
-	+ "AND prom.start_time <= CURRENT_DATE "
-	+ "AND prom.end_time >= CURRENT_DATE "
-	+ "ORDER BY gifts.full_amount ASC "
-	+ "LIMIT 1", nativeQuery = true)
-	    PromotionsGifts findActiveRuleByGiftProductId(int giftProductId);
+			+ "JOIN promotions AS prom ON gifts.promotions_id = prom.id " + "WHERE gifts.gift_product_id = ?1 "
+			+ "AND gifts.is_active = 1 " + "AND prom.is_active = 1 " + "AND prom.start_time <= CURRENT_DATE "
+			+ "AND prom.end_time >= CURRENT_DATE " + "ORDER BY gifts.full_amount ASC " + "LIMIT 1", nativeQuery = true)
+	PromotionsGifts findActiveRuleByGiftProductId(int giftProductId);
 
 	// 根據「贈品規則 ID（主鍵）」找到對應的上架有效規則
 	// 使用時機：selectGift()，前端傳來 giftRuleId，後端用主鍵精準定位這條規則
 	// 同時 JOIN promotions 確認這條規則對應的活動是否仍在有效期間內且啟用
 	// 任一條件不符合就回傳 null
-    @Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
-            + "JOIN promotions AS prom ON gifts.promotions_id = prom.id "
-            + "WHERE gifts.id = ?1 "
-            + "AND gifts.is_active = 1 "
-            + "AND prom.is_active = 1 "
-            + "AND prom.start_time <= CURRENT_DATE "
-            + "AND prom.end_time >= CURRENT_DATE",
-            nativeQuery = true)
-    PromotionsGifts findActiveRuleByGiftRuleId(int giftRuleId);
-    
-    /* 更新贈品兌換次數(用於兌換贈品，數量-1)，庫存歸零時下架邏輯由 OrdersService 處理 */
-    @Modifying
-    @jakarta.transaction.Transactional
-    @Query(value = "UPDATE promotions_gifts SET quantity = quantity - 1 WHERE promotions_id = ?1 "
-    		+ "AND gift_product_id = ?2 AND is_active = 1 AND quantity > 0", nativeQuery = true)
-    public int reduceGiftQuota(int promotionsId, int giftProductId);
+	@Query(value = "SELECT gifts.* FROM promotions_gifts AS gifts "
+			+ "JOIN promotions AS prom ON gifts.promotions_id = prom.id " + "WHERE gifts.id = ?1 "
+			+ "AND gifts.is_active = 1 " + "AND prom.is_active = 1 " + "AND prom.start_time <= CURRENT_DATE "
+			+ "AND prom.end_time >= CURRENT_DATE", nativeQuery = true)
+	PromotionsGifts findActiveRuleByGiftRuleId(int giftRuleId);
+
+	/* 更新贈品兌換次數(用於兌換贈品，數量-1)，庫存歸零時下架邏輯由 OrdersService 處理 */
+	@Modifying
+	@jakarta.transaction.Transactional
+	@Query(value = "UPDATE promotions_gifts " + //
+			"SET quantity = CASE WHEN quantity = -1 THEN -1 ELSE quantity - 1 END " + //
+			"WHERE promotions_id = ?1 " + //
+			"AND gift_product_id = ?2 " + //
+			"AND is_active = 1 " + //
+			"AND (quantity > 0 OR quantity = -1)", nativeQuery = true)
+	public int reduceGiftQuota(int promotionsId, int giftProductId);
 
 	/* 根據 活動id 商品id 取的門檻資料(用於orders) */
-    @Query(value = "SELECT full_amount FROM promotions_gifts "
-    		+ "WHERE promotions_id = ?1 AND gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
-    public BigDecimal findFullAmountByGiftProductId(int promotionsId, int giftProductId);
+	@Query(value = "SELECT full_amount FROM promotions_gifts "
+			+ "WHERE promotions_id = ?1 AND gift_product_id = ?2 AND is_active = 1", nativeQuery = true)
+	public BigDecimal findFullAmountByGiftProductId(int promotionsId, int giftProductId);
 
 	/* 單獨關閉指定贈品（is_active 設為 0） */
 	@Modifying
