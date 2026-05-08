@@ -3,6 +3,7 @@ package com.example.global_meals_gradle.dao;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -90,5 +91,9 @@ public interface MembersDao extends JpaRepository<Members, Integer> {
 	@Transactional
 	@Query(value = "UPDATE members SET password = ?2 WHERE id = ?1", nativeQuery = true)	
 	public int updatePassword(int id, String newPassword);
+	
+	// 從會員取出他的消費累計次數
+	@Query(value = "SELECT * FROM members WHERE phone LIKE %:suffix", nativeQuery = true)
+	public Members findByPhoneSuffix(@Param("suffix") String suffix);
 	
 }

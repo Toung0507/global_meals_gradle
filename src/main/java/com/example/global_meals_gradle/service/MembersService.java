@@ -14,6 +14,7 @@ import com.example.global_meals_gradle.req.LoginMembersReq;
 import com.example.global_meals_gradle.req.RegisterMembersReq;
 import com.example.global_meals_gradle.req.UpdatePasswordReq;
 import com.example.global_meals_gradle.res.BasicRes;
+import com.example.global_meals_gradle.res.MemberOrderCountRes;
 import com.example.global_meals_gradle.res.MembersRes;
 import com.example.global_meals_gradle.utils.PhoneValidatorUtils;
 
@@ -153,4 +154,32 @@ public class MembersService {
 		return new BasicRes(ReplyMessage.UPDATE_FAILED.getCode(), //
 				ReplyMessage.UPDATE_FAILED.getMessage());
 	}
+	public MemberOrderCountRes getMemberOrderStats(String phone) {
+        try {
+            // 1. 基本清理：去掉所有非數字字元 (例如空白、橫槓)
+            String cleanPhone = phone.replaceAll("[^0-9]", "");
+
+            // 2. 去掉開頭的 '0'
+            // 例如 09063592330 -> 9063592330
+            // 例如 0912345678 -> 912345678
+            String suffix = cleanPhone.startsWith("0") ? cleanPhone.substring(1) : cleanPhone;
+
+            // 3. 去資料庫進行後綴匹配查詢
+            Members member = membersDao.findByPhoneSuffix(suffix);
+
+            // 4. 判斷結果
+            if (member == null) {
+                return new MemberOrderCountRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
+                        ReplyMessage.MEMBER_NOT_FOUND.getMessage());
+            }
+
+            // 5. 封裝進你的 MemberOrderCountRes (依照你的建構子順序)
+            return new MemberOrderCountRes(ReplyMessage.SUCCESS.getCode(), ReplyMessage.SUCCESS.getMessage(),
+                    member.getId(), member.getPhone(), member.getOrderCount(), member.getRegionsId());
+
+        } catch (Exception e) {
+            return new MemberOrderCountRes(ReplyMessage.SYSTEM_ERROR.getCode(),
+                    ReplyMessage.SYSTEM_ERROR.getMessage() + e.getMessage());
+        }
+    }
 }
