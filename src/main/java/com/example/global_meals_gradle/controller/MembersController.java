@@ -84,7 +84,7 @@ public class MembersController {
 	}
 	
 	// 取得會員消費累計次數
-	@GetMapping("/order-stats/{phone}")
+	@GetMapping("/get_members_count/{phone}")
 	@Operation(summary = "查詢消費統計", description = "根據手機號碼獲取會員 ID、手機號及累計消費次數")
 	public MemberOrderCountRes getMemberOrderStats(@PathVariable("phone") String phone) {
 	    return membersService.getMemberOrderStats(phone);
