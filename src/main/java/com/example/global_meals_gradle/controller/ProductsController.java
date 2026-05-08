@@ -1,9 +1,12 @@
 package com.example.global_meals_gradle.controller;
 
+import java.util.Base64;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,8 +19,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.global_meals_gradle.constants.ReplyMessage;
 import com.example.global_meals_gradle.dao.CategoryDao;
+import com.example.global_meals_gradle.dao.ProductsDao;
 import com.example.global_meals_gradle.dao.StyleDao;
 import com.example.global_meals_gradle.entity.Category;
+import com.example.global_meals_gradle.entity.Products;
 import com.example.global_meals_gradle.entity.Staff;
 import com.example.global_meals_gradle.entity.Style;
 import com.example.global_meals_gradle.req.MonthlyProductsSalesReq;
@@ -48,6 +53,9 @@ public class ProductsController {
 	
     @Autowired
     private CategoryDao categoryDao;
+    
+    @Autowired
+    private ProductsDao productsDao;
 
 	@PostMapping(value = "/create", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
 	@Operation(summary = "新增商品", description = "上傳商品圖片並新增商品基本資料")
@@ -72,7 +80,60 @@ public class ProductsController {
 			@Parameter(hidden = true) HttpSession session) { //
 		return productService.updateProduct(req, file, session);
 	}
+	
+	@GetMapping(value = "/image/{id}")
+	@Operation(summary = "獲取商品圖片", description = "根據 ID 讀取圖片二進位流")
+public ResponseEntity<byte[]> getProductImage(@PathVariable("id") int id) {
+    Products product = productsDao.findById(id);
+    
+    if (product == null || product.getFoodImg() == null) {
+        return ResponseEntity.notFound().build();
+    }
 
+    byte[] imgBytes = product.getFoodImg();
+    String mimeType = detectMimeType(imgBytes);
+
+    return ResponseEntity.ok()
+            // 關鍵：允許瀏覽器快取這張圖（例如 10 分鐘）
+            // 這樣除了第一次，之後刷新網頁圖片會秒出，且不會呼叫後端
+            .header(HttpHeaders.CACHE_CONTROL, "max-age=600") 
+            .contentType(MediaType.parseMediaType(mimeType))
+            .body(imgBytes);
+}
+
+	// 工具 - 將取出的格式跟 byte 合併傳給前端的 src 直接使用
+	private String getFullBase64(byte[] imgBytes) {
+	    if (imgBytes == null || imgBytes.length == 0) return "";
+	    String mimeType = detectMimeType(imgBytes);
+	    String base64 = Base64.getEncoder().encodeToString(imgBytes);
+	    return "data:" + mimeType + ";base64," + base64;
+	}
+	
+	// 工具 - 圖片轉換成前端能夠直接使用 -- 這個是原本單純回傳 byte ，後面改成回傳完整的資料
+	//	private String encodeImage(byte[] imageBytes) {
+	//		return (imageBytes != null && imageBytes.length > 0) ? Base64.getEncoder().encodeToString(imageBytes) : "";
+	//	}
+
+	// 取出圖片格式
+	private String detectMimeType(byte[] bytes) {
+		if (bytes == null || bytes.length < 4)
+			return "image/jpeg"; // 預設值
+
+		// 檢查文件頭 (Magic Numbers)
+		String hex = String.format("%02X%02X%02X%02X", bytes[0], bytes[1], bytes[2], bytes[3]);
+
+		if (hex.startsWith("89504E47"))
+			return "image/png";
+		if (hex.startsWith("FFD8FF"))
+			return "image/jpeg";
+		if (hex.startsWith("47494638"))
+			return "image/gif";
+		if (hex.startsWith("52494646") && new String(bytes, 8, 4).equals("WEBP"))
+			return "image/webp";
+
+		return "image/jpeg"; // 真的都認不出來就猜 jpeg
+	}
+	
 	@GetMapping("/list")
 	@Operation(summary = "取得所有上架商品", description = "查詢目前處於上架狀態的商品列表")
 	public AdminProductRes getActiveProducts(@Parameter(hidden = true) HttpSession session) {

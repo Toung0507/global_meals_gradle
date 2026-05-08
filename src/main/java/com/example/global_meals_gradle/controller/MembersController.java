@@ -82,7 +82,6 @@ public class MembersController {
 	public BasicRes updatePassword(@Valid @RequestBody UpdatePasswordReq req) {
 		return membersService.updatePassword(req);
 	}
-	
 	// 取得會員消費累計次數
 	@GetMapping("/get_members_count/{phone}")
 	@Operation(summary = "查詢消費統計", description = "根據手機號碼獲取會員 ID、手機號及累計消費次數")

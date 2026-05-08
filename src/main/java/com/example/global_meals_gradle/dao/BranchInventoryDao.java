@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.global_meals_gradle.entity.BranchInventory;
+import com.example.global_meals_gradle.entity.Products;
 
 @Repository
 public interface BranchInventoryDao extends JpaRepository<BranchInventory, Integer> {
@@ -63,13 +64,21 @@ public interface BranchInventoryDao extends JpaRepository<BranchInventory, Integ
 
 	// 6. 分店菜單列表 (JOIN 兩表)
 	// 以庫存表為主，撈出該分店所有「上架」商品
-	@Query(value = "SELECT p.id, p.name, p.category, p.description, p.food_img, " // 順序 0, 1, 2, 3, 4
+	@Query(value = "SELECT p.id, p.name, p.category_id,p.style_id, p.description, p.food_img, " // 順序 0, 1, 2, 3, 4
 		    + " bi.base_price, bi.stock_quantity, bi.is_active " // 順序 5, 6, 7
 		    + " FROM branch_inventory AS bi "
 		    + " JOIN products AS p ON bi.product_id = p.id "
 		    + " WHERE bi.global_area_id = ?1 "
 		    + " AND p.is_active = 1 AND p.deleted_at IS NULL", nativeQuery = true)
 		public List<Object[]> getMenuByArea(int globalAreaId);
+	
+	// 分店菜單列表
+	@Query("SELECT p, bi.basePrice, bi.stockQuantity, bi.active FROM Products p " +
+		       "JOIN BranchInventory bi ON p.id = bi.productId " +
+		       "WHERE bi.globalAreaId = ?1 " +
+		       "AND p.active = true " +       // 總部必須是上架狀態
+		       "AND p.deletedAt IS NULL")     // 總部必須未刪除
+	public List<Object[]> getMenuEntitiesByArea(int globalAreaId);
 
 	// 7. 透過分店 ID 找出全部的商品庫存
 	public List<BranchInventory> findByGlobalAreaId(int globalAreaId);
