@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.constants.PayStatus;
@@ -256,7 +257,11 @@ public class OrdersService {
 		MembersRes membersRes = (MembersRes) httpSession.getAttribute(MembersController.ATTRIBUTE_KEY);
 		Members member = (membersRes != null) ? membersRes.getMembers() : null;
 		if (staff != null) { // 代表是員工操作
-			if (req.getMemberId() <= 0 || membersDao.findById(req.getMemberId()) == null) {
+			if (req.getMemberId() <= 0) {
+				return new CreateOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
+						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
+			}
+			if (req.getMemberId() > 1 && membersDao.findById(req.getMemberId()) == null) {
 				return new CreateOrdersRes(ReplyMessage.MEMBER_NOT_FOUND.getCode(),
 						ReplyMessage.MEMBER_NOT_FOUND.getMessage());
 			}
@@ -274,12 +279,12 @@ public class OrdersService {
 		log.debug("【訂單請求】收到購物車 ID: {}, 會員 ID: {}", req.getOrderCartId(), req.getMemberId());
 
 		if (req.isUseDiscount()) {
-			if(req.getMemberId() == 1) {
+			if (req.getMemberId() == 1) {
 				// [WARN] 記錄異常的折扣請求（可能是前端繞過或邏輯錯誤）
 				log.warn("【訂單攔截】購物車id {} 嘗試使用折扣但資格不符", req.getOrderCartId());
 				throw new RuntimeException("無優惠可使用");
 			}
-			Members memberForDiscount  = membersDao.findById(req.getMemberId());
+			Members memberForDiscount = membersDao.findById(req.getMemberId());
 			if (memberForDiscount == null || !memberForDiscount.isDiscount()) {
 				// [WARN] 記錄異常的折扣請求（可能是前端繞過或邏輯錯誤）
 				log.warn("【訂單攔截】會員 {} 嘗試使用折扣但資格不符", req.getMemberId());
@@ -548,6 +553,10 @@ public class OrdersService {
 			// [ERROR] 記錄詳細的資料庫操作失敗原因
 			log.error("【資料庫異常】訂單寫入失敗，購物車 ID: {}, 錯誤: {}", req.getOrderCartId(), e.getMessage());
 			System.out.println("executeInsert 執行失敗，準備回滾並交由外層判斷: " + e.getMessage());
+			//			 // 關鍵】因為我們想 return 包裝好的 JSON，所以必須手動標記回滾
+			//			 TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+			//			 // 回傳友善訊息給前端
+			//			 return new CreateOrdersRes(500, "操作失敗：" + e.getMessage());
 			throw e;
 		}
 	}
