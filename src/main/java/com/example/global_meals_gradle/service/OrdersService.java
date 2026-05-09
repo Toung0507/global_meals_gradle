@@ -18,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import com.example.global_meals_gradle.constants.OrdersStatus;
 import com.example.global_meals_gradle.constants.PayStatus;
@@ -142,16 +141,16 @@ public class OrdersService {
 			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
 				// 建立一個新的訂單物件
 				GetOrdersVo newVo = new GetOrdersVo();
-				newVo.setId(row[0].toString()); // o.id
-				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
-				newVo.setGlobalAreaId(((Number) row[2]).intValue()); // o.global_area_id
-				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
-				newVo.setOrdersStatus(row[4].toString()); // o.status
-				newVo.setPayStatus(row[5].toString());// o.status
+				newVo.setId(row[0] != null ? row[0].toString() : ""); // o.id
+				newVo.setOrderDateId(row[1] != null ? row[1].toString() : ""); // o.order_date_id
+				newVo.setGlobalAreaId(row[2] != null ? ((Number) row[2]).intValue() : 0); // o.global_area_id
+				newVo.setTotalAmount(row[3] != null ? (BigDecimal) row[3] : BigDecimal.ZERO); // o.total_amount
+				newVo.setOrdersStatus(row[4] != null ? row[4].toString() : "UNKNOWN"); // o.status
+				newVo.setPayStatus(row[5] != null ? row[5].toString() : "UNKNOWN");// o.status
 				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
 				// 回傳的 Java 物件實際上是 java.sql.Timestamp
 				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
-				newVo.setCompletedAt((LocalDateTime) row[6]);
+				newVo.setCompletedAt(row[6] != null ? (LocalDateTime) row[6] : null);
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -159,11 +158,11 @@ public class OrdersService {
 			// 建立明細並塞入該訂單的 List
 			GetOrdersDetailVo detail = new GetOrdersDetailVo();
 			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
-			detail.setQuantity(((Number) row[7]).intValue());
-			detail.setPrice((BigDecimal) row[8]);
-			detail.setGift(((Number) row[9]).intValue() == 1); // 回傳0或1，在 Java 是數字，透過比較運算產生 true/false
+			detail.setQuantity(row[7] != null ? ((Number) row[7]).intValue() : 0);
+			detail.setPrice(row[8] != null ? (BigDecimal) row[8] : BigDecimal.ZERO);
+			detail.setGift(row[9] != null && ((Number) row[9]).intValue() == 1); // 回傳0或1，在 Java 是數字，透過比較運算產生 true/false
 			detail.setDiscountNote(row[10] != null ? row[10].toString() : "");
-			detail.setName(row[11].toString()); // 產品名稱已經在 SQL 抓好了
+			detail.setName(row[11] != null ? row[11].toString() : "未知商品"); // 產品名稱已經在 SQL 抓好了
 
 			vo.getGetOrdersDetailVoList().add(detail);
 		}
@@ -216,16 +215,16 @@ public class OrdersService {
 			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
 				// 建立一個新的訂單物件
 				GetOrdersVo newVo = new GetOrdersVo();
-				newVo.setId(row[0].toString()); // o.id
-				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
-				newVo.setGlobalAreaId(((Number) row[2]).intValue()); // o.global_area_id
-				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
-				newVo.setOrdersStatus(row[4].toString()); // o.status
-				newVo.setPayStatus(row[5].toString());// o.status
+				newVo.setId(row[0] != null ? row[0].toString() : ""); // o.id
+				newVo.setOrderDateId(row[1] != null ? row[1].toString() : ""); // o.order_date_id
+				newVo.setGlobalAreaId(row[2] != null ? ((Number) row[2]).intValue() : 0); // o.global_area_id
+				newVo.setTotalAmount(row[3] != null ? (BigDecimal) row[3] : BigDecimal.ZERO); // o.total_amount
+				newVo.setOrdersStatus(row[4] != null ? row[4].toString() : "UNKNOWN");  // o.status
+				newVo.setPayStatus(row[5] != null ? row[5].toString() : "UNKNOWN");// o.status
 				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
 				// 回傳的 Java 物件實際上是 java.sql.Timestamp
 				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
-				newVo.setCompletedAt((LocalDateTime) row[6]);
+				newVo.setCompletedAt(row[6] != null ? (LocalDateTime) row[6] : null);
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -233,11 +232,11 @@ public class OrdersService {
 			// 建立明細並塞入該訂單的 List
 			GetOrdersDetailVo detail = new GetOrdersDetailVo();
 			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
-			detail.setQuantity(((Number) row[7]).intValue());
-			detail.setPrice((BigDecimal) row[8]);
-			detail.setGift(((Number) row[9]).intValue() == 1); // 回傳0或1，在 Java 是數字，透過比較運算產生 true/false
+			detail.setQuantity(row[7] != null ? ((Number) row[7]).intValue() : 0);
+			detail.setPrice(row[8] != null ? (BigDecimal) row[8] : BigDecimal.ZERO);
+			detail.setGift(row[9] != null && ((Number) row[9]).intValue() == 1); // 回傳0或1，在 Java 是數字，透過比較運算產生 true/false
 			detail.setDiscountNote(row[10] != null ? row[10].toString() : "");
-			detail.setName(row[11].toString()); // 產品名稱已經在 SQL 抓好了
+			detail.setName(row[11] != null ? row[11].toString() : "未知商品"); // 產品名稱已經在 SQL 抓好了
 
 			vo.getGetOrdersDetailVoList().add(detail);
 		}
@@ -828,16 +827,16 @@ public class OrdersService {
 			GetOrdersVo vo = orderMap.computeIfAbsent(orderKey, k -> {
 				// 建立一個新的訂單物件
 				GetOrdersVo newVo = new GetOrdersVo();
-				newVo.setId(row[0].toString()); // o.id
-				newVo.setOrderDateId(row[1].toString()); // o.order_date_id
-				newVo.setGlobalAreaId(((Number) row[2]).intValue()); // o.global_area_id
-				newVo.setTotalAmount((BigDecimal) row[3]); // o.total_amount
-				newVo.setOrdersStatus(row[4].toString()); // o.status
-				newVo.setPayStatus(row[5].toString());// o.status
+				newVo.setId(row[0] != null ? row[0].toString() : ""); // o.id
+				newVo.setOrderDateId(row[1] != null ? row[1].toString() : ""); // o.order_date_id
+				newVo.setGlobalAreaId(row[2] != null ? ((Number) row[2]).intValue() : 0); // o.global_area_id
+				newVo.setTotalAmount(row[3] != null ? (BigDecimal) row[3] : BigDecimal.ZERO); // o.total_amount
+				newVo.setOrdersStatus(row[4] != null ? row[4].toString() : "UNKNOWN"); // o.status
+				newVo.setPayStatus(row[5] != null ? row[5].toString() : "UNKNOWN");// o.status
 				// 大部分的 JDBC 驅動（如 MySQL Connector/J）在處理資料庫的 DATETIME 或 TIMESTAMP 欄位時，
 				// 回傳的 Java 物件實際上是 java.sql.Timestamp
 				// 必須先轉成 Timestamp，再呼叫它內建的轉換方法 .toLocalDateTime()
-				newVo.setCompletedAt((LocalDateTime) row[6]);
+				newVo.setCompletedAt(row[6] != null ? (LocalDateTime) row[6] : null);
 				newVo.setGetOrdersDetailVoList(new ArrayList<>());
 				return newVo;
 			});
@@ -845,11 +844,11 @@ public class OrdersService {
 			// 建立明細並塞入該訂單的 List
 			GetOrdersDetailVo detail = new GetOrdersDetailVo();
 			// 如果是寫 Integer ，DB 回傳是：BigInteger/Long，會直接噴 ClassCastException
-			detail.setQuantity(((Number) row[7]).intValue());
-			detail.setPrice((BigDecimal) row[8]);
-			detail.setGift(((Number) row[9]).intValue() == 1); // 回傳0或1，在 Java 是數字，透過比較運算產生 true/false
+			detail.setQuantity(row[7] != null ? ((Number) row[7]).intValue() : 0);
+			detail.setPrice(row[8] != null ? (BigDecimal) row[8] : BigDecimal.ZERO);
+			detail.setGift(row[9] != null && ((Number) row[9]).intValue() == 1); // 回傳0或1，在 Java 是數字，透過比較運算產生 true/false
 			detail.setDiscountNote(row[10] != null ? row[10].toString() : "");
-			detail.setName(row[11].toString()); // 產品名稱已經在 SQL 抓好了
+			detail.setName(row[11] != null ? row[11].toString() : "未知商品"); // 產品名稱已經在 SQL 抓好了
 
 			vo.getGetOrdersDetailVoList().add(detail);
 		}
