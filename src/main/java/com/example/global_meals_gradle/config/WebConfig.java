@@ -30,7 +30,7 @@ public class WebConfig implements WebMvcConfigurer {
 						"http://127.0.0.1:4200" // 有些瀏覽器會識別為不同來源，一併加入
 				)
 				// 允許的 HTTP 方法：GET (讀取), POST (新增), PUT (修改), DELETE (刪除))
-				.allowedMethods("GET", "POST", "PUT", "DELETE")
+				.allowedMethods("GET", "POST", "PUT", "DELETE","PATCH")
 				// 允許的 Header：* 代表不限制，讓前端可以自定義傳入 Header (如 Authorization)
 				.allowedHeaders("*")
 				// 【核心重點】允許攜帶憑證：

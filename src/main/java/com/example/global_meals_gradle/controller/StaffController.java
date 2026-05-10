@@ -33,7 +33,6 @@ import jakarta.validation.Valid;
 // @CrossOrigin：允許前端（Angular 在 4200 port）跨域呼叫這個 API
 //               allowCredentials = "true" 讓 Cookie（Session）可以跨域傳送
 @RestController
-@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 @RequestMapping("/staff")
 @Tag(name = "員工管理模組", description = "處理員工登入、權限管理與密碼變更業務")
 public class StaffController {
